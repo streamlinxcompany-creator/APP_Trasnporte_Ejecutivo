@@ -1,5 +1,0 @@
-flask
-werkzeug
-twilio
-cryptography
-gunicorn
