@@ -1,0 +1,1061 @@
+﻿<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Centro de Control | Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0a0d12;
+        --bg-soft: #0f141c;
+        --panel: rgba(18, 24, 36, 0.94);
+        --panel-strong: #141c28;
+        --stroke: rgba(255, 255, 255, 0.08);
+        --accent: #f2c14e;
+        --accent-soft: rgba(242, 193, 78, 0.18);
+        --success: #46e19f;
+        --danger: #ff6b6b;
+        --info: #55a9ff;
+        --text: #e9eef5;
+        --muted: #9aa8b4;
+        --shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Sora", system-ui, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at top, rgba(242, 193, 78, 0.08), transparent 45%),
+          radial-gradient(circle at 20% 20%, rgba(82, 160, 255, 0.12), transparent 40%),
+          var(--bg);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: linear-gradient(120deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(60deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        background-size: 120px 120px;
+        opacity: 0.6;
+        pointer-events: none;
+      }
+
+      .page {
+        position: relative;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 32px 28px 60px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 28px;
+      }
+
+      .topbar h1 {
+        margin: 0 0 6px 0;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 32px;
+        letter-spacing: 0.6px;
+      }
+
+      .topbar .kicker {
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 11px;
+        color: var(--accent);
+        margin-bottom: 8px;
+      }
+
+      .topbar .subtitle {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .session {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .pill {
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--stroke);
+        letter-spacing: 0.4px;
+      }
+
+      .pill.ok {
+        color: #0a140e;
+        background: rgba(70, 225, 159, 0.9);
+      }
+
+      .pill.warn {
+        color: #1a1200;
+        background: rgba(242, 193, 78, 0.8);
+      }
+
+      .pill.bad {
+        color: #200;
+        background: rgba(255, 107, 107, 0.85);
+      }
+
+      .logout {
+        padding: 8px 16px;
+        border-radius: 999px;
+        border: 1px solid var(--stroke);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 12px;
+        transition: all 0.2s ease;
+      }
+
+      .logout:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .stat-card {
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 16px;
+        padding: 16px 18px;
+        min-height: 110px;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+        animation: floatIn 0.6s ease both;
+      }
+
+      .stat-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(140deg, rgba(242, 193, 78, 0.08), transparent 55%);
+        opacity: 0.8;
+        pointer-events: none;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1.6px;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+
+      .stat-value {
+        font-size: 22px;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
+      }
+
+      .stat-sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .main-grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .panel-title {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 18px;
+        margin: 0;
+      }
+
+      .panel-sub {
+        color: var(--muted);
+        font-size: 12px;
+        margin: 6px 0 0 0;
+      }
+
+      .twilio-panel {
+        grid-column: span 4;
+      }
+
+      .generator-panel {
+        grid-column: span 4;
+      }
+
+      .active-panel {
+        grid-column: span 4;
+      }
+
+      .services-panel {
+        grid-column: span 12;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+        background: var(--panel-strong);
+        border-radius: 14px;
+        border: 1px solid var(--stroke);
+      }
+
+      .toggle-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--success);
+        box-shadow: 0 0 12px rgba(70, 225, 159, 0.6);
+      }
+
+      .button {
+        background: var(--panel-strong);
+        color: var(--text);
+        border: 1px solid var(--stroke);
+        border-radius: 12px;
+        padding: 10px 16px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .button:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .button.primary {
+        background: var(--accent);
+        color: #1b1404;
+        border-color: transparent;
+      }
+
+      .button.primary:hover {
+        filter: brightness(1.04);
+      }
+
+      .button.danger {
+        border-color: rgba(255, 107, 107, 0.6);
+        color: var(--danger);
+      }
+
+      .keypad {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .keypad button {
+        padding: 12px 0;
+        border-radius: 12px;
+        border: 1px solid var(--stroke);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .keypad button:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .qty-input {
+        width: 100%;
+        padding: 12px;
+        font-size: 20px;
+        text-align: center;
+        border-radius: 12px;
+        background: var(--panel-strong);
+        color: var(--accent);
+        border: 1px solid var(--stroke);
+      }
+
+      .hint {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .active-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 220px;
+        overflow: auto;
+      }
+
+      .active-item {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--stroke);
+        background: rgba(255, 255, 255, 0.02);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .active-item span {
+        font-size: 13px;
+      }
+
+      .service-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        max-height: 420px;
+        overflow: auto;
+        padding-right: 6px;
+      }
+
+      .service-card {
+        background: rgba(10, 13, 18, 0.8);
+        border: 1px solid var(--stroke);
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .service-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .service-id {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .service-time {
+        font-size: 12px;
+        color: var(--accent);
+      }
+
+      .service-grid {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 6px 12px;
+        font-size: 13px;
+      }
+
+      .service-label {
+        color: var(--muted);
+      }
+
+      .service-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .empty-state {
+        padding: 24px;
+        border-radius: 16px;
+        border: 1px dashed var(--stroke);
+        text-align: center;
+        color: var(--muted);
+        grid-column: 1 / -1;
+      }
+
+      .table-panel {
+        margin-top: 24px;
+        background: var(--panel);
+        border-radius: 18px;
+        border: 1px solid var(--stroke);
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 10px 8px;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      th {
+        color: var(--muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 11px;
+      }
+
+      .status-pill {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        display: inline-block;
+      }
+
+      .status-pill.free {
+        background: rgba(70, 225, 159, 0.15);
+        color: var(--success);
+      }
+
+      .status-pill.busy {
+        background: rgba(255, 107, 107, 0.15);
+        color: var(--danger);
+      }
+
+      .cred-button {
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--stroke);
+        background: transparent;
+        color: var(--text);
+        font-size: 11px;
+        cursor: pointer;
+      }
+
+      .cred-button:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 50;
+      }
+
+      .modal.active {
+        display: flex;
+      }
+
+      .modal-card {
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 18px;
+        padding: 20px;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: var(--shadow);
+      }
+
+      .modal-card h3 {
+        margin: 0 0 12px 0;
+        font-family: "Space Grotesk", sans-serif;
+      }
+
+      .modal-row {
+        margin-bottom: 12px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .modal-input {
+        width: 100%;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid var(--stroke);
+        background: var(--panel-strong);
+        color: var(--text);
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        background: var(--panel-strong);
+        border: 1px solid var(--stroke);
+        color: var(--text);
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.25s ease;
+        z-index: 60;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @keyframes floatIn {
+        from {
+          transform: translateY(10px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      @media (max-width: 1024px) {
+        .stats-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .twilio-panel,
+        .generator-panel,
+        .active-panel {
+          grid-column: span 12;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .topbar {
+          flex-direction: column;
+        }
+        .stats-grid {
+          grid-template-columns: 1fr;
+        }
+        .service-list {
+          grid-template-columns: 1fr;
+          max-height: 480px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div>
+          <div class="kicker">Centro de control</div>
+          <h1>Panel Maestro</h1>
+          <p class="subtitle">Operaciones en vivo para {{ admin_usuario or "admin" }}</p>
+        </div>
+        <div class="session">
+          <div class="pill" id="dbStatus">DB</div>
+          <div class="pill" id="syncStatus">Auto</div>
+          <a class="logout" href="/admin/logout">Salir</a>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Twilio</div>
+          <div class="stat-value" id="statTwilioValue">--</div>
+          <div class="stat-sub" id="statTwilioSub">Estado del canal</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Servicios en cola</div>
+          <div class="stat-value" id="statServicesValue">0</div>
+          <div class="stat-sub">Disponibles ahora mismo</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Conductores activos</div>
+          <div class="stat-value" id="statActiveValue">0</div>
+          <div class="stat-sub" id="statActiveSub">Sin conexion</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Ganancias</div>
+          <div class="stat-value" id="statEarningsValue">$0</div>
+          <div class="stat-sub" id="statDriversSub">0 conductores registrados</div>
+        </div>
+      </section>
+
+      <section class="main-grid">
+        <div class="panel twilio-panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Canal Twilio</h3>
+              <p class="panel-sub">Control de mensajeria</p>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-indicator">
+              <span class="dot" id="twilioDot"></span>
+              <span id="twilioLabel">Estado</span>
+            </div>
+            <button class="button" id="twilioToggleBtn">Cambiar</button>
+          </div>
+          <div class="hint">Si el canal esta apagado, no se envian mensajes a WhatsApp.</div>
+        </div>
+
+        <div class="panel generator-panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Generador de servicios</h3>
+              <p class="panel-sub">Crea pedidos de prueba al instante</p>
+            </div>
+          </div>
+          <input class="qty-input" id="qtyInput" type="text" value="1" />
+          <div class="keypad" id="keypad">
+            <button data-digit="1">1</button>
+            <button data-digit="2">2</button>
+            <button data-digit="3">3</button>
+            <button data-digit="4">4</button>
+            <button data-digit="5">5</button>
+            <button data-digit="6">6</button>
+            <button data-digit="7">7</button>
+            <button data-digit="8">8</button>
+            <button data-digit="9">9</button>
+            <button data-action="clear">Borrar</button>
+            <button data-digit="0">0</button>
+            <button data-action="send" class="button primary">Enviar</button>
+          </div>
+          <div class="hint">Maximo 200 servicios por envio.</div>
+        </div>
+
+        <div class="panel active-panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Conductores en linea</h3>
+              <p class="panel-sub">Quien esta conectado ahora mismo</p>
+            </div>
+          </div>
+          <div class="active-list" id="activeDriversList">
+            <div class="active-item"><span>Sin conexion</span></div>
+          </div>
+        </div>
+
+        <div class="panel services-panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Servicios disponibles</h3>
+              <p class="panel-sub">Cronometro en tiempo real</p>
+            </div>
+            <button class="button" id="refreshServicesBtn">Recargar</button>
+          </div>
+          <div class="service-list" id="servicesList">
+            <div class="empty-state">Cargando servicios...</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="table-panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="panel-title">Conductores registrados</h3>
+            <p class="panel-sub">Metricas en tiempo real y credenciales</p>
+          </div>
+          <button class="button" id="refreshDriversBtn">Recargar</button>
+        </div>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Nombre</th>
+                <th>Placa</th>
+                <th>Vehiculo</th>
+                <th>Modelo</th>
+                <th>Estado</th>
+                <th>Servicios</th>
+                <th>Ultimo</th>
+                <th>Ganancias</th>
+                <th>Credenciales</th>
+              </tr>
+            </thead>
+            <tbody id="driversTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal" id="credModal">
+      <div class="modal-card">
+        <h3>Credenciales del conductor</h3>
+        <div class="modal-row">Usuario: <span id="credUser">-</span></div>
+        <div class="modal-row">
+          Contrasena actual
+          <input class="modal-input" id="credPassword" type="text" value="********" readonly />
+        </div>
+        <div class="modal-row">
+          Nueva contrasena
+          <input class="modal-input" id="newPassword" type="password" placeholder="Escribe la nueva clave" />
+        </div>
+        <div class="modal-actions">
+          <button class="button" id="togglePasswordBtn">Ver</button>
+          <button class="button primary" id="savePasswordBtn">Actualizar</button>
+          <button class="button" id="closeModalBtn">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      const statTwilioValue = document.getElementById("statTwilioValue");
+      const statTwilioSub = document.getElementById("statTwilioSub");
+      const statServicesValue = document.getElementById("statServicesValue");
+      const statActiveValue = document.getElementById("statActiveValue");
+      const statActiveSub = document.getElementById("statActiveSub");
+      const statEarningsValue = document.getElementById("statEarningsValue");
+      const statDriversSub = document.getElementById("statDriversSub");
+      const dbStatus = document.getElementById("dbStatus");
+      const syncStatus = document.getElementById("syncStatus");
+      const twilioDot = document.getElementById("twilioDot");
+      const twilioLabel = document.getElementById("twilioLabel");
+      const twilioToggleBtn = document.getElementById("twilioToggleBtn");
+      const servicesList = document.getElementById("servicesList");
+      const activeDriversList = document.getElementById("activeDriversList");
+      const driversTableBody = document.getElementById("driversTableBody");
+      const refreshServicesBtn = document.getElementById("refreshServicesBtn");
+      const refreshDriversBtn = document.getElementById("refreshDriversBtn");
+      const qtyInput = document.getElementById("qtyInput");
+      const keypad = document.getElementById("keypad");
+      const toast = document.getElementById("toast");
+
+      const credModal = document.getElementById("credModal");
+      const credUser = document.getElementById("credUser");
+      const credPassword = document.getElementById("credPassword");
+      const newPassword = document.getElementById("newPassword");
+      const togglePasswordBtn = document.getElementById("togglePasswordBtn");
+      const savePasswordBtn = document.getElementById("savePasswordBtn");
+      const closeModalBtn = document.getElementById("closeModalBtn");
+
+      let currentPassword = "";
+      let currentDriverId = null;
+
+      const fmtCop = new Intl.NumberFormat("es-CO", {
+        style: "currency",
+        currency: "COP",
+        maximumFractionDigits: 0
+      });
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function formatElapsed(seconds) {
+        const sec = Math.max(0, Number(seconds) || 0);
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        if (h > 0) {
+          return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        }
+        return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      }
+
+      async function fetchJson(url, options) {
+        const res = await fetch(url, {
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          ...options
+        });
+        return res.json();
+      }
+
+      async function loadOverview() {
+        const data = await fetchJson("/admin/api/overview");
+        if (!data.ok) return;
+
+        statTwilioValue.textContent = data.twilio_enabled ? "ENCENDIDO" : "APAGADO";
+        statTwilioSub.textContent = data.twilio_enabled ? "Mensajeria activa" : "Mensajeria apagada";
+        statServicesValue.textContent = data.services_count;
+        statActiveValue.textContent = data.active_drivers_count;
+        statActiveSub.textContent = data.active_drivers_count ? "Conductores en ruta" : "Sin conexion";
+        statEarningsValue.textContent = fmtCop.format(data.earnings_total || 0);
+        statDriversSub.textContent = `${data.drivers_total} conductores registrados`;
+
+        dbStatus.textContent = data.db_ok ? "DB OK" : "DB ERROR";
+        dbStatus.className = `pill ${data.db_ok ? "ok" : "bad"}`;
+
+        syncStatus.textContent = `SYNC ${data.now}`;
+        syncStatus.className = "pill warn";
+
+        twilioDot.style.background = data.twilio_enabled ? "var(--success)" : "var(--danger)";
+        twilioDot.style.boxShadow = data.twilio_enabled
+          ? "0 0 12px rgba(70, 225, 159, 0.6)"
+          : "0 0 12px rgba(255, 107, 107, 0.6)";
+        twilioLabel.textContent = data.twilio_enabled ? "Twilio encendido" : "Twilio apagado";
+        twilioToggleBtn.textContent = data.twilio_enabled ? "Apagar" : "Encender";
+
+        renderActiveDrivers(data.active_drivers || []);
+      }
+
+      function renderActiveDrivers(drivers) {
+        activeDriversList.innerHTML = "";
+        if (!drivers.length) {
+          activeDriversList.innerHTML = '<div class="active-item"><span>Sin conexion</span></div>';
+          return;
+        }
+        drivers.forEach(driver => {
+          const item = document.createElement("div");
+          item.className = "active-item";
+          item.innerHTML = `<span>${driver.nombre}</span><span>${driver.placa || "-"}</span>`;
+          activeDriversList.appendChild(item);
+        });
+      }
+
+      async function loadServices() {
+        const data = await fetchJson("/admin/api/services");
+        if (!data.ok) return;
+        const servicios = data.servicios || [];
+        servicesList.innerHTML = "";
+
+        if (!servicios.length) {
+          servicesList.innerHTML = '<div class="empty-state">No hay servicios disponibles.</div>';
+          return;
+        }
+
+        servicios.forEach(servicio => {
+          const card = document.createElement("div");
+          card.className = "service-card";
+          card.innerHTML = `
+            <div class="service-top">
+              <div class="service-id">Servicio #${servicio.id}</div>
+              <div class="service-time">En linea <span class="elapsed" data-elapsed="${servicio.elapsed}">${formatElapsed(servicio.elapsed)}</span></div>
+            </div>
+            <div class="service-grid">
+              <div class="service-label">Origen</div>
+              <div>${servicio.direccion}</div>
+              <div class="service-label">Cliente</div>
+              <div>${servicio.nombre}</div>
+              <div class="service-label">Telefono</div>
+              <div>${servicio.cliente_telefono}</div>
+            </div>
+            <div class="service-actions">
+              <button class="button danger" data-delete="${servicio.id}">Eliminar</button>
+            </div>
+          `;
+          servicesList.appendChild(card);
+        });
+      }
+
+      async function loadDrivers() {
+        const data = await fetchJson("/admin/api/drivers");
+        if (!data.ok) return;
+        const conductores = data.conductores || [];
+        driversTableBody.innerHTML = "";
+
+        conductores.forEach(conductor => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${conductor.usuario}</td>
+            <td>${conductor.nombre}</td>
+            <td>${conductor.placa}</td>
+            <td>${conductor.vehiculo}</td>
+            <td>${conductor.modelo}</td>
+            <td><span class="status-pill ${conductor.estado === "Ocupado" ? "busy" : "free"}">${conductor.estado}</span></td>
+            <td>${conductor.servicios}</td>
+            <td>${conductor.ultimo}</td>
+            <td>${conductor.ganancias}</td>
+            <td><button class="cred-button" data-cred="${conductor.id}">Ver</button></td>
+          `;
+          driversTableBody.appendChild(row);
+        });
+      }
+
+      async function toggleTwilio() {
+        const data = await fetchJson("/admin/api/twilio/toggle", { method: "POST", body: "{}" });
+        if (data.ok) {
+          showToast(data.enabled ? "Twilio encendido" : "Twilio apagado");
+          loadOverview();
+        }
+      }
+
+      async function generateServices(qty) {
+        const data = await fetchJson("/admin/api/services/generate", {
+          method: "POST",
+          body: JSON.stringify({ qty })
+        });
+        if (data.ok) {
+          showToast(`Servicios creados: ${data.created.length}`);
+          qtyInput.value = "1";
+          refreshAll();
+        } else {
+          showToast(data.error || "No se pudo crear");
+        }
+      }
+
+      async function deleteService(id) {
+        const data = await fetchJson("/admin/api/services/delete", {
+          method: "POST",
+          body: JSON.stringify({ id })
+        });
+        if (data.ok) {
+          showToast("Servicio eliminado");
+          loadServices();
+          loadOverview();
+        } else {
+          showToast(data.error || "No se pudo eliminar");
+        }
+      }
+
+      async function openCredentials(id) {
+        currentDriverId = id;
+        const data = await fetchJson(`/admin/api/driver/credentials?id=${id}`);
+        if (!data.ok) {
+          showToast(data.error || "No se pudo cargar");
+          return;
+        }
+        currentPassword = data.password || "";
+        credUser.textContent = data.usuario;
+        credPassword.value = currentPassword ? "********" : "Sin registro";
+        togglePasswordBtn.textContent = "Ver";
+        newPassword.value = "";
+        credModal.classList.add("active");
+      }
+
+      function togglePassword() {
+        if (!currentPassword) {
+          return;
+        }
+        if (credPassword.value === "********") {
+          credPassword.value = currentPassword;
+          togglePasswordBtn.textContent = "Ocultar";
+        } else {
+          credPassword.value = "********";
+          togglePasswordBtn.textContent = "Ver";
+        }
+      }
+
+      async function savePassword() {
+        const value = newPassword.value.trim();
+        if (!value) {
+          showToast("Escribe una contrasena nueva");
+          return;
+        }
+        const data = await fetchJson("/admin/api/driver/password", {
+          method: "POST",
+          body: JSON.stringify({ id: currentDriverId, password: value })
+        });
+        if (data.ok) {
+          currentPassword = value;
+          credPassword.value = "********";
+          togglePasswordBtn.textContent = "Ver";
+          newPassword.value = "";
+          showToast("Contrasena actualizada");
+        } else {
+          showToast(data.error || "No se pudo actualizar");
+        }
+      }
+
+      function closeModal() {
+        credModal.classList.remove("active");
+      }
+
+      function refreshAll() {
+        loadOverview();
+        loadServices();
+        loadDrivers();
+      }
+
+      function setupEvents() {
+        twilioToggleBtn.addEventListener("click", toggleTwilio);
+        refreshServicesBtn.addEventListener("click", loadServices);
+        refreshDriversBtn.addEventListener("click", loadDrivers);
+
+        keypad.addEventListener("click", event => {
+          const digit = event.target.getAttribute("data-digit");
+          const action = event.target.getAttribute("data-action");
+          if (digit !== null) {
+            if (qtyInput.value === "0") qtyInput.value = "";
+            qtyInput.value = `${qtyInput.value}${digit}`;
+          }
+          if (action === "clear") {
+            qtyInput.value = "";
+          }
+          if (action === "send") {
+            const qty = parseInt(qtyInput.value || "0", 10);
+            generateServices(qty);
+          }
+        });
+
+        servicesList.addEventListener("click", event => {
+          const id = event.target.getAttribute("data-delete");
+          if (id) {
+            deleteService(id);
+          }
+        });
+
+        driversTableBody.addEventListener("click", event => {
+          const id = event.target.getAttribute("data-cred");
+          if (id) {
+            openCredentials(id);
+          }
+        });
+
+        togglePasswordBtn.addEventListener("click", togglePassword);
+        savePasswordBtn.addEventListener("click", savePassword);
+        closeModalBtn.addEventListener("click", closeModal);
+        credModal.addEventListener("click", event => {
+          if (event.target === credModal) closeModal();
+        });
+      }
+
+      setInterval(() => {
+        document.querySelectorAll(".elapsed").forEach(el => {
+          const current = parseInt(el.dataset.elapsed || "0", 10);
+          const next = current + 1;
+          el.dataset.elapsed = next;
+          el.textContent = formatElapsed(next);
+        });
+      }, 1000);
+
+      setupEvents();
+      refreshAll();
+      setInterval(refreshAll, 5000);
+    </script>
+  </body>
+</html>
