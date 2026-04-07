@@ -1,0 +1,631 @@
+﻿<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+    <title>Ingreso | Despacho Ejecutivo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Manrope:wght@300;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #060606;
+        --panel: rgba(16, 16, 18, 0.9);
+        --panel-strong: rgba(10, 10, 12, 0.98);
+        --gold: #f2c744;
+        --gold-2: #b99035;
+        --text: #f5f5f5;
+        --muted: #9aa0a6;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 15% 20%, rgba(242, 199, 68, 0.14), transparent 38%),
+          radial-gradient(circle at 85% 0%, rgba(140, 140, 155, 0.35), transparent 45%),
+          radial-gradient(circle at 70% 80%, rgba(242, 199, 68, 0.08), transparent 45%),
+          #030303;
+        color: var(--text);
+        font-family: 'Manrope', sans-serif;
+        min-height: 100dvh;
+        display: flex;
+        align-items: stretch;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+          env(safe-area-inset-left);
+        -webkit-text-size-adjust: 100%;
+      }
+      .auth-shell {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+        width: 100%;
+        min-height: 100dvh;
+      }
+      .auth-hero {
+        padding: 56px 8vw;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+      }
+      .auth-hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          repeating-linear-gradient(
+            0deg,
+            transparent 0 70px,
+            rgba(242, 199, 68, 0.12) 70px 72px
+          ),
+          repeating-linear-gradient(
+            90deg,
+            transparent 0 70px,
+            rgba(242, 199, 68, 0.12) 70px 72px
+          );
+        opacity: 0.35;
+        pointer-events: none;
+      }
+      .auth-hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 20% 10%, rgba(242, 199, 68, 0.2), transparent 40%),
+          radial-gradient(circle at 80% 80%, rgba(60, 60, 70, 0.5), transparent 45%);
+        opacity: 0.35;
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+      .hero-fade {
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -36px;
+        height: 60px;
+        background: linear-gradient(
+          180deg,
+          rgba(3, 3, 4, 0) 0%,
+          rgba(3, 3, 4, 0.75) 55%,
+          rgba(3, 3, 4, 0.95) 100%
+        );
+        pointer-events: none;
+        z-index: 2;
+      }
+      .hero-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-signal {
+        font-size: 0.72rem;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: rgba(242, 199, 68, 0.65);
+      }
+      .hero-title {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .hero-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(242, 199, 68, 0.12);
+        border: 1px solid rgba(242, 199, 68, 0.4);
+        color: var(--gold);
+        font-size: 0.72rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        width: fit-content;
+      }
+      .brand-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(242, 199, 68, 0.35);
+        color: var(--gold);
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        font-family: 'Cinzel', serif;
+        font-size: 0.75rem;
+      }
+      .auth-hero h1 {
+        font-family: 'Cinzel', serif;
+        font-size: clamp(2.2rem, 3.5vw, 3.2rem);
+        margin: 0;
+        letter-spacing: 0.04em;
+      }
+      .auth-hero p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 520px;
+        line-height: 1.6;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-chip {
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(242, 199, 68, 0.25);
+        color: rgba(242, 199, 68, 0.85);
+        background: rgba(12, 12, 14, 0.8);
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      }
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-card {
+        padding: 18px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(12, 12, 15, 0.92), rgba(20, 20, 24, 0.75));
+        border: 1px solid rgba(242, 199, 68, 0.18);
+        box-shadow: 0 20px 36px rgba(0, 0, 0, 0.45);
+        position: relative;
+        overflow: hidden;
+      }
+      .hero-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, rgba(242, 199, 68, 0.7), transparent 70%);
+        opacity: 0.8;
+      }
+      .hero-card-tag {
+        font-size: 0.7rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: rgba(242, 199, 68, 0.7);
+        margin-bottom: 8px;
+      }
+      .hero-card h5 {
+        margin: 0 0 6px;
+        font-size: 1rem;
+        color: var(--text);
+      }
+      .hero-card span {
+        font-size: 0.9rem;
+        color: rgba(245, 245, 245, 0.7);
+      }
+      .hero-runway {
+        display: grid;
+        gap: 12px;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-runway-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 14px;
+        background: rgba(12, 12, 14, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .runway-index {
+        font-family: 'Cinzel', serif;
+        color: var(--gold);
+        letter-spacing: 0.14em;
+        font-size: 0.8rem;
+        min-width: 32px;
+      }
+      .hero-runway-item strong {
+        display: block;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+      }
+      .hero-runway-item p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .auth-panel {
+        padding: 48px 8vw;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(3, 3, 4, 0.94);
+        border-left: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .panel-card {
+        width: min(420px, 100%);
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 22px;
+        padding: 32px;
+        box-shadow: 0 22px 40px rgba(0, 0, 0, 0.5);
+        position: relative;
+        overflow: hidden;
+      }
+      .panel-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, rgba(242, 199, 68, 0.9), transparent 70%);
+      }
+      .panel-title {
+        font-size: 1.4rem;
+        margin-bottom: 6px;
+      }
+      .panel-sub {
+        color: var(--muted);
+        margin-bottom: 22px;
+      }
+      .auth-toggle {
+        display: flex;
+        gap: 6px;
+        padding: 6px;
+        border-radius: 999px;
+        border: 1px solid rgba(242, 199, 68, 0.25);
+        background: rgba(12, 12, 14, 0.85);
+        margin-bottom: 18px;
+      }
+      .toggle-btn {
+        flex: 1;
+        border: none;
+        background: transparent;
+        color: rgba(242, 199, 68, 0.7);
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        font-weight: 700;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+      .toggle-btn.is-active {
+        background: linear-gradient(90deg, #f2c744, #f6db8a);
+        color: #1a1406;
+        box-shadow: 0 10px 20px rgba(242, 199, 68, 0.25);
+      }
+      .register-only {
+        display: none;
+      }
+      .mode-register .register-only {
+        display: block;
+      }
+      .alert-luxe {
+        background: rgba(29, 23, 16, 0.9);
+        border: 1px solid rgba(242, 199, 68, 0.35);
+        color: #f6d98c;
+      }
+      .form-label {
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(242, 199, 68, 0.7);
+      }
+      .form-control {
+        background: #0f0f11;
+        border: 1px solid #2c2d33;
+        color: var(--text);
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 1rem;
+        min-height: 48px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .form-control:focus {
+        border-color: var(--gold);
+        box-shadow: 0 0 0 0.2rem rgba(242, 199, 68, 0.2);
+      }
+      .btn-gold {
+        background: linear-gradient(90deg, #f2c744, #f6db8a);
+        border: none;
+        border-radius: 12px;
+        padding: 12px;
+        font-weight: 700;
+        color: #1a1406;
+        box-shadow: 0 12px 30px rgba(242, 199, 68, 0.25);
+        min-height: 48px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .btn-gold:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 36px rgba(242, 199, 68, 0.35);
+      }
+      .panel-footnote {
+        margin-top: 16px;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .auth-seal {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: calc(10px + env(safe-area-inset-bottom));
+        text-align: center;
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(242, 199, 68, 0.65);
+        pointer-events: none;
+        z-index: 5;
+      }
+      @media (max-width: 960px) {
+        .auth-shell {
+          grid-template-columns: 1fr;
+        }
+        .auth-hero {
+          padding: 40px 8vw 10px;
+        }
+        .auth-panel {
+          border-left: none;
+          padding: 20px 8vw 60px;
+        }
+      }
+      @media (max-width: 640px) {
+        body {
+          align-items: flex-start;
+        }
+        .auth-shell {
+          display: flex;
+          flex-direction: column;
+        }
+        .auth-panel {
+          order: 1;
+          padding: 20px 6vw 18px;
+          align-items: flex-start;
+        }
+        .auth-hero {
+          order: -1;
+          padding: 12px 6vw 32px;
+        }
+        .auth-hero h1 {
+          font-size: 1.7rem;
+        }
+        .hero-fade {
+          display: block;
+        }
+        .hero-top {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+        }
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+        .hero-runway {
+          gap: 10px;
+        }
+        .panel-card {
+          padding: 22px;
+          border-radius: 16px;
+          width: 100%;
+        }
+        .btn-gold {
+          padding: 14px;
+          font-size: 1.02rem;
+        }
+      }
+      @media (max-width: 480px) {
+        body {
+          min-height: 100svh;
+        }
+        .auth-panel {
+          padding: 16px 5vw 12px;
+        }
+        .panel-card {
+          padding: 18px;
+          border-radius: 14px;
+          box-shadow: 0 18px 26px rgba(0, 0, 0, 0.45);
+        }
+        .panel-title {
+          font-size: 1.15rem;
+        }
+        .panel-sub {
+          font-size: 0.9rem;
+        }
+        .form-control {
+          padding: 12px 14px;
+          font-size: 1rem;
+        }
+        .btn-gold {
+          padding: 14px;
+          font-size: 1.05rem;
+        }
+        .auth-hero {
+          padding: 8px 5vw 24px;
+        }
+        .hero-grid,
+        .hero-runway,
+        .hero-chip-row {
+          display: none;
+        }
+        .auth-hero p {
+          display: none;
+        }
+        .brand-pill {
+          font-size: 0.7rem;
+          letter-spacing: 0.16em;
+        }
+        .auth-hero::before {
+          opacity: 0.18;
+        }
+      }
+      @supports (-webkit-touch-callout: none) {
+        body {
+          min-height: 100svh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="auth-shell">
+      <section class="auth-hero">
+        <div class="hero-top">
+          <div class="brand-pill">Transporte Ejecutivo</div>
+        </div>
+        <div class="hero-title">
+          <span class="hero-kicker">Modo Ejecutivo</span>
+          <h1>Conduce con presencia ejecutiva</h1>
+        </div>
+        <p>Accede al panel premium de servicios. Flujo rapido, alertas en tiempo real y control total desde tu movil.</p>
+        <div class="hero-chip-row">
+          <div class="hero-chip">Asignacion instantanea</div>
+          <div class="hero-chip">Prioridad VIP</div>
+          <div class="hero-chip">Ruta inteligente</div>
+        </div>
+        <div class="hero-grid">
+          <div class="hero-card">
+            <div class="hero-card-tag">Servicio premium</div>
+            <h5>Clientes ejecutivos</h5>
+            <span>Rutas claras y pago puntual con prioridad real.</span>
+          </div>
+          <div class="hero-card">
+            <div class="hero-card-tag">Tiempo real</div>
+            <h5>Alertas visibles</h5>
+            <span>Recibe pedidos destacados y desliza para aceptar.</span>
+          </div>
+          <div class="hero-card">
+            <div class="hero-card-tag">Ruta inteligente</div>
+            <h5>Mini mapa</h5>
+            <span>Visualiza puntos clave con estilo oscuro premium.</span>
+          </div>
+          <div class="hero-card">
+            <div class="hero-card-tag">Soporte</div>
+            <h5>Central 24/7</h5>
+            <span>Siempre hay un coordinador respaldando tu turno.</span>
+          </div>
+        </div>
+        <div class="hero-runway">
+          <div class="hero-runway-item">
+            <div class="runway-index">01</div>
+            <div>
+              <strong>Recibe solicitudes</strong>
+              <p>Alertas visibles con enfoque inmediato.</p>
+            </div>
+          </div>
+          <div class="hero-runway-item">
+            <div class="runway-index">02</div>
+            <div>
+              <strong>Confirma rapido</strong>
+              <p>Desliza para aceptar y ve el detalle completo.</p>
+            </div>
+          </div>
+          <div class="hero-runway-item">
+            <div class="runway-index">03</div>
+            <div>
+              <strong>Conduce con control</strong>
+              <p>Panel premium con seguimiento y estado en vivo.</p>
+            </div>
+          </div>
+        </div>
+        <div class="hero-fade"></div>
+      </section>
+      <section class="auth-panel">
+        <div class="panel-card">
+          <div class="brand-pill mb-3">Ingreso</div>
+          <div class="panel-title">Acceso seguro</div>
+          <p class="panel-sub" id="auth-subtitle">Ingresa para ver servicios disponibles y gestionar tus viajes.</p>
+
+          <div class="auth-toggle" role="tablist" aria-label="Acceso">
+            <button class="toggle-btn is-active" type="button" id="toggle-login">Iniciar sesion</button>
+            <button class="toggle-btn" type="button" id="toggle-register">Registrarse</button>
+          </div>
+
+          {% with messages = get_flashed_messages() %}
+            {% if messages %}
+              <div class="alert alert-luxe">{{ messages[0] }}</div>
+            {% endif %}
+          {% endwith %}
+
+          <form method="post" action="{{ url_for('login') }}" id="auth-form" data-mode="login">
+            <input type="hidden" name="action" id="auth-action" value="login" />
+            <div class="mb-3">
+              <label class="form-label">Usuario</label>
+              <input type="text" name="usuario" class="form-control" required />
+            </div>
+            <div class="mb-4">
+              <label class="form-label">Contrasena</label>
+              <input type="password" name="password" class="form-control" required />
+            </div>
+            <div class="mb-4 register-only" id="confirm-wrap">
+              <label class="form-label">Confirmar contrasena</label>
+              <input type="password" name="confirm_password" id="confirm-password" class="form-control" />
+            </div>
+            <button type="submit" class="btn btn-gold w-100" id="auth-submit">Entrar</button>
+          </form>
+
+          <div class="panel-footnote" id="auth-footnote">
+            Si no tienes cuenta, usa el boton Registrarse.
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="auth-seal">StreamLinx - Protegido por el protocolo de seguridad Maicol v1.0</div>
+    <script>
+      (function () {
+        const form = document.getElementById("auth-form");
+        const actionInput = document.getElementById("auth-action");
+        const submitBtn = document.getElementById("auth-submit");
+        const subtitle = document.getElementById("auth-subtitle");
+        const footnote = document.getElementById("auth-footnote");
+        const loginBtn = document.getElementById("toggle-login");
+        const registerBtn = document.getElementById("toggle-register");
+        const confirmWrap = document.getElementById("confirm-wrap");
+        const confirmInput = document.getElementById("confirm-password");
+
+        function setMode(mode) {
+          form.dataset.mode = mode;
+          actionInput.value = mode;
+          const isRegister = mode === "register";
+          confirmWrap.style.display = isRegister ? "block" : "none";
+          confirmInput.required = isRegister;
+          confirmInput.disabled = !isRegister;
+          submitBtn.textContent = isRegister ? "Registrarme" : "Entrar";
+          subtitle.textContent = isRegister
+            ? "Crea tu cuenta para activar tu perfil de conductor."
+            : "Ingresa para ver servicios disponibles y gestionar tus viajes.";
+          footnote.textContent = isRegister
+            ? "Si ya tienes cuenta, vuelve a Iniciar sesion."
+            : "Si no tienes cuenta, usa el boton Registrarse.";
+          loginBtn.classList.toggle("is-active", !isRegister);
+          registerBtn.classList.toggle("is-active", isRegister);
+        }
+
+        loginBtn.addEventListener("click", () => setMode("login"));
+        registerBtn.addEventListener("click", () => setMode("register"));
+        setMode("login");
+      })();
+    </script>
+  </body>
+</html>
+
+
