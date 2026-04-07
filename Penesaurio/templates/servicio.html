@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+    <title>Servicio | Despacho Ejecutivo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Manrope:wght@300;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #0b0b0c;
+        --panel: #141416;
+        --panel-2: #1c1d20;
+        --gold: #f2c744;
+        --gold-soft: #caa43a;
+        --text: #f1f1f1;
+        --muted: #9aa0a6;
+      }
+      body {
+        background: radial-gradient(circle at top, #1b1b1f 0%, #0b0b0c 45%, #080808 100%);
+        color: var(--text);
+        font-family: 'Manrope', sans-serif;
+        min-height: 100vh;
+      }
+      .brand {
+        font-family: 'Cinzel', serif;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--gold);
+      }
+      .card-service {
+        background: var(--panel);
+        border: 1px solid #26272b;
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+      }
+      .time-pill {
+        background: #111113;
+        color: var(--gold);
+        font-size: 0.85rem;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid #2a2b2f;
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid #25262a;
+        padding: 10px 0;
+        gap: 16px;
+      }
+      .detail-row:last-child {
+        border-bottom: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container py-4">
+      <div class="d-flex flex-column gap-3">
+        <div class="d-flex flex-column gap-2">
+          <div class="brand">Despacho Ejecutivo</div>
+          <div class="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
+            <div class="hint">Conductor: {{ conductor_nombre }} | {{ conductor_placa }}</div>
+            <div class="time-pill">{{ pedido.hora }}</div>
+          </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="alert alert-warning">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
+
+        <div class="card-service">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="text-muted small">Servicio #{{ pedido.id }}</div>
+            <div class="time-pill">{{ pedido.hora }}</div>
+          </div>
+
+          {% if pedido.detalles %}
+            {% for clave, valor in pedido.detalles.items() %}
+              <div class="detail-row">
+                <div class="text-muted">{{ clave }}</div>
+                <div>{{ valor }}</div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="detail-row">
+              <div class="text-muted">Detalle</div>
+              <div>{{ pedido.mensaje_cliente }}</div>
+            </div>
+          {% endif %}
+
+          <div class="detail-row">
+            <div class="text-muted">Telefono</div>
+            <div>{{ pedido.cliente_telefono }}</div>
+          </div>
+          <div class="detail-row">
+            <div class="text-muted">Hora solicitud</div>
+            <div>{{ pedido.timestamp }}</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <form method="post" action="{{ url_for('reenviar_asignacion', pedido_id=pedido.id) }}">
+            <button type="submit" class="btn btn-warning">REENVIAR DATOS AL CLIENTE</button>
+          </form>
+          <a class="btn btn-outline-warning" href="{{ url_for('dashboard') }}">Volver al panel</a>
+          <a class="btn btn-outline-light" href="{{ url_for('logout') }}">Cerrar sesion</a>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

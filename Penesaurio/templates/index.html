@@ -1,0 +1,2320 @@
+﻿
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+    <title>Despacho Ejecutivo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Manrope:wght@300;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #000000;
+        --panel: rgba(14, 14, 16, 0.9);
+        --panel-strong: rgba(10, 10, 12, 0.95);
+        --gold: #f2c744;
+        --gold-2: #b99035;
+        --text: #f5f5f5;
+        --muted: #9d9d9d;
+        --glass: rgba(18, 18, 20, 0.8);
+        --bottom-anchor: 52px;
+        --bottom-gap: 12px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Manrope', sans-serif;
+        min-height: 100vh;
+      }
+      .app-shell {
+        position: relative;
+        min-height: 100vh;
+        overflow: hidden;
+        border-radius: 28px;
+        background: #000;
+      }
+      .map-layer {
+        position: absolute;
+        inset: 0;
+        background: #000;
+        background-image: url("{{ url_for('static', filename='FondoDashboard.jpg') }}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        filter: saturate(0.7) brightness(0.55);
+      }
+      .map-layer.has-map {
+        background-size: cover;
+        background-position: center;
+        filter: saturate(0.6) brightness(0.55);
+      }
+      .map-layer::before {
+        content: none;
+      }
+      .map-layer::after {
+        content: none;
+      }
+      .app-shell::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 50% 55%, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.85) 75%);
+        pointer-events: none;
+      }
+      .top-bar {
+        position: relative;
+        z-index: 4;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 18px 0;
+      }
+      .hamburger {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: 1px solid rgba(242, 199, 68, 0.6);
+        background: rgba(0, 0, 0, 0.6);
+        display: grid;
+        place-items: center;
+        box-shadow: 0 0 18px rgba(242, 199, 68, 0.15);
+      }
+      .hamburger span {
+        display: block;
+        width: 18px;
+        height: 2px;
+        background: var(--gold);
+        margin: 3px 0;
+        border-radius: 999px;
+      }
+      .earnings-card {
+        padding: 10px 20px;
+        border: 1px solid rgba(242, 199, 68, 0.7);
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(20, 18, 10, 0.9), rgba(32, 26, 12, 0.6));
+        color: var(--gold);
+        font-family: 'Cinzel', serif;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+      }
+      .top-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+      .brand-mini {
+        font-family: 'Cinzel', serif;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-size: 0.62rem;
+        color: rgba(242, 199, 68, 0.8);
+      }
+      .earnings-card small {
+        display: block;
+        font-family: 'Manrope', sans-serif;
+        letter-spacing: 0.2em;
+        color: rgba(242, 199, 68, 0.7);
+        font-size: 0.65rem;
+        margin-top: 2px;
+      }
+      .status-row {
+        position: relative;
+        z-index: 4;
+        display: flex;
+        justify-content: center;
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .services-area {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 20px;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 0 16px 16px;
+      }
+      .services-area.list-mode {
+        top: 140px;
+        bottom: var(--bottom-anchor);
+        padding-top: 12px;
+        padding-bottom: 0;
+      }
+      #listView {
+        position: relative;
+      }
+      #listView.priority .service-carousel {
+        filter: brightness(0.55);
+        pointer-events: none;
+      }
+      #listView.priority .service-card.is-priority-hidden {
+        visibility: hidden;
+      }
+      .priority-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 0 16px 24px;
+        z-index: 10;
+      }
+      #listView.priority.list-mode .priority-overlay {
+        align-items: center;
+        padding-bottom: var(--bottom-anchor);
+      }
+      #listView.priority .priority-overlay {
+        display: flex;
+      }
+      .priority-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(2px);
+      }
+      .priority-card-wrap {
+        position: relative;
+        width: min(92%, 440px);
+        z-index: 1;
+      }
+      #listView.list-mode .priority-card {
+        padding: 16px;
+        border-radius: 20px;
+        background: var(--glass);
+        border: 1px solid rgba(242, 199, 68, 0.35);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+      }
+      #listView.list-mode .priority-card::before {
+        display: none;
+      }
+      #listView.list-mode .priority-card .detail-list {
+        font-size: 0.95rem;
+        margin: 12px 0 12px;
+      }
+      #listView.list-mode .priority-card .message-line {
+        display: block;
+      }
+      #listView.list-mode .priority-card .swipe-track {
+        height: 52px;
+      }
+      #listView.list-mode .priority-card .swipe-text {
+        font-size: 0.9rem;
+      }
+      #listView.list-mode .priority-card .swipe-handle {
+        width: 44px;
+        height: 44px;
+      }
+      #listView.list-mode {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        height: 100%;
+        padding-bottom: 0;
+        box-sizing: border-box;
+        min-height: 0;
+      }
+      .service-carousel {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 88%;
+        gap: 16px;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding-bottom: 8px;
+      }
+      .wait-panel {
+        display: none;
+        background: rgba(12, 12, 14, 0.78);
+        border: 1px solid rgba(242, 199, 68, 0.3);
+        border-radius: 16px;
+        padding: 12px 14px;
+        box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+      }
+      .wait-title {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--gold);
+        margin-bottom: 8px;
+      }
+      .wait-bar {
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+      }
+      .wait-bar span {
+        display: block;
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #f2c744, #34a853);
+        transform-origin: left;
+        transform: scaleX(1);
+      }
+      #listView.waiting .wait-panel {
+        display: block;
+      }
+      #listView.waiting .wait-bar span {
+        animation: wait-drain 4s linear forwards;
+      }
+      #listView.waiting .service-carousel {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #listView.waiting .empty-card {
+        display: none;
+      }
+      #listView.list-mode .service-carousel {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        max-height: 48vh;
+        scroll-snap-type: none;
+        padding-right: 6px;
+      }
+      #listView.list-mode .service-card {
+        width: 100%;
+        padding: 12px;
+        scroll-snap-align: start;
+      }
+      #listView.list-mode .detail-list {
+        gap: 6px;
+        font-size: 0.9rem;
+        margin: 10px 0;
+      }
+      #listView.list-mode .message-line {
+        display: none;
+      }
+      #listView.list-mode .swipe-track {
+        height: 46px;
+      }
+      .service-card {
+        scroll-snap-align: center;
+        background: var(--glass);
+        border-radius: 20px;
+        border: 1px solid rgba(242, 199, 68, 0.35);
+        padding: 16px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(12px);
+      }
+      .service-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .service-time {
+        margin-left: auto;
+      }
+      .service-title {
+        font-family: 'Cinzel', serif;
+        letter-spacing: 0.08em;
+        color: var(--gold);
+      }
+      .detail-list {
+        margin: 12px 0 12px;
+        display: grid;
+        gap: 8px;
+        font-size: 0.95rem;
+      }
+      .detail-row {
+        display: flex;
+        gap: 8px;
+      }
+      .detail-row span:first-child {
+        color: var(--gold-2);
+        min-width: 82px;
+      }
+      .message-line {
+        color: #e6e6e6;
+        font-size: 0.95rem;
+      }
+      .swipe-track {
+        position: relative;
+        height: 52px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(242, 199, 68, 0.35), rgba(82, 64, 16, 0.5));
+        border: 1px solid rgba(242, 199, 68, 0.7);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        padding: 4px;
+        user-select: none;
+        touch-action: none;
+      }
+      .swipe-progress {
+        position: absolute;
+        inset: 4px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(242, 199, 68, 0.85), rgba(52, 168, 83, 0.85));
+        transform-origin: left;
+        transform: scaleX(1);
+        opacity: 0;
+        z-index: 1;
+        transition: opacity 0.2s ease;
+      }
+      .priority-card .swipe-progress {
+        opacity: 0.35;
+      }
+      .swipe-timer {
+        position: absolute;
+        right: 10px;
+        top: 6px;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #f2c744;
+        background: rgba(0, 0, 0, 0.45);
+        padding: 2px 6px;
+        border-radius: 999px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        z-index: 3;
+      }
+      .priority-card .swipe-timer {
+        opacity: 1;
+      }
+      .swipe-text {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        font-size: 0.9rem;
+        letter-spacing: 0.08em;
+        color: #f8e7a7;
+        font-weight: 600;
+        mix-blend-mode: normal;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+        z-index: 4;
+      }
+      .swipe-handle {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f2c744, #8b6a1f);
+        display: grid;
+        place-items: center;
+        color: #1b1404;
+        font-weight: 700;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+        transform: translateX(0);
+        will-change: transform;
+        transition: transform 0.2s ease;
+        position: relative;
+        z-index: 5;
+      }
+      .swipe-track.accepted {
+        background: linear-gradient(135deg, #f2c744, #ffde7a);
+      }
+      .swipe-track.accepted .swipe-text {
+        color: #161206;
+      }
+      @keyframes wait-drain {
+        from {
+          transform: scaleX(1);
+        }
+        to {
+          transform: scaleX(0);
+        }
+      }
+      #listView.list-mode .service-carousel {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        max-height: none;
+        height: 100%;
+        scroll-snap-type: none;
+        padding-right: 6px;
+        padding-bottom: var(--bottom-gap);
+        scroll-padding-bottom: calc(var(--bottom-gap) + 6px);
+        scrollbar-gutter: stable;
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+      #listView.list-mode .service-carousel::-webkit-scrollbar {
+        width: 6px;
+      }
+      #listView.list-mode .service-carousel::-webkit-scrollbar-thumb {
+        background: rgba(242, 199, 68, 0.35);
+        border-radius: 999px;
+      }
+      #listView.list-mode .service-carousel::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #listView.list-mode .service-card {
+        position: relative;
+        width: 100%;
+        padding: 12px 12px 12px;
+        border-radius: 18px;
+        background: rgba(16, 16, 18, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55);
+      }
+      #listView.list-mode .service-card:last-child {
+        margin-bottom: 10px;
+      }
+      #listView.list-mode .service-card::before {
+        content: "";
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        bottom: 12px;
+        width: 3px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #f2c744, #9a6d10);
+        opacity: 0.9;
+      }
+      #listView.list-mode .service-card::before {
+        display: none;
+      }
+      #listView.list-mode .service-header {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: #c8a33b;
+      }
+      #listView.list-mode .detail-list {
+        gap: 6px;
+        font-size: 0.86rem;
+        margin: 8px 0 8px;
+      }
+      #listView.list-mode .detail-row span:first-child {
+        color: #b88b2a;
+        min-width: 76px;
+      }
+      #listView.list-mode .detail-row span:last-child {
+        color: #f1f1f1;
+        font-weight: 600;
+      }
+      #listView.list-mode .message-line {
+        display: none;
+      }
+      #listView.list-mode .js-detail {
+        border-radius: 12px;
+        background: rgba(242, 199, 68, 0.1);
+        color: #f2c744;
+        border: 1px solid rgba(242, 199, 68, 0.4);
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        margin-bottom: 6px !important;
+      }
+      #listView.list-mode .swipe-track {
+        height: 40px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(242, 199, 68, 0.45);
+      }
+      #listView.list-mode .swipe-text {
+        color: #f6d77a;
+        font-size: 0.78rem;
+      }
+      #listView.list-mode .swipe-handle {
+        width: 36px;
+        height: 36px;
+      }
+      .bottom-status {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 16px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.95rem;
+        z-index: 4;
+        pointer-events: none;
+      }
+      .drawer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 84%;
+        max-width: 360px;
+        height: 100vh;
+        background: linear-gradient(180deg, rgba(15, 15, 18, 0.98), rgba(6, 6, 8, 0.98));
+        border-right: 1px solid rgba(242, 199, 68, 0.22);
+        box-shadow: 18px 0 40px rgba(0, 0, 0, 0.65);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 10;
+        padding: 20px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow: hidden;
+      }
+      .drawer.open {
+        transform: translateX(0);
+      }
+      .drawer-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .drawer-brand {
+        font-family: 'Cinzel', serif;
+        color: var(--gold);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+      }
+      .drawer-close {
+        border: 1px solid rgba(242, 199, 68, 0.45);
+        background: rgba(0, 0, 0, 0.35);
+        color: var(--gold);
+        border-radius: 10px;
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        font-size: 1.1rem;
+        cursor: pointer;
+      }
+      .drawer-header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 14px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(242, 199, 68, 0.2);
+      }
+      .drawer-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #f2c744, #7b5a14);
+        color: #1a1304;
+        font-weight: 700;
+        display: grid;
+        place-items: center;
+        letter-spacing: 0.08em;
+      }
+      .drawer-meta {
+        display: grid;
+        gap: 4px;
+      }
+      .drawer-meta strong {
+        color: var(--gold);
+        font-family: 'Cinzel', serif;
+        letter-spacing: 0.08em;
+      }
+      .drawer-plate {
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      .drawer-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .drawer-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #34a853;
+        box-shadow: 0 0 8px rgba(52, 168, 83, 0.7);
+      }
+      .drawer-dot.busy {
+        background: #f2c744;
+        box-shadow: 0 0 8px rgba(242, 199, 68, 0.7);
+      }
+      .drawer-pill {
+        margin-left: auto;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .drawer-pill.available {
+        color: #9fe7b6;
+        border-color: rgba(159, 231, 182, 0.35);
+        background: rgba(46, 204, 113, 0.08);
+      }
+      .drawer-pill.busy {
+        color: #f2c744;
+        border-color: rgba(242, 199, 68, 0.4);
+        background: rgba(242, 199, 68, 0.1);
+      }
+      .drawer-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      .drawer-stat {
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .drawer-stat span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .drawer-stat strong {
+        color: var(--text);
+        font-size: 1rem;
+      }
+      .drawer-section-title {
+        font-size: 0.7rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(242, 199, 68, 0.65);
+        margin: 4px 0;
+      }
+      .drawer-card {
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        display: grid;
+        gap: 8px;
+      }
+      .drawer-card h5 {
+        margin: 0;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: rgba(242, 199, 68, 0.7);
+      }
+      .drawer-card p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--text);
+      }
+      .availability-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .availability-row span {
+        font-size: 0.9rem;
+        color: var(--text);
+      }
+      .availability-hint {
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 26px;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        transition: 0.2s ease;
+        border-radius: 999px;
+      }
+      .slider::before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        top: 2px;
+        background: #f2c744;
+        transition: 0.2s ease;
+        border-radius: 50%;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+      }
+      .switch input:checked + .slider {
+        background: rgba(52, 168, 83, 0.2);
+        border-color: rgba(52, 168, 83, 0.45);
+      }
+      .switch input:checked + .slider::before {
+        transform: translateX(20px);
+        background: #34a853;
+      }
+      body.driver-busy #listView .service-carousel {
+        opacity: 0.55;
+        pointer-events: none;
+      }
+      body.driver-busy #listView .priority-overlay {
+        display: none !important;
+      }
+      body.driver-busy .bottom-status::after {
+        content: " · Modo ocupado";
+        color: #f2c744;
+      }
+      .drawer-divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .drawer-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--text);
+        text-decoration: none;
+        border: 1px solid rgba(242, 199, 68, 0.1);
+      }
+      .drawer-link:hover {
+        color: var(--gold);
+        border-color: rgba(242, 199, 68, 0.4);
+      }
+      .drawer-link.primary {
+        background: rgba(242, 199, 68, 0.12);
+        border-color: rgba(242, 199, 68, 0.35);
+      }
+      .drawer-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-size: 0.65rem;
+        letter-spacing: 0.08em;
+        color: var(--gold);
+        background: rgba(242, 199, 68, 0.12);
+      }
+      .drawer-button {
+        width: 100%;
+        text-align: left;
+        border: none;
+        cursor: pointer;
+      }
+      .drawer-footer {
+        margin-top: auto;
+        font-size: 0.75rem;
+        color: var(--muted);
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        padding-top: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .drawer-brandmark {
+        font-family: 'Cinzel', serif;
+        font-size: 0.7rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(242, 199, 68, 0.8);
+        border: 1px solid rgba(242, 199, 68, 0.35);
+        padding: 4px 8px;
+        border-radius: 999px;
+      }
+      .drawer-scroll {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-y: auto;
+        padding-right: 6px;
+        flex: 1;
+      }
+      .drawer-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+      .drawer-scroll::-webkit-scrollbar-thumb {
+        background: rgba(242, 199, 68, 0.35);
+        border-radius: 999px;
+      }
+      .drawer-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .drawer-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+        z-index: 9;
+      }
+      .drawer-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .flash-alert {
+        position: relative;
+        z-index: 6;
+        margin: 12px 16px 0;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: rgba(30, 24, 8, 0.9);
+        border: 1px solid rgba(242, 199, 68, 0.35);
+        color: #f5d47a;
+        font-size: 0.9rem;
+      }
+      .flash-alert.d-none {
+        display: none;
+      }
+      .empty-card {
+        background: rgba(10, 10, 12, 0.9);
+        border: 1px dashed rgba(242, 199, 68, 0.2);
+        border-radius: 18px;
+        padding: 18px;
+        text-align: center;
+        color: var(--muted);
+      }
+      .detail-modal {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 20;
+      }
+      .detail-modal.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .detail-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+      }
+      .detail-sheet {
+        position: relative;
+        width: min(100%, 520px);
+        background: rgba(12, 12, 14, 0.96);
+        border-radius: 24px 24px 0 0;
+        border: 1px solid rgba(242, 199, 68, 0.2);
+        padding: 18px;
+        box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.5);
+        max-height: 80vh;
+        overflow: auto;
+        transform: translateY(20px);
+        transition: transform 0.2s ease;
+      }
+      .detail-modal.show .detail-sheet {
+        transform: translateY(0);
+      }
+      .detail-title {
+        font-family: 'Cinzel', serif;
+        color: var(--gold);
+        letter-spacing: 0.08em;
+      }
+      .detail-close {
+        background: transparent;
+        border: 1px solid rgba(242, 199, 68, 0.4);
+        color: var(--gold);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+      }
+      .detail-section {
+        margin-top: 12px;
+        display: grid;
+        gap: 8px;
+        font-size: 0.95rem;
+      }
+      .mini-map {
+        height: 160px;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(242, 199, 68, 0.25);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+        margin-top: 12px;
+        background: rgba(0, 0, 0, 0.4);
+      }
+      .detail-item {
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 8px 0;
+        gap: 12px;
+      }
+      .detail-item span:first-child {
+        color: var(--gold-2);
+      }
+      .detail-footer {
+        margin-top: 16px;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .active-view {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .active-card {
+        background: rgba(15, 15, 18, 0.88);
+        border: 1px solid rgba(242, 199, 68, 0.3);
+        border-radius: 20px;
+        padding: 18px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(12px);
+      }
+      .active-title {
+        font-family: 'Cinzel', serif;
+        color: var(--gold);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+      }
+      .active-address {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin: 8px 0 4px;
+      }
+      .active-name {
+        color: var(--muted);
+      }
+      .nav-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 30;
+      }
+      .nav-modal.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .nav-card {
+        background: rgba(12, 12, 14, 0.95);
+        border-radius: 20px;
+        border: 1px solid rgba(242, 199, 68, 0.3);
+        padding: 18px;
+        width: min(90%, 320px);
+        display: grid;
+        gap: 10px;
+        text-align: center;
+      }
+      .nav-card h6 {
+        margin: 0;
+        color: var(--gold);
+        font-family: 'Cinzel', serif;
+        letter-spacing: 0.08em;
+      }
+      .nav-option {
+        display: block;
+        padding: 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(242, 199, 68, 0.4);
+        color: var(--text);
+        text-decoration: none;
+      }
+      .nav-option:hover {
+        color: #1d1404;
+        background: var(--gold);
+      }
+      .chat-card {
+        background: rgba(12, 12, 14, 0.9);
+        border: 1px solid rgba(242, 199, 68, 0.25);
+        border-radius: 20px;
+        padding: 14px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(10px);
+      }
+      .chat-title {
+        color: var(--gold);
+        font-family: 'Cinzel', serif;
+        letter-spacing: 0.08em;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+      .chat-messages {
+        display: grid;
+        gap: 8px;
+        max-height: 240px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+      .chat-bubble {
+        padding: 8px 12px;
+        border-radius: 16px;
+        font-size: 0.95rem;
+        width: fit-content;
+        max-width: 85%;
+      }
+      .chat-bubble.conductor {
+        margin-left: auto;
+        background: rgba(242, 199, 68, 0.2);
+        border: 1px solid rgba(242, 199, 68, 0.5);
+        color: var(--text);
+      }
+      .chat-bubble.cliente {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: var(--text);
+      }
+      .chat-bubble.sistema {
+        background: rgba(185, 144, 53, 0.2);
+        border: 1px solid rgba(185, 144, 53, 0.4);
+        color: #f8e2a0;
+      }
+      .quick-replies {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin: 12px 0 10px;
+      }
+      .quick-replies button {
+        border: 1px solid rgba(242, 199, 68, 0.4);
+        background: rgba(242, 199, 68, 0.08);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 6px 8px;
+        font-size: 0.75rem;
+      }
+      .chat-form {
+        display: flex;
+        gap: 8px;
+      }
+      .chat-input {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(242, 199, 68, 0.3);
+        border-radius: 12px;
+        color: var(--text);
+        padding: 8px 10px;
+      }
+      .chat-send {
+        background: var(--gold);
+        border: none;
+        border-radius: 12px;
+        color: #1d1404;
+        padding: 8px 12px;
+        font-weight: 600;
+      }
+      .finish-btn {
+        border: none;
+        background: #c0392b;
+        color: #fff;
+        border-radius: 14px;
+        padding: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      .nav-btn {
+        background: #34a853;
+      }
+      .hidden {
+        display: none !important;
+      }
+      @media (min-width: 768px) {
+        :root {
+          --bottom-anchor: 46px;
+          --bottom-gap: 10px;
+        }
+        .app-shell {
+          max-width: 480px;
+          margin: 18px auto;
+          min-height: calc(100vh - 36px);
+          border-radius: 32px;
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+        }
+        .services-area {
+          padding: 0 24px 24px;
+        }
+        .services-area.list-mode {
+          top: 135px;
+          bottom: var(--bottom-anchor);
+          padding-top: 10px;
+          padding-bottom: 0;
+        }
+        #listView.list-mode .service-carousel {
+          padding-bottom: var(--bottom-gap);
+          scroll-padding-bottom: calc(var(--bottom-gap) + 4px);
+        }
+      }
+    </style>
+  </head>
+  <body data-service-count="{{ pedidos|length }}" data-active-id="{% if active_pedido %}{{ active_pedido.id }}{% endif %}">
+    <div class="app-shell">
+      <div class="map-layer {% if map_url %}has-map{% endif %}"{% if map_url %} style="background-image: url('{{ map_url }}');"{% endif %}></div>
+
+      <div class="drawer" id="drawer">
+        <div class="drawer-top">
+          <div class="drawer-brand">Panel Conductor</div>
+          <button type="button" class="drawer-close" id="drawerClose">×</button>
+        </div>
+
+        <div class="drawer-scroll">
+        {% set initials = (conductor_nombre or 'CO')[:2] %}
+        <div class="drawer-header">
+          <div class="drawer-avatar">{{ initials|upper }}</div>
+          <div class="drawer-meta">
+            <strong>{{ conductor_nombre }}</strong>
+            <div class="drawer-plate">Placa {{ conductor_placa }}</div>
+            <div class="drawer-status">
+              {% if active_pedido %}
+                <span class="drawer-dot busy"></span>
+                En servicio
+                <span class="drawer-pill busy">Ocupado</span>
+              {% else %}
+                <span class="drawer-dot"></span>
+                Disponible
+                <span class="drawer-pill available">Libre</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="drawer-stats">
+          <div class="drawer-stat">
+            <span>Servicios</span>
+            <strong>{{ pedidos|length }}</strong>
+          </div>
+          <div class="drawer-stat">
+            <span>Ganancias</span>
+            <strong>{{ ganancias_total_formatted }}</strong>
+          </div>
+        </div>
+
+        <div class="drawer-card">
+          <h5>Disponibilidad</h5>
+          <div class="availability-row">
+            <span>Modo disponible</span>
+            <label class="switch">
+              <input type="checkbox" id="availabilityToggle" checked />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <p class="availability-hint" id="availabilityHint">Recibiendo servicios en tiempo real.</p>
+        </div>
+
+        <div class="drawer-card">
+          <h5>Servicio activo</h5>
+          {% if active_pedido %}
+            <p>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</p>
+            <a class="drawer-link primary" href="{{ url_for('servicio_detalle', pedido_id=active_pedido.id) }}">
+              <span class="drawer-icon">GO</span>
+              Ir al servicio
+            </a>
+          {% else %}
+            <p>Sin viajes activos por ahora.</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <div class="drawer-section-title">Acciones</div>
+          <a class="drawer-link" href="{{ url_for('dashboard') }}">
+            <span class="drawer-icon">IN</span>
+            Inicio
+          </a>
+          <a class="drawer-link" href="{{ url_for('perfil') }}">
+            <span class="drawer-icon">PF</span>
+            Perfil
+          </a>
+          <form method="post" action="{{ url_for('vaciar_tomados') }}">
+            <button type="submit" class="drawer-link drawer-button">
+              <span class="drawer-icon">CL</span>
+              Vaciar servicios tomados
+            </button>
+          </form>
+        </div>
+
+        <div class="drawer-divider"></div>
+
+        <div>
+          <div class="drawer-section-title">Cuenta</div>
+          <a class="drawer-link" href="{{ url_for('logout') }}">
+            <span class="drawer-icon">XS</span>
+            Cerrar sesion
+          </a>
+        </div>
+
+        <div class="drawer-footer">
+          <span>Transporte Ejecutivo · App Conductor v1.0</span>
+          <span class="drawer-brandmark">StreamLinx&reg;</span>
+        </div>
+        </div>
+      </div>
+      <div class="drawer-overlay" id="drawerOverlay"></div>
+
+      <div class="top-bar">
+        <button class="hamburger" id="menuBtn" aria-label="Abrir menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="top-center">
+          <div class="brand-mini">Transporte Ejecutivo</div>
+          <div class="earnings-card">
+            {{ ganancias_total_formatted }}<small>COP</small>
+          </div>
+        </div>
+        <div style="width: 48px;"></div>
+      </div>
+
+      <div class="status-row">
+        {% if active_pedido %}
+          <span>Viaje activo</span>
+        {% else %}
+          <span>Servicios disponibles {{ pedidos|length }}</span>
+        {% endif %}
+      </div>
+
+      {% set first_message = (get_flashed_messages() or [''])[0] %}
+      <div class="flash-alert {% if not first_message %}d-none{% endif %}" id="flashAlert">{{ first_message }}</div>
+
+      <div class="services-area" id="servicesArea">
+        <div id="listView" class="{% if active_pedido %}hidden{% endif %}">
+          <div class="wait-panel">
+            <div class="wait-title">Preparando lista de servicios</div>
+            <div class="wait-bar"><span></span></div>
+          </div>
+          <div class="priority-overlay" id="priorityOverlay" aria-hidden="true">
+            <div class="priority-backdrop"></div>
+            <div class="priority-card-wrap" id="priorityCardWrap"></div>
+          </div>
+          {% if pedidos %}
+            <div class="service-carousel" id="serviceCarousel">
+              {% for pedido in pedidos %}
+                <div class="service-card" data-service-id="{{ pedido.id }}">
+                  <div class="service-header">
+                    <span class="service-time">{{ pedido.hora }}</span>
+                  </div>
+                  <div class="detail-list">
+                    <div class="detail-row">
+                      <span>Origen</span>
+                      <span>{{ pedido.detalles.get('Direccion', pedido.mensaje_cliente) }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span>Cliente</span>
+                      <span>{{ pedido.detalles.get('Nombre', 'Cliente') }} (WhatsApp)</span>
+                    </div>
+                    <div class="detail-row">
+                      <span>Telefono</span>
+                      <span>{{ pedido.cliente_telefono }}</span>
+                    </div>
+                    <div class="message-line">Mensaje: {{ pedido.mensaje_cliente }}</div>
+                  </div>
+
+                  <button type="button" class="btn btn-outline-warning btn-sm w-100 mb-2 js-detail" data-id="{{ pedido.id }}">
+                    VER DETALLE
+                  </button>
+
+                  <form method="post" action="{{ url_for('tomar') }}" class="swipe-form">
+                    <input type="hidden" name="pedido_id" value="{{ pedido.id }}" />
+                    <div class="swipe-track" data-form>
+                      <div class="swipe-progress"></div>
+                      <div class="swipe-text">Desliza para aceptar servicio</div>
+                      <div class="swipe-timer">7s</div>
+                      <div class="swipe-handle">»</div>
+                    </div>
+                  </form>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-card">No hay servicios disponibles. Esperando nuevos pedidos.</div>
+          {% endif %}
+        </div>
+
+        <div id="activeView" class="active-view {% if not active_pedido %}hidden{% endif %}">
+          <div class="active-card">
+            <div class="active-title">Servicio en curso</div>
+            <div class="active-address" id="activeAddress">
+              {{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) if active_pedido else '' }}
+            </div>
+            <div class="active-name" id="activeName">
+              Cliente: {{ active_pedido.detalles.get('Nombre', 'Cliente') if active_pedido else '' }}
+            </div>
+            <div class="active-name" id="activePhone">
+              Telefono: {{ active_pedido.cliente_telefono if active_pedido else '' }}
+            </div>
+          </div>
+
+          <div class="chat-card">
+            <div class="chat-title">Chat con cliente</div>
+            <div class="chat-messages" id="chatMessages" data-last-id="{% if chat_messages %}{{ chat_messages[-1].id }}{% else %}0{% endif %}">
+              {% for msg in chat_messages %}
+                <div class="chat-bubble {{ msg.sender }}">{{ msg.message }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="quick-replies">
+              <button type="button" class="js-quick" data-text="Estoy afuera">Estoy afuera</button>
+              <button type="button" class="js-quick" data-text="Voy en camino">Voy en camino</button>
+              <button type="button" class="js-quick" data-text="Donde te encuentras?">Donde te encuentras?</button>
+            </div>
+
+            <form class="chat-form" id="chatForm">
+              <input type="text" class="chat-input" id="chatInput" placeholder="Escribe un mensaje..." autocomplete="off" />
+              <button type="submit" class="chat-send">Enviar</button>
+            </form>
+          </div>
+
+          <button class="finish-btn nav-btn" id="navBtn">NAVEGA</button>
+          <button class="finish-btn" id="finishBtn">SERVICIO FINALIZADO</button>
+        </div>
+      </div>
+
+      <div class="bottom-status">Buscando servicios...</div>
+    </div>
+
+    <div class="detail-modal" id="detailModal" aria-hidden="true">
+      <div class="detail-backdrop" data-close></div>
+      <div class="detail-sheet">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="detail-title" id="detailTitle">Detalle del servicio</div>
+          <button type="button" class="detail-close" data-close>Cerrar</button>
+        </div>
+        <div class="detail-section" id="detailContent"></div>
+        <div id="miniMap" class="mini-map" aria-hidden="true"></div>
+        <div class="detail-footer">
+          <button type="button" class="detail-close" data-close>Listo</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-modal" id="navModal">
+      <div class="nav-card">
+        <h6>Como quieres viajar?</h6>
+        <a class="nav-option" id="navGoogle" href="#" target="_blank">Google Maps</a>
+        <a class="nav-option" id="navWaze" href="#" target="_blank">Waze</a>
+        <button type="button" class="detail-close" id="navClose">Cerrar</button>
+      </div>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+
+    <script>
+      const menuBtn = document.getElementById('menuBtn');
+      const drawer = document.getElementById('drawer');
+      const overlay = document.getElementById('drawerOverlay');
+      const drawerClose = document.getElementById('drawerClose');
+      const flashAlert = document.getElementById('flashAlert');
+      const detailModal = document.getElementById('detailModal');
+      const detailContent = document.getElementById('detailContent');
+      const listView = document.getElementById('listView');
+      const activeView = document.getElementById('activeView');
+      const navBtn = document.getElementById('navBtn');
+      const navModal = document.getElementById('navModal');
+      const navGoogle = document.getElementById('navGoogle');
+      const navWaze = document.getElementById('navWaze');
+      const navClose = document.getElementById('navClose');
+      const chatMessages = document.getElementById('chatMessages');
+      const chatForm = document.getElementById('chatForm');
+      const chatInput = document.getElementById('chatInput');
+      const finishBtn = document.getElementById('finishBtn');
+      const activeAddressEl = document.getElementById('activeAddress');
+      const activeNameEl = document.getElementById('activeName');
+      const activePhoneEl = document.getElementById('activePhone');
+      const serviceCarousel = document.getElementById('serviceCarousel');
+      const servicesArea = document.getElementById('servicesArea');
+      const priorityOverlay = document.getElementById('priorityOverlay');
+      const priorityCardWrap = document.getElementById('priorityCardWrap');
+      const miniMapEl = document.getElementById('miniMap');
+      const availabilityToggle = document.getElementById('availabilityToggle');
+      const availabilityHint = document.getElementById('availabilityHint');
+
+      let activeId = document.body.dataset.activeId || '';
+      let polling = null;
+      let waitingTimer = null;
+      let priorityCountdown = null;
+      let priorityStart = null;
+      let priorityDuration = null;
+      let priorityRaf = null;
+      const WAIT_MS = 4000;
+      const ABSENCE_MS = 5 * 60 * 1000;
+      const LIST_MODE_KEY = 'listModeActive';
+      const LIST_MODE_COUNT_KEY = 'listModeCount';
+      const PRIORITY_UNTIL_KEY = 'priorityUntil';
+      const PRIORITY_COUNT_KEY = 'priorityCount';
+      const LAST_VISIT_KEY = 'lastVisitTime';
+      const DRAWER_OPEN_KEY = 'drawerOpen';
+      const AVAILABILITY_KEY = 'driverAvailable';
+
+      let driverAvailable = true;
+
+      function toggleDrawer() {
+        drawer.classList.toggle('open');
+        overlay.classList.toggle('show');
+        if (drawer.classList.contains('open')) {
+          localStorage.setItem(DRAWER_OPEN_KEY, '1');
+        } else {
+          localStorage.removeItem(DRAWER_OPEN_KEY);
+        }
+      }
+
+      menuBtn.addEventListener('click', toggleDrawer);
+      overlay.addEventListener('click', toggleDrawer);
+      drawerClose?.addEventListener('click', toggleDrawer);
+
+      function showFlash(message) {
+        if (!flashAlert) return;
+        if (!message) {
+          flashAlert.classList.add('d-none');
+          return;
+        }
+        flashAlert.textContent = message;
+        flashAlert.classList.remove('d-none');
+      }
+
+      function setAvailability(isAvailable) {
+        driverAvailable = Boolean(isAvailable);
+        if (availabilityToggle) {
+          availabilityToggle.checked = driverAvailable;
+        }
+        if (availabilityHint) {
+          availabilityHint.textContent = driverAvailable
+            ? 'Recibiendo servicios en tiempo real.'
+            : 'Modo ocupado: no tomar servicios.';
+        }
+        if (driverAvailable) {
+          document.body.classList.remove('driver-busy');
+          localStorage.setItem(AVAILABILITY_KEY, '1');
+        } else {
+          document.body.classList.add('driver-busy');
+          localStorage.setItem(AVAILABILITY_KEY, '0');
+          clearPriorityCard();
+        }
+      }
+
+      const storedAvailability = localStorage.getItem(AVAILABILITY_KEY);
+      setAvailability(storedAvailability !== '0');
+
+      availabilityToggle?.addEventListener('change', () => {
+        setAvailability(availabilityToggle.checked);
+      });
+
+      function openModal() {
+        detailModal.classList.add('show');
+        detailModal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeModal() {
+        detailModal.classList.remove('show');
+        detailModal.setAttribute('aria-hidden', 'true');
+      }
+
+      detailModal.querySelectorAll('[data-close]').forEach((btn) => {
+        btn.addEventListener('click', closeModal);
+      });
+
+      function renderDetail(pedido) {
+        const detalles = pedido.detalles || {};
+        const rows = [];
+        if (Object.keys(detalles).length) {
+          Object.entries(detalles).forEach(([key, value]) => {
+            rows.push(`<div class="detail-item"><span>${key}</span><span>${value}</span></div>`);
+          });
+        } else {
+          rows.push(`<div class="detail-item"><span>Mensaje</span><span>${pedido.mensaje_cliente || ''}</span></div>`);
+        }
+        rows.push(`<div class="detail-item"><span>Telefono</span><span>${pedido.cliente_telefono || ''}</span></div>`);
+        rows.push(`<div class="detail-item"><span>Hora</span><span>${pedido.timestamp || ''}</span></div>`);
+        detailContent.innerHTML = rows.join('');
+        openModal();
+        maybeShowMiniMap(pedido);
+      }
+
+      async function fetchDetail(pedidoId) {
+        try {
+          const response = await fetch(`/api/servicio/${pedidoId}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          const data = await response.json();
+          if (!data.ok) {
+            showFlash(data.error || 'No se pudo cargar el detalle.');
+            return;
+          }
+          renderDetail(data.pedido);
+        } catch (error) {
+          showFlash('No se pudo cargar el detalle.');
+        }
+      }
+
+      let miniMap = null;
+      let miniLayer = null;
+      let conductorMarker = null;
+      let clienteMarker = null;
+      let routeLayer = null;
+
+      function ensureMiniMap() {
+        if (!miniMapEl) return null;
+        if (miniMap) return miniMap;
+        miniMap = L.map(miniMapEl, {
+          zoomControl: false,
+          attributionControl: false,
+          dragging: true,
+          scrollWheelZoom: false,
+        });
+        miniLayer = L.tileLayer(
+          'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+          {
+            subdomains: 'abcd',
+            maxZoom: 19,
+            attribution: '© OpenStreetMap © CARTO',
+          }
+        );
+        miniLayer.addTo(miniMap);
+        return miniMap;
+      }
+
+      function parseCoords(text) {
+        if (!text) return null;
+        const match = text.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+        if (!match) return null;
+        const lat = Number(match[1]);
+        const lon = Number(match[2]);
+        if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
+        return { lat, lon };
+      }
+
+      function paintRoute(latLngs, dashed = false) {
+        if (!miniMap) return;
+        if (routeLayer) {
+          routeLayer.remove();
+          routeLayer = null;
+        }
+        const group = L.layerGroup();
+        L.polyline(latLngs, {
+          color: '#0c2233',
+          weight: 6,
+          opacity: 0.6,
+          dashArray: dashed ? '6 8' : null,
+        }).addTo(group);
+        L.polyline(latLngs, {
+          color: '#36c6ff',
+          weight: 3.5,
+          opacity: 0.95,
+          dashArray: dashed ? '6 8' : null,
+        }).addTo(group);
+        group.addTo(miniMap);
+        routeLayer = group;
+      }
+
+      async function drawRoute(latConductor, lonConductor, latCliente, lonCliente) {
+        if (!miniMap) return;
+        if (latConductor == null || lonConductor == null) return;
+        const fallbackLine = () => {
+          const conductorLatLng = L.latLng(latConductor, lonConductor);
+          const clienteLatLng = L.latLng(latCliente, lonCliente);
+          paintRoute([conductorLatLng, clienteLatLng], true);
+        };
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const url = `https://router.project-osrm.org/route/v1/driving/${lonConductor},${latConductor};${lonCliente},${latCliente}?overview=full&geometries=geojson`;
+        try {
+          const response = await fetch(url, { signal: controller.signal });
+          if (!response.ok) {
+            fallbackLine();
+            return;
+          }
+          const data = await response.json();
+          const coords = data?.routes?.[0]?.geometry?.coordinates;
+          if (!coords || !coords.length) {
+            fallbackLine();
+            return;
+          }
+          const latLngs = coords.map((pair) => [pair[1], pair[0]]);
+          paintRoute(latLngs, false);
+        } catch (error) {
+          fallbackLine();
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      }
+
+      function showMiniMap(latConductor, lonConductor, latCliente, lonCliente) {
+        const map = ensureMiniMap();
+        if (!map) return;
+        if (conductorMarker) conductorMarker.remove();
+        if (clienteMarker) clienteMarker.remove();
+        if (routeLayer) {
+          routeLayer.remove();
+          routeLayer = null;
+        }
+
+        const clienteLatLng = L.latLng(latCliente, lonCliente);
+        clienteMarker = L.circleMarker(clienteLatLng, {
+          radius: 7,
+          color: '#2ea9ff',
+          fillColor: '#2ea9ff',
+          fillOpacity: 0.9,
+        }).addTo(map);
+
+        if (latConductor != null && lonConductor != null) {
+          const conductorLatLng = L.latLng(latConductor, lonConductor);
+          conductorMarker = L.circleMarker(conductorLatLng, {
+            radius: 7,
+            color: '#f2c744',
+            fillColor: '#f2c744',
+            fillOpacity: 0.9,
+          }).addTo(map);
+          const bounds = L.latLngBounds([conductorLatLng, clienteLatLng]).pad(0.35);
+          map.fitBounds(bounds, { animate: false });
+          drawRoute(latConductor, lonConductor, latCliente, lonCliente);
+        } else {
+          map.setView(clienteLatLng, 16, { animate: false });
+        }
+        miniMapEl.setAttribute('aria-hidden', 'false');
+      }
+
+      function hideMiniMap() {
+        if (!miniMapEl) return;
+        miniMapEl.setAttribute('aria-hidden', 'true');
+      }
+
+      async function maybeShowMiniMap(pedido) {
+        if (!miniMapEl) return;
+        const coords = parseCoords(pedido?.mensaje_cliente || '');
+        if (!coords) {
+          hideMiniMap();
+          return;
+        }
+        // Always show at least the client pin
+        showMiniMap(null, null, coords.lat, coords.lon);
+        setTimeout(() => {
+          miniMap?.invalidateSize();
+        }, 100);
+
+        if (!navigator.geolocation) {
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            showMiniMap(
+              pos.coords.latitude,
+              pos.coords.longitude,
+              coords.lat,
+              coords.lon
+            );
+            setTimeout(() => {
+              miniMap?.invalidateSize();
+            }, 100);
+          },
+          () => {
+            // Keep only client marker if geolocation fails
+          },
+          { enableHighAccuracy: false, timeout: 3000 }
+        );
+      }
+
+      function bindDetailButtons(scope = document) {
+        scope.querySelectorAll('.js-detail').forEach((btn) => {
+          if (btn.dataset.bound === '1') return;
+          btn.dataset.bound = '1';
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            if (id) {
+              fetchDetail(id);
+            }
+          });
+        });
+      }
+
+      bindDetailButtons();
+
+      function appendChatMessage(msg) {
+        if (!chatMessages) return;
+        const bubble = document.createElement('div');
+        bubble.className = `chat-bubble ${msg.sender}`;
+        bubble.textContent = msg.message;
+        chatMessages.appendChild(bubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        const lastId = Number(chatMessages.dataset.lastId || 0);
+        if (msg.id && msg.id > lastId) {
+          chatMessages.dataset.lastId = String(msg.id);
+        }
+      }
+
+      function startPolling() {
+        if (!activeId) return;
+        if (polling) clearInterval(polling);
+        polling = setInterval(async () => {
+          const lastId = Number(chatMessages?.dataset.lastId || 0);
+          try {
+            const response = await fetch(`/api/chat/${activeId}?since_id=${lastId}`, {
+              headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!response.ok) {
+              if (response.status === 401 || response.status === 403) {
+                stopPolling('Sesion expirada. Actualizando...');
+              }
+              return;
+            }
+            const data = await response.json();
+            if (data.inactive) {
+              stopPolling(data.reason || 'Servicio finalizado. Volviendo al panel...');
+              return;
+            }
+            if (data.ok && data.messages) {
+              data.messages.forEach(appendChatMessage);
+            }
+          } catch (error) {
+            // ignore polling errors
+          }
+        }, 4000);
+      }
+
+      function stopPolling(reason) {
+        if (polling) {
+          clearInterval(polling);
+          polling = null;
+        }
+        if (reason) {
+          showFlash(reason);
+        }
+        setTimeout(() => {
+          window.location.reload();
+        }, 600);
+      }
+
+      function startWaitingIfNeeded() {
+        if (!listView || !serviceCarousel) return false;
+        if (!serviceCarousel.children.length) return false;
+        clearPriorityCard();
+        localStorage.removeItem(PRIORITY_UNTIL_KEY);
+        localStorage.removeItem(PRIORITY_COUNT_KEY);
+        localStorage.removeItem(LIST_MODE_KEY);
+        localStorage.removeItem(LIST_MODE_COUNT_KEY);
+        listView.classList.add('waiting');
+        listView.classList.add('list-mode');
+        servicesArea?.classList.add('list-mode');
+        waitingTimer = window.setTimeout(() => {
+          listView.classList.remove('waiting');
+          listView.classList.add('list-mode');
+          servicesArea?.classList.add('list-mode');
+          localStorage.setItem(LIST_MODE_KEY, '1');
+          localStorage.setItem(
+            LIST_MODE_COUNT_KEY,
+            String(document.body.dataset.serviceCount || '0')
+          );
+        }, WAIT_MS);
+        return true;
+      }
+
+      function clearWaiting() {
+        if (waitingTimer) {
+          clearTimeout(waitingTimer);
+          waitingTimer = null;
+        }
+        listView?.classList.remove('waiting');
+      }
+
+      function enableListModeImmediate() {
+        if (!listView) return;
+        clearWaiting();
+        clearPriorityCard();
+        listView.classList.add('list-mode');
+        servicesArea?.classList.add('list-mode');
+        localStorage.setItem(LIST_MODE_KEY, '1');
+        localStorage.setItem(
+          LIST_MODE_COUNT_KEY,
+          String(document.body.dataset.serviceCount || '0')
+        );
+        localStorage.removeItem(PRIORITY_UNTIL_KEY);
+        localStorage.removeItem(PRIORITY_COUNT_KEY);
+      }
+
+      function updatePriorityTimer(targetMs) {
+        if (!priorityCardWrap) return;
+        const timer = priorityCardWrap.querySelector('.swipe-timer');
+        const progress = priorityCardWrap.querySelector('.swipe-progress');
+        if (!timer) return;
+        const remaining = Math.max(0, targetMs - Date.now());
+        const seconds = Math.max(0, Math.ceil(remaining / 1000));
+        timer.textContent = `${seconds}s`;
+        if (progress) {
+          const total = WAIT_MS;
+          const ratio = total > 0 ? remaining / total : 0;
+          const clamped = Math.max(0, Math.min(1, ratio));
+          progress.style.transform = `scaleX(${clamped})`;
+        }
+      }
+
+      function clearPriorityTimer() {
+        if (priorityCountdown) {
+          clearInterval(priorityCountdown);
+          priorityCountdown = null;
+        }
+        if (priorityRaf) {
+          cancelAnimationFrame(priorityRaf);
+          priorityRaf = null;
+        }
+      }
+
+      function showPriorityCard() {
+        if (!priorityOverlay || !priorityCardWrap || !serviceCarousel) return false;
+        const firstCard = serviceCarousel.querySelector('.service-card');
+        if (!firstCard) return false;
+        const existingHidden = serviceCarousel.querySelector('.service-card.is-priority-hidden');
+        if (existingHidden && existingHidden !== firstCard) {
+          existingHidden.classList.remove('is-priority-hidden');
+        }
+        priorityCardWrap.innerHTML = '';
+        const clone = firstCard.cloneNode(true);
+        clone.classList.add('priority-card');
+        priorityCardWrap.appendChild(clone);
+        firstCard.classList.add('is-priority-hidden');
+        listView.classList.add('priority');
+        clone.querySelectorAll('.swipe-track').forEach(initSwipe);
+        bindDetailButtons(clone);
+        return true;
+      }
+
+      function clearPriorityCard() {
+        listView?.classList.remove('priority');
+        clearPriorityTimer();
+        if (priorityCardWrap) {
+          priorityCardWrap.innerHTML = '';
+        }
+        const hidden = serviceCarousel?.querySelector('.service-card.is-priority-hidden');
+        if (hidden) {
+          hidden.classList.remove('is-priority-hidden');
+        }
+      }
+
+      function startPriorityWindow(durationMs, count) {
+        if (!listView) return false;
+        if (!driverAvailable) {
+          enableListModeImmediate();
+          return false;
+        }
+        clearWaiting();
+        clearPriorityCard();
+        listView.classList.add('list-mode');
+        servicesArea?.classList.add('list-mode');
+        if (!durationMs || durationMs <= 0) {
+          enableListModeImmediate();
+          return false;
+        }
+        const ok = showPriorityCard();
+        if (!ok) {
+          enableListModeImmediate();
+          return false;
+        }
+        const until = Date.now() + durationMs;
+        localStorage.setItem(PRIORITY_UNTIL_KEY, String(until));
+        localStorage.setItem(PRIORITY_COUNT_KEY, String(count || 0));
+        localStorage.removeItem(LIST_MODE_KEY);
+        localStorage.removeItem(LIST_MODE_COUNT_KEY);
+        clearPriorityTimer();
+        priorityStart = Date.now();
+        priorityDuration = durationMs;
+        const tick = () => {
+          const elapsed = Date.now() - priorityStart;
+          const remaining = Math.max(0, priorityDuration - elapsed);
+          if (priorityCardWrap) {
+            const timer = priorityCardWrap.querySelector('.swipe-timer');
+            const progress = priorityCardWrap.querySelector('.swipe-progress');
+            if (timer) {
+              timer.textContent = `${Math.max(0, Math.ceil(remaining / 1000))}s`;
+            }
+            if (progress) {
+              const ratio = priorityDuration > 0 ? remaining / priorityDuration : 0;
+              progress.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`;
+            }
+          }
+          if (remaining > 0) {
+            priorityRaf = requestAnimationFrame(tick);
+          }
+        };
+        priorityRaf = requestAnimationFrame(tick);
+        waitingTimer = window.setTimeout(() => {
+          clearPriorityCard();
+          enableListModeImmediate();
+        }, durationMs);
+        return true;
+      }
+
+      function setActiveView(pedido) {
+        activeId = pedido.id;
+        document.body.dataset.activeId = String(pedido.id);
+        listView.classList.add('hidden');
+        activeView.classList.remove('hidden');
+        navBtn.classList.remove('hidden');
+        clearWaiting();
+        activeAddressEl.textContent = pedido.detalles?.Direccion || pedido.mensaje_cliente || '';
+        activeNameEl.textContent = `Cliente: ${pedido.detalles?.Nombre || 'Cliente'}`;
+        activePhoneEl.textContent = `Telefono: ${pedido.cliente_telefono || ''}`;
+        if (chatMessages) {
+          chatMessages.innerHTML = '';
+          chatMessages.dataset.lastId = '0';
+        }
+        startPolling();
+      }
+
+      async function acceptService(form) {
+        const formData = new FormData(form);
+        try {
+          const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          const data = await response.json();
+          if (!data.ok) {
+            showFlash(data.error || 'No se pudo tomar el servicio.');
+            return;
+          }
+          if (data.warning) {
+            showFlash(`Servicio tomado. ${data.warning}`);
+          } else {
+            showFlash('Servicio tomado. Aqui tienes los datos del cliente.');
+          }
+          const targetId = form.querySelector('input[name="pedido_id"]')?.value;
+          if (targetId) {
+            document.querySelectorAll(`.service-card[data-service-id="${targetId}"]`).forEach((el) => {
+              el.remove();
+            });
+          } else {
+            const card = form.closest('.service-card');
+            if (card) {
+              card.remove();
+            }
+          }
+          clearPriorityCard();
+          setActiveView(data.pedido);
+          const currentCount = Number(document.body.dataset.serviceCount || 0);
+          const nextCount = Math.max(currentCount - 1, 0);
+          document.body.dataset.serviceCount = String(nextCount);
+          if (nextCount > 0 && localStorage.getItem(LIST_MODE_KEY) === '1') {
+            localStorage.setItem(LIST_MODE_COUNT_KEY, String(nextCount));
+          } else if (nextCount === 0) {
+            localStorage.removeItem(LIST_MODE_KEY);
+            localStorage.removeItem(LIST_MODE_COUNT_KEY);
+          }
+          if (localStorage.getItem(PRIORITY_COUNT_KEY)) {
+            localStorage.setItem(PRIORITY_COUNT_KEY, String(nextCount));
+          }
+        } catch (error) {
+          showFlash('No se pudo tomar el servicio.');
+        }
+      }
+
+      function initSwipe(track) {
+        const handle = track.querySelector('.swipe-handle');
+        const form = track.closest('form');
+        let dragging = false;
+        let startX = 0;
+        let currentX = 0;
+        let rafId = null;
+        let targetX = 0;
+
+        const maxX = () => track.clientWidth - handle.clientWidth - 8;
+
+        function applyTransform() {
+          handle.style.transform = `translateX(${targetX}px)`;
+          rafId = null;
+        }
+
+        function scheduleTransform() {
+          if (rafId) return;
+          rafId = requestAnimationFrame(applyTransform);
+        }
+
+        function onDown(event) {
+          if (!driverAvailable) {
+            showFlash('Estas en modo ocupado. Activa disponibilidad para tomar servicios.');
+            return;
+          }
+          dragging = true;
+          startX = event.clientX;
+          track.setPointerCapture(event.pointerId);
+        }
+
+        function onMove(event) {
+          if (!dragging) return;
+          const delta = event.clientX - startX;
+          const limit = maxX();
+          currentX = Math.min(Math.max(0, delta), limit);
+          targetX = currentX;
+          scheduleTransform();
+        }
+
+        function onUp(event) {
+          if (!dragging) return;
+          dragging = false;
+          track.releasePointerCapture(event.pointerId);
+          const limit = maxX();
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
+          if (currentX > limit * 0.85) {
+            track.classList.add('accepted');
+            targetX = limit;
+            applyTransform();
+            if (navigator.vibrate) {
+              navigator.vibrate(60);
+            }
+            acceptService(form);
+          } else {
+            targetX = 0;
+            applyTransform();
+          }
+        }
+
+        track.addEventListener('pointerdown', onDown);
+        track.addEventListener('pointermove', onMove);
+        track.addEventListener('pointerup', onUp);
+        track.addEventListener('pointercancel', onUp);
+      }
+
+      document.querySelectorAll('.swipe-track').forEach(initSwipe);
+
+      function playPing() {
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          const ctx = new AudioCtx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(920, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + 0.2);
+          gain.gain.setValueAtTime(0.001, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.36);
+        } catch (e) {
+          // Autoplay may be blocked; fail silently.
+        }
+      }
+
+      function openNav() {
+        navModal.classList.add('show');
+      }
+
+      function closeNav() {
+        navModal.classList.remove('show');
+      }
+
+      function setNavLinks(address) {
+        const encoded = encodeURIComponent(address || '');
+        navGoogle.href = `https://www.google.com/maps/dir/?api=1&destination=${encoded}`;
+        navWaze.href = `https://waze.com/ul?q=${encoded}&navigate=yes`;
+      }
+
+      navBtn?.addEventListener('click', () => {
+        const address = activeAddressEl?.textContent || '';
+        setNavLinks(address);
+        openNav();
+      });
+      navClose?.addEventListener('click', closeNav);
+      navModal?.addEventListener('click', (event) => {
+        if (event.target === navModal) {
+          closeNav();
+        }
+      });
+
+      document.querySelectorAll('.js-quick').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const text = btn.dataset.text;
+          if (text) {
+            sendChat(text);
+          }
+        });
+      });
+
+      async function sendChat(message) {
+        if (!activeId) return;
+        if (!message) return;
+        const formData = new FormData();
+        formData.append('pedido_id', activeId);
+        formData.append('message', message);
+        try {
+          const response = await fetch('/api/chat/send', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          const data = await response.json();
+          if (!data.ok) {
+            showFlash(data.error || 'No se pudo enviar el mensaje.');
+            return;
+          }
+          if (data.messages) {
+            data.messages.forEach(appendChatMessage);
+          }
+          if (data.warning) {
+            showFlash(data.warning);
+          }
+        } catch (error) {
+          showFlash('No se pudo enviar el mensaje.');
+        }
+      }
+
+      chatForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const text = chatInput.value.trim();
+        if (!text) return;
+        chatInput.value = '';
+        sendChat(text);
+      });
+
+      finishBtn?.addEventListener('click', async () => {
+        try {
+          const response = await fetch('/finalizar', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          const data = await response.json();
+          if (data.ok) {
+            if (data.warning) {
+              showFlash(data.warning);
+            }
+            setTimeout(() => {
+              window.location.reload();
+            }, 500);
+          } else {
+            showFlash(data.error || 'No se pudo finalizar.');
+          }
+        } catch (error) {
+          showFlash('No se pudo finalizar.');
+        }
+      });
+
+      if (activeId) {
+        startPolling();
+      } else {
+        const now = Date.now();
+        const navType = performance?.getEntriesByType('navigation')?.[0]?.type || 'navigate';
+        const skipWaitingOnce = sessionStorage.getItem('skipWaitingOnce') === '1';
+        if (skipWaitingOnce) {
+          sessionStorage.removeItem('skipWaitingOnce');
+        }
+        const lastVisit = Number(localStorage.getItem(LAST_VISIT_KEY) || 0);
+        const coldStart = navType === 'navigate' && !skipWaitingOnce;
+        const absence = coldStart || !lastVisit || now - lastVisit > ABSENCE_MS;
+        localStorage.setItem(LAST_VISIT_KEY, String(now));
+
+        const currentCount = Number(document.body.dataset.serviceCount || 0);
+        const currentMaxId = (() => {
+          if (!serviceCarousel) return 0;
+          let maxId = 0;
+          serviceCarousel.querySelectorAll('.service-card').forEach((card) => {
+            const raw = Number(card.dataset.serviceId || 0);
+            if (raw > maxId) maxId = raw;
+          });
+          return maxId;
+        })();
+        const lastCount = Number(localStorage.getItem('lastServiceCount') || 0);
+        const storedListMode = localStorage.getItem(LIST_MODE_KEY) === '1';
+        const storedCount = Number(localStorage.getItem(LIST_MODE_COUNT_KEY) || 0);
+        const priorityUntil = Number(localStorage.getItem(PRIORITY_UNTIL_KEY) || 0);
+        const priorityCount = Number(localStorage.getItem(PRIORITY_COUNT_KEY) || 0);
+        const newServicesArrived = currentCount > lastCount;
+
+        let waitingActive = false;
+        if (currentCount > 0) {
+          if (absence) {
+            waitingActive = startWaitingIfNeeded();
+          } else if (newServicesArrived) {
+            startPriorityWindow(WAIT_MS, currentCount);
+          } else if (priorityUntil && now < priorityUntil && priorityCount === currentCount) {
+            startPriorityWindow(priorityUntil - now, currentCount);
+          } else if (storedListMode && storedCount === currentCount) {
+            enableListModeImmediate();
+          } else {
+            enableListModeImmediate();
+          }
+        } else {
+          localStorage.removeItem(LIST_MODE_KEY);
+          localStorage.removeItem(LIST_MODE_COUNT_KEY);
+          localStorage.removeItem(PRIORITY_UNTIL_KEY);
+          localStorage.removeItem(PRIORITY_COUNT_KEY);
+        }
+        if (lastCount > 0 && currentCount > lastCount) {
+          playPing();
+        }
+        localStorage.setItem('lastServiceCount', String(currentCount));
+        let lastSnapshot = { count: currentCount, maxId: currentMaxId };
+        let refreshTimer = null;
+
+        async function checkServiceUpdates() {
+          try {
+            const response = await fetch('/api/servicios/status', {
+              headers: { 'X-Requested-With': 'XMLHttpRequest' },
+              cache: 'no-store'
+            });
+            if (!response.ok) return false;
+            const data = await response.json();
+            if (!data.ok) return false;
+            const nextCount = Number(data.count || 0);
+            const nextMaxId = Number(data.max_id || 0);
+            if (nextCount !== lastSnapshot.count || nextMaxId !== lastSnapshot.maxId) {
+              return true;
+            }
+            lastSnapshot = { count: nextCount, maxId: nextMaxId };
+            return false;
+          } catch (error) {
+            return false;
+          }
+        }
+
+        function scheduleServiceCheck(delayMs) {
+          if (refreshTimer) {
+            clearTimeout(refreshTimer);
+          }
+          refreshTimer = setTimeout(async () => {
+            if (drawer?.classList.contains('open')) {
+              scheduleServiceCheck(2000);
+              return;
+            }
+            const shouldReload = await checkServiceUpdates();
+            if (shouldReload) {
+              sessionStorage.setItem('skipWaitingOnce', '1');
+              window.location.reload();
+              return;
+            }
+            scheduleServiceCheck(delayMs);
+          }, delayMs);
+        }
+
+        scheduleServiceCheck(waitingActive ? WAIT_MS + 12000 : 12000);
+      }
+
+      if (localStorage.getItem(DRAWER_OPEN_KEY) === '1') {
+        drawer.classList.add('open');
+        overlay.classList.add('show');
+      }
+    </script>
+  </body>
+</html>
