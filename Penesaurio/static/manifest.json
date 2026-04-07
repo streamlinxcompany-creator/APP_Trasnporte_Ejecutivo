@@ -1,9 +1,0 @@
-﻿{
-  "name": "Despacho Ejecutivo",
-  "short_name": "Despacho",
-  "start_url": "/login",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "orientation": "portrait"
-}
