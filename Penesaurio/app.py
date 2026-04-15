@@ -1,4 +1,4 @@
-import base64
+﻿import base64
 import hashlib
 import os
 import sqlite3
@@ -31,13 +31,21 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "servicios.db")
-EXPIRATION_MINUTES = 5
+EXPIRATION_MINUTES = 10
+FOLLOW_UP_INTERVAL_MINUTES = 2
 EXPIRATION_CHECK_SECONDS = 30
 EXPIRATION_MESSAGE = (
-    "Lo sentimos, en este momento todos nuestros vehículos ejecutivos en La Ceja se "
-    "encuentran en servicio. Hemos cancelado tu solicitud para no hacerte esperar. "
-    "Por favor, intenta de nuevo en unos minutos."
+    "No logramos asignarte conductor en 10 minutos. "
+    "Cancelamos la solicitud para no hacerte esperar. "
+    "Si deseas intentarlo de nuevo, escribe NUEVO."
 )
+FOLLOW_UP_MESSAGES = [
+    "Seguimos buscando tu conductor.",
+    "Aun estamos haciendo lo posible para encontrar un conductor.",
+    "Seguimos en la busqueda.",
+    "Seguimos pendientes de tu servicio.",
+]
+SHORT_CANCEL_HINT = "Si deseas cancelar, escribe CANCELAR."
 
 TEST_COORDS = [
     (6.036734, -75.419024),
@@ -285,6 +293,7 @@ def init_db():
                 conductor_nombre TEXT,
                 conductor_placa TEXT,
                 chat_iniciado INTEGER DEFAULT 0,
+                reminder_count INTEGER DEFAULT 0,
                 timestamp TEXT
             )
             """
@@ -300,6 +309,7 @@ def init_db():
             "conductor_nombre",
             "conductor_placa",
             "chat_iniciado",
+            "reminder_count",
             "timestamp",
         ]
         if not all(col in cols for col in required):
@@ -314,6 +324,7 @@ def init_db():
                     conductor_nombre TEXT,
                     conductor_placa TEXT,
                     chat_iniciado INTEGER DEFAULT 0,
+                    reminder_count INTEGER DEFAULT 0,
                     timestamp TEXT
                 )
                 """
@@ -341,6 +352,7 @@ def init_db():
                 conductor_placa_col if conductor_placa_col != "NULL" else "NULL"
             )
             chat_iniciado_expr = chat_iniciado_col if chat_iniciado_col != "NULL" else "0"
+            reminder_count_expr = "0"
             ts_expr = ts_col if ts_col != "NULL" else "datetime('now')"
 
             cur.execute(
@@ -352,6 +364,7 @@ def init_db():
                     conductor_nombre,
                     conductor_placa,
                     chat_iniciado,
+                    reminder_count,
                     timestamp
                 )
                 SELECT
@@ -361,11 +374,19 @@ def init_db():
                     {conductor_nombre_expr},
                     {conductor_placa_expr},
                     {chat_iniciado_expr},
+                    {reminder_count_expr},
                     {ts_expr}
                 FROM pedidos_old
                 """
             )
             cur.execute("DROP TABLE pedidos_old")
+        elif "reminder_count" not in cols:
+            cur.execute(
+                "ALTER TABLE pedidos ADD COLUMN reminder_count INTEGER DEFAULT 0"
+            )
+            cur.execute(
+                "UPDATE pedidos SET reminder_count = 0 WHERE reminder_count IS NULL"
+            )
 
     conn.commit()
     conn.close()
@@ -465,7 +486,7 @@ def build_direcciones_prompt(direcciones):
     for idx, row in enumerate(direcciones, start=1):
         direccion = row["direccion"]
         lineas.append(f"{idx}. [{direccion}]")
-    lineas.append("Escribe NUEVA para agregar otra dirección.")
+    lineas.append("Escribe NUEVA para agregar otra direcciÃ³n.")
     return "\n".join(lineas)
 
 
@@ -488,12 +509,12 @@ def normalize_text(value):
         return ""
     text = value.strip().lower()
     replacements = {
-        "á": "a",
-        "é": "e",
-        "í": "i",
-        "ó": "o",
-        "ú": "u",
-        "ñ": "n",
+        "Ã¡": "a",
+        "Ã©": "e",
+        "Ã­": "i",
+        "Ã³": "o",
+        "Ãº": "u",
+        "Ã±": "n",
     }
     for key, val in replacements.items():
         text = text.replace(key, val)
@@ -513,23 +534,91 @@ def is_reserved_direccion(value):
     }
 
 
-def get_location_text(values):
+def get_location_payload(values):
     lat = (values.get("Latitude") or "").strip()
     lon = (values.get("Longitude") or "").strip()
     addr = (values.get("Address") or "").strip()
     label = (values.get("Label") or "").strip()
-    if lat and lon:
-        coords = f"{lat},{lon}"
-        if addr:
-            return f"{addr} ({coords})"
-        if label:
-            return f"{label} ({coords})"
-        return f"Ubicacion: {coords}"
-    if addr:
-        return addr
-    if label:
-        return label
-    return ""
+    coords = f"{lat},{lon}" if lat and lon else ""
+    direccion = addr or label or coords
+    return {
+        "direccion": direccion,
+        "latitude": lat,
+        "longitude": lon,
+        "coords": coords,
+    }
+
+
+def build_request_message(nombre):
+    if nombre:
+        return f"Listo, {nombre}. Estamos buscando conductor. {SHORT_CANCEL_HINT}"
+    return f"Listo. Estamos buscando conductor. {SHORT_CANCEL_HINT}"
+
+
+def build_follow_up_message(step):
+    idx = max(1, min(step, len(FOLLOW_UP_MESSAGES))) - 1
+    return f"{FOLLOW_UP_MESSAGES[idx]} {SHORT_CANCEL_HINT}"
+
+
+def build_welcome_back_message(nombre):
+    return f"Hola {nombre}. Donde te recogemos hoy?"
+
+
+def build_new_customer_message():
+    return "Bienvenido a Transporte Ejecutivo. Como te llamas?"
+
+
+def build_name_ack_message(nombre):
+    return f"Gracias, {nombre}. Donde te recogemos?"
+
+
+def build_open_service_status_message():
+    return f"Seguimos buscando tu conductor. {SHORT_CANCEL_HINT}"
+
+
+def get_latest_search_service(cur, telefono):
+    return cur.execute(
+        """
+        SELECT *
+        FROM pedidos
+        WHERE cliente_telefono = ?
+          AND lower(estado) IN ('disponible', 'pendiente')
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (telefono,),
+    ).fetchone()
+
+
+def get_latest_taken_service(cur, telefono):
+    return cur.execute(
+        """
+        SELECT *
+        FROM pedidos
+        WHERE cliente_telefono = ?
+          AND estado = 'Tomado'
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (telefono,),
+    ).fetchone()
+
+
+def build_customer_request_payload(nombre, direccion, location_payload):
+    partes = [f"Nombre: {nombre}", f"Direccion: {direccion}"]
+    if location_payload.get("latitude") and location_payload.get("longitude"):
+        partes.append(f"Latitude: {location_payload['latitude']}")
+        partes.append(f"Longitude: {location_payload['longitude']}")
+    return " | ".join(partes)
+
+
+def parse_db_datetime(value):
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return None
 
 
 def get_config_value(key, default=None):
@@ -592,34 +681,61 @@ def send_whatsapp_message(phone, body):
 
 
 def verificar_expiracion_servicios():
-    cutoff = datetime.now() - timedelta(minutes=EXPIRATION_MINUTES)
-    cutoff_text = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now()
     expired_phones = []
+    follow_ups = []
 
     try:
         conn = get_conn()
         rows = conn.execute(
             """
-            SELECT id, cliente_telefono
+            SELECT id, cliente_telefono, timestamp, reminder_count
             FROM pedidos
-            WHERE lower(estado) = 'pendiente'
+            WHERE lower(estado) IN ('disponible', 'pendiente')
               AND timestamp IS NOT NULL
-              AND timestamp <= ?
             """,
-            (cutoff_text,),
         ).fetchall()
 
         for row in rows:
-            cur = conn.execute(
-                """
-                UPDATE pedidos
-                SET estado = 'expirado'
-                WHERE id = ? AND lower(estado) = 'pendiente'
-                """,
-                (row["id"],),
+            created_at = parse_db_datetime(row["timestamp"])
+            if created_at is None:
+                continue
+
+            elapsed_total = int((now - created_at).total_seconds())
+            if elapsed_total < 0:
+                elapsed_total = 0
+
+            if elapsed_total >= EXPIRATION_MINUTES * 60:
+                cur = conn.execute(
+                    """
+                    UPDATE pedidos
+                    SET estado = 'expirado'
+                    WHERE id = ? AND lower(estado) IN ('disponible', 'pendiente')
+                    """,
+                    (row["id"],),
+                )
+                if cur.rowcount:
+                    expired_phones.append(row["cliente_telefono"])
+                continue
+
+            reminder_count = row["reminder_count"] or 0
+            target_step = min(
+                elapsed_total // (FOLLOW_UP_INTERVAL_MINUTES * 60),
+                len(FOLLOW_UP_MESSAGES),
             )
-            if cur.rowcount:
-                expired_phones.append(row["cliente_telefono"])
+            if target_step > reminder_count:
+                next_step = reminder_count + 1
+                conn.execute(
+                    "UPDATE pedidos SET reminder_count = ? WHERE id = ?",
+                    (next_step, row["id"]),
+                )
+                follow_ups.append(
+                    (row["cliente_telefono"], build_follow_up_message(next_step))
+                )
+
+        for phone in expired_phones:
+            if phone:
+                conn.execute("DELETE FROM conversaciones WHERE telefono = ?", (phone,))
 
         conn.commit()
         conn.close()
@@ -633,6 +749,13 @@ def verificar_expiracion_servicios():
         ok, err = send_whatsapp_message(phone, EXPIRATION_MESSAGE)
         if not ok:
             print(f"No se pudo notificar expiracion a {phone}. {err}")
+
+    for phone, body in follow_ups:
+        if not phone:
+            continue
+        ok, err = send_whatsapp_message(phone, body)
+        if not ok:
+            print(f"No se pudo enviar seguimiento a {phone}. {err}")
 
     return len(expired_phones)
 
@@ -649,17 +772,12 @@ def start_expiration_worker():
 
 
 def send_assignment_message(phone, conductor_nombre, conductor_placa):
-    body = (
-        f"Tu servicio ha sido asignado a {conductor_nombre} en el vehiculo "
-        f"de placas {conductor_placa}. Se pondra en contacto contigo ahora."
-    )
+    body = f"Listo. {conductor_nombre} ({conductor_placa}) va en camino."
     return send_whatsapp_message(phone, body)
 
 
 def send_chat_messages(phone, conductor_placa, conductor_message, include_system):
-    system_body = (
-        f"El conductor del vehiculo {conductor_placa} se ha conectado al chat."
-    )
+    system_body = f"Tu conductor ({conductor_placa}) entro al chat."
     ok_system = True
     err_system = ""
     if include_system:
@@ -771,8 +889,10 @@ def webhook():
         cur = conn.cursor()
 
         mensaje_limpio = (mensaje or "").strip()
-        location_text = get_location_text(request.values)
+        location_payload = get_location_payload(request.values)
         mensaje_lower = mensaje_limpio.lower()
+        open_service = get_latest_search_service(cur, telefono)
+        taken_service = get_latest_taken_service(cur, telefono)
 
         if mensaje_lower in {
             "hola",
@@ -788,6 +908,10 @@ def webhook():
             "pedido",
             "pedir",
         }:
+            if open_service:
+                conn.close()
+                return respond_client(telefono, build_open_service_status_message())
+
             cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
             usuario = get_usuario_by_telefono(cur, telefono)
             if usuario:
@@ -801,10 +925,7 @@ def webhook():
                 conn.commit()
                 direcciones = get_direcciones(cur, usuario["id"])
                 lista = build_direcciones_prompt(direcciones)
-                respuesta = (
-                    f"Hola {usuario['nombre']}, bienvenido de nuevo a Transporte Ejecutivo. "
-                    "¿A dónde te llevamos hoy?"
-                )
+                respuesta = build_welcome_back_message(usuario["nombre"])
                 if lista:
                     respuesta = f"{respuesta}\n{lista}"
                 conn.close()
@@ -819,55 +940,77 @@ def webhook():
             )
             conn.commit()
             conn.close()
-            return respond_client(
-                telefono,
-                "Bienvenido a Transporte Ejecutivo, es un placer saludarte. "
-                "Para iniciar tu perfil con nosotros, ¿podrías decirnos cuál es tu nombre?",
-            )
+            return respond_client(telefono, build_new_customer_message())
 
-        if mensaje_lower in {"cancelar", "salir", "reset"}:
+        if mensaje_lower == "cancelar":
+            if open_service:
+                cur.execute(
+                    """
+                    UPDATE pedidos
+                    SET estado = 'Cancelado'
+                    WHERE cliente_telefono = ?
+                      AND lower(estado) IN ('disponible', 'pendiente')
+                    """,
+                    (telefono,),
+                )
+                cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
+                conn.commit()
+                conn.close()
+                return respond_client(telefono, "Listo. Cancelamos tu solicitud.")
+
+            if taken_service:
+                conn.close()
+                return respond_client(
+                    telefono,
+                    "Tu servicio ya fue asignado. Escribenos por este chat y te ayudamos.",
+                )
+
+            conversation_row = cur.execute(
+                "SELECT 1 FROM conversaciones WHERE telefono = ?",
+                (telefono,),
+            ).fetchone()
+            if conversation_row:
+                cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
+                conn.commit()
+                conn.close()
+                return respond_client(telefono, "Listo. Cancelamos este proceso.")
+
             cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
             conn.commit()
             conn.close()
-            return respond_client(
-                telefono,
-                "Conversacion reiniciada. Que servicio deseas ahora?",
-            )
+            return respond_client(telefono, "No tienes una solicitud activa.")
+
+        if mensaje_lower in {"salir", "reset"}:
+            cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
+            conn.commit()
+            conn.close()
+            return respond_client(telefono, "Listo. Reiniciamos la conversacion.")
 
         row = cur.execute(
             "SELECT * FROM conversaciones WHERE telefono = ?", (telefono,)
         ).fetchone()
 
         if row is None:
-            active = cur.execute(
-                """
-                SELECT p.id
-                FROM pedidos p
-                JOIN conductores c ON c.active_pedido_id = p.id
-                WHERE p.cliente_telefono = ? AND p.estado = 'Tomado'
-                ORDER BY p.id DESC
-                LIMIT 1
-                """,
-                (telefono,),
-            ).fetchone()
-            if active:
+            if taken_service:
                 if mensaje_limpio:
                     cur.execute(
                         """
                         INSERT INTO chat_mensajes (pedido_id, sender, message, timestamp)
                         VALUES (?, 'cliente', ?, ?)
                         """,
-                        (active["id"], mensaje_limpio, fecha_actual),
+                        (taken_service["id"], mensaje_limpio, fecha_actual),
                     )
                     conn.commit()
                 conn.close()
                 return respond_client(
                     telefono,
-                    "Mensaje recibido. Tu conductor te respondera pronto. "
-                    "Si necesitas un nuevo servicio escribe NUEVO.",
+                    "Mensaje recibido. Tu conductor te respondera pronto.",
                 )
 
-            # No hay conversacion activa ni viaje activo: iniciar flujo normal
+            if open_service:
+                conn.close()
+                return respond_client(telefono, build_open_service_status_message())
+
             cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
             usuario = get_usuario_by_telefono(cur, telefono)
             if usuario:
@@ -881,10 +1024,7 @@ def webhook():
                 conn.commit()
                 direcciones = get_direcciones(cur, usuario["id"])
                 lista = build_direcciones_prompt(direcciones)
-                respuesta = (
-                    f"Hola {usuario['nombre']}, bienvenido de nuevo a Transporte Ejecutivo. "
-                    "¿A dónde te llevamos hoy?"
-                )
+                respuesta = build_welcome_back_message(usuario["nombre"])
                 if lista:
                     respuesta = f"{respuesta}\n{lista}"
                 conn.close()
@@ -899,17 +1039,13 @@ def webhook():
             )
             conn.commit()
             conn.close()
-            return respond_client(
-                telefono,
-                "Bienvenido a Transporte Ejecutivo, es un placer saludarte. "
-                "Para iniciar tu perfil con nosotros, ¿podrías decirnos cuál es tu nombre?",
-            )
+            return respond_client(telefono, build_new_customer_message())
 
         paso = row["paso"]
 
         if paso == "nombre":
             if not mensaje_limpio:
-                respuesta_texto = "Por favor dinos tu nombre para continuar."
+                respuesta_texto = "Dime tu nombre para continuar."
             else:
                 usuario_id = upsert_usuario(cur, telefono, mensaje_limpio, fecha_actual)
                 cur.execute(
@@ -923,27 +1059,24 @@ def webhook():
                 conn.commit()
                 direcciones = get_direcciones(cur, usuario_id)
                 lista = build_direcciones_prompt(direcciones)
-                respuesta_texto = (
-                    f"Gracias, {mensaje_limpio}. ¿A dónde te llevamos hoy?"
-                )
+                respuesta_texto = build_name_ack_message(mensaje_limpio)
                 if lista:
                     respuesta_texto = f"{respuesta_texto}\n{lista}"
             conn.close()
         elif paso == "direccion":
-            if not mensaje_limpio and location_text:
-                mensaje_limpio = location_text
-                mensaje_lower = mensaje_limpio.lower()
+            if not mensaje_limpio and location_payload.get("direccion"):
+                mensaje_limpio = location_payload["direccion"]
 
             if not mensaje_limpio:
                 conn.close()
                 return respond_client(
-                    telefono, "Por favor escribe la dirección o punto de recogida."
+                    telefono, "Escribe la direccion o comparte tu ubicacion."
                 )
             if is_reserved_direccion(mensaje_limpio):
                 conn.close()
                 return respond_client(
                     telefono,
-                    "Perfecto. Escribe la nueva dirección o punto de recogida.",
+                    "Listo. Escribe la nueva direccion o comparte tu ubicacion.",
                 )
 
             usuario = get_usuario_by_telefono(cur, telefono)
@@ -970,13 +1103,11 @@ def webhook():
                     direccion_nueva = False
                 else:
                     lista = build_direcciones_prompt(direcciones)
-                    respuesta_texto = "No encontré esa opción."
+                    respuesta_texto = "No veo esa opcion."
                     if lista:
                         respuesta_texto = f"{respuesta_texto}\n{lista}"
                     else:
-                        respuesta_texto = (
-                            f"{respuesta_texto} Escribe la dirección completa, por favor."
-                        )
+                        respuesta_texto = f"{respuesta_texto} Escribe la direccion completa."
                     conn.close()
                     return respond_client(telefono, respuesta_texto)
             else:
@@ -985,7 +1116,7 @@ def webhook():
                     conn.close()
                     return respond_client(
                         telefono,
-                        "Perfecto. Escribe la nueva dirección o punto de recogida.",
+                        "Listo. Escribe la nueva direccion o comparte tu ubicacion.",
                     )
                 direccion_nueva = True
                 if direccion_existe(cur, usuario_id, direccion):
@@ -1000,12 +1131,16 @@ def webhook():
                     (usuario_id, direccion, fecha_actual),
                 )
 
-            mensaje_cliente = f"Nombre: {nombre} | Direccion: {direccion}"
+            mensaje_cliente = build_customer_request_payload(
+                nombre,
+                direccion,
+                location_payload,
+            )
 
             cur.execute(
                 """
                 INSERT INTO pedidos (cliente_telefono, mensaje_cliente, estado, timestamp)
-                VALUES (?, ?, 'Disponible', ?)
+                VALUES (?, ?, 'Pendiente', ?)
                 """,
                 (telefono, mensaje_cliente, fecha_actual),
             )
@@ -1013,24 +1148,15 @@ def webhook():
             conn.commit()
             conn.close()
 
-            respuesta_texto = (
-                f"Perfecto, {nombre}. Hemos recibido tu solicitud con éxito. "
-                "En este momento, nuestra central está validando la disponibilidad de "
-                "nuestros conductores ejecutivos en la zona de La Ceja para asignarte "
-                "la mejor unidad. Por favor, danos un momento..."
-            )
+            respuesta_texto = build_request_message(nombre)
         else:
             cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
             conn.commit()
             conn.close()
-            respuesta_texto = (
-                "Vamos de nuevo. Que servicio deseas hoy?"
-            )
+            respuesta_texto = "Vamos de nuevo. Que servicio deseas?"
     except Exception as exc:
         print(f"Error BD: {exc}")
-        respuesta_texto = (
-            "Tuvimos un problema procesando tu mensaje. Intenta de nuevo."
-        )
+        respuesta_texto = "Tuvimos un problema procesando tu mensaje. Intenta de nuevo."
 
     return respond_client(telefono, respuesta_texto)
 
@@ -2198,7 +2324,7 @@ def chat_send_api():
             """,
             (
                 pedido_id,
-                f"El conductor del vehiculo {session.get('conductor_placa')} se ha conectado al chat.",
+                f"Tu conductor ({session.get('conductor_placa')}) entro al chat.",
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             ),
         )
@@ -2206,7 +2332,7 @@ def chat_send_api():
             {
                 "id": cur.lastrowid,
                 "sender": "sistema",
-                "message": f"El conductor del vehiculo {session.get('conductor_placa')} se ha conectado al chat.",
+                "message": f"Tu conductor ({session.get('conductor_placa')}) entro al chat.",
             }
         )
         cur.execute(
@@ -2304,3 +2430,5 @@ if __name__ == "__main__":
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not debug_mode:
         start_expiration_worker()
     app.run(host="0.0.0.0", port=5000, debug=debug_mode)
+
+
