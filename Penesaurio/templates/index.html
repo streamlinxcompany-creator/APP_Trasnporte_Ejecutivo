@@ -1268,6 +1268,33 @@
         border-radius: 18px;
         display: grid;
         gap: 8px;
+        position: relative;
+      }
+      .te-preview-card.has-close {
+        padding-top: 14px;
+      }
+      .te-preview-close {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 26px;
+        height: 26px;
+        border: 0;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.08);
+        color: #0f172a;
+        font-size: 1rem;
+        font-weight: 800;
+        line-height: 1;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+      .te-preview-close:hover {
+        background: rgba(15, 23, 42, 0.14);
+        transform: scale(1.04);
       }
       .te-compact-route {
         font-size: 0.72rem;
@@ -1296,26 +1323,15 @@
       }
       .te-preview-card .servicios-actions {
         display: grid;
-        grid-template-columns: 116px 1fr;
-        gap: 8px;
+        grid-template-columns: 1fr;
+        gap: 10px;
         margin-top: 0;
-      }
-      .te-preview-card .servicios-detail {
-        border-color: #0f172a;
-        background: #0f172a;
-        color: #f8fafc;
-        padding: 0 10px;
-        min-height: 40px;
-        font-size: 0.58rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
       }
       .te-preview-card .swipe-track {
         border-color: #0f172a;
         background: #0f172a;
-        padding: 4px 8px;
-        min-height: 40px;
+        padding: 6px 10px;
+        min-height: 50px;
       }
       .te-preview-card .swipe-progress {
         background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
@@ -1324,14 +1340,14 @@
         background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06));
       }
       .te-preview-card .swipe-handle {
-        width: 28px;
-        height: 28px;
+        width: 34px;
+        height: 34px;
         background: linear-gradient(135deg, #f2c744, #d2a11d);
         color: #0f172a;
       }
       .te-preview-card .swipe-text {
-        font-size: 0.52rem;
-        letter-spacing: 0.04em;
+        font-size: 0.58rem;
+        letter-spacing: 0.06em;
         color: rgba(248, 250, 252, 0.92);
       }
       .te-active-card .servicios-actions-row,
@@ -1452,14 +1468,64 @@
           font-size: 0.54rem;
         }
         .te-bottom-sheet {
-          left: 10px;
-          right: 10px;
-          bottom: 48px;
-          border-radius: 20px;
+          left: 12px;
+          right: 12px;
+          bottom: 60px;
+          padding: 14px 16px 16px;
+          gap: 12px;
+          border-radius: 26px;
           max-height: none;
         }
+        .te-sheet-kicker {
+          font-size: 0.64rem;
+        }
+        .te-sheet-title {
+          font-size: 1rem;
+        }
+        .te-sheet-sub {
+          font-size: 0.8rem;
+        }
+        .te-sheet-meta strong {
+          font-size: 0.88rem;
+        }
+        .te-sheet-meta span {
+          font-size: 0.74rem;
+        }
+        .te-preview-card {
+          padding: 16px;
+          gap: 12px;
+        }
+        .te-preview-close {
+          top: 10px;
+          right: 10px;
+          width: 30px;
+          height: 30px;
+          font-size: 1.08rem;
+        }
+        .te-compact-route {
+          font-size: 0.88rem;
+          line-height: 1.35;
+          -webkit-line-clamp: 3;
+        }
+        .te-compact-chip {
+          padding: 6px 10px;
+          font-size: 0.7rem;
+        }
         .te-preview-card .servicios-actions {
-          grid-template-columns: 104px 1fr;
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+        .te-preview-card .swipe-track {
+          min-height: 56px;
+          padding: 7px 10px;
+        }
+        .te-preview-card .swipe-handle {
+          width: 38px;
+          height: 38px;
+        }
+        .te-preview-card .swipe-text {
+          font-size: 0.62rem;
+          letter-spacing: 0.06em;
         }
       }
       .servicios-actions-row {
@@ -2904,7 +2970,8 @@
       let serviceSheetCountdownTimer = null;
       let serviceSheetCountdownMs = 0;
       let routeAnimationMs = 0;
-      const SERVICE_ROUTE_ANIMATION_MS = 650;
+      let selectedServiceSheetOrigin = null;
+      const SERVICE_ROUTE_ANIMATION_MS = window.innerWidth <= 480 ? 950 : 650;
       const detailDistance = document.getElementById('detailDistance');
       const detailGeoBtn = document.getElementById('detailGeoBtn');
       let detailMap = null;
@@ -3219,9 +3286,10 @@
           let currentX = 0;
           let dragging = false;
           let rafId = null;
+          const getSwipeMax = () => Math.max(0, track.clientWidth - ((handle?.offsetWidth || 36) + 18));
 
           const updateTrack = () => {
-            const max = Math.max(0, track.clientWidth - 52);
+            const max = getSwipeMax();
             const clamped = Math.max(0, Math.min(currentX, max));
             handle.style.transform = `translateX(${clamped}px)`;
             if (progress) {
@@ -3268,7 +3336,7 @@
             if (!dragging) return;
             dragging = false;
             track.classList.remove('dragging');
-            const max = Math.max(0, track.clientWidth - 52);
+            const max = getSwipeMax();
             if (currentX >= max * 0.8) {
               const form = track.closest('form');
               if (form) {
@@ -3302,7 +3370,7 @@
       }
 
       function formatDistance(meters) {
-        if (!meters || !Number.isFinite(meters)) return '-- km';
+        if (!meters || !Number.isFinite(meters)) return 'Calculando...';
         if (meters < 1000) return `${Math.round(meters)} m`;
         return `${(meters / 1000).toFixed(2)} km`;
       }
@@ -3411,12 +3479,21 @@
           }, autoHideMs);
         }
         syncServiceSheetCountdown();
-        scheduleServiceMapRefresh(true);
+        if (window.innerWidth <= 480) {
+          serviceMap?.invalidateSize(false);
+          setTimeout(() => {
+            routeAnimationMs = SERVICE_ROUTE_ANIMATION_MS;
+            scheduleServiceMapRefresh(true);
+          }, 180);
+        } else {
+          scheduleServiceMapRefresh(true);
+        }
       }
 
       function hideServiceBottomSheet() {
         if (!serviceBottomSheet || hasActiveService) return;
         serviceBottomSheet.classList.add('is-hidden');
+        selectedServiceSheetOrigin = null;
         if (serviceSheetTimer) {
           clearTimeout(serviceSheetTimer);
           serviceSheetTimer = null;
@@ -3547,24 +3624,32 @@
           };
         }
 
+        const isMobileViewport = window.innerWidth <= 480;
+
         const mapRect = serviceMap.getContainer().getBoundingClientRect();
-        const topRects = [teFloatingBar, teFloatingPills]
+        const topRects = [teFloatingBar]
           .filter(Boolean)
           .map((element) => element.getBoundingClientRect());
 
         const topInset = topRects.length
-          ? Math.max(...topRects.map((rect) => Math.max(0, rect.bottom - mapRect.top))) + 18
+          ? Math.max(...topRects.map((rect) => Math.max(0, rect.bottom - mapRect.top))) + (isMobileViewport ? 10 : 18)
           : basePad;
 
-        const bottomInset = serviceBottomSheet && !serviceBottomSheet.classList.contains('is-hidden')
-          ? Math.max(0, mapRect.bottom - serviceBottomSheet.getBoundingClientRect().top) + 18
+        const bottomInsetRaw = serviceBottomSheet && !serviceBottomSheet.classList.contains('is-hidden')
+          ? Math.max(0, mapRect.bottom - serviceBottomSheet.getBoundingClientRect().top) + (isMobileViewport ? 10 : 18)
           : 104;
+        const bottomInset = isMobileViewport
+          ? Math.min(
+              Math.max(basePad + 28, bottomInsetRaw + 26),
+              Math.round(mapRect.height * 0.42)
+            )
+          : bottomInsetRaw;
 
         const leftInset = servicesDrawerHandle
-          ? Math.max(basePad, Math.max(0, servicesDrawerHandle.getBoundingClientRect().right - mapRect.left) + 16)
+          ? Math.max(basePad, Math.max(0, servicesDrawerHandle.getBoundingClientRect().right - mapRect.left) + (isMobileViewport ? 10 : 16))
           : basePad;
 
-        const rightInset = 26;
+        const rightInset = isMobileViewport ? 18 : 26;
 
         return {
           paddingTopLeft: [leftInset, Math.max(basePad, topInset)],
@@ -3575,10 +3660,13 @@
       function fitMapBoundsInVisibleZone(bounds, distanceMeters, maxZoom = 16) {
         if (!serviceMap || !bounds) return;
         const padding = getVisibleMapPadding(distanceMeters);
+        const isMobileViewport = window.innerWidth <= 480;
         serviceMap.fitBounds(bounds, {
           paddingTopLeft: padding.paddingTopLeft,
           paddingBottomRight: padding.paddingBottomRight,
           maxZoom,
+          animate: true,
+          duration: isMobileViewport ? 0.75 : 0.95,
         });
       }
 
@@ -3652,6 +3740,8 @@
             routeAnimationFrame = requestAnimationFrame(step);
             return;
           }
+          serviceRoute?.setStyle({ opacity: 0 });
+          serviceLine?.setStyle({ opacity: 0 });
           routeAnimationFrame = null;
         };
 
@@ -3669,7 +3759,7 @@
             icon: buildMarkerIcon('service', String(service.id) === String(selectedServiceId), getServiceIndex(service.id)),
           }).addTo(serviceMap);
           marker.on('click', () => {
-            selectService(service.id, { keepDrawerOpen: true, revealSheet: true });
+            selectService(service.id, { keepDrawerOpen: true, revealSheet: true, source: 'marker' });
           });
           availableServiceMarkers.push(marker);
         });
@@ -3704,7 +3794,7 @@
         serviceLine = L.polyline(routePoints, {
           color: '#f97316',
           weight: 4,
-          opacity: effectiveAnimation ? 0.16 : 0.95,
+          opacity: effectiveAnimation ? 0 : 0.95,
         }).addTo(serviceMap);
         fitMapBounds(
           routePoints,
@@ -3771,7 +3861,7 @@
             serviceRoute = L.polyline(routePoints, {
               color: '#f97316',
               weight: 4,
-              opacity: animationDuration ? 0.16 : 0.92,
+              opacity: animationDuration ? 0 : 0.92,
             }).addTo(serviceMap);
             const bounds = L.latLngBounds(routePoints.length ? routePoints : [
               [driverLat, driverLng],
@@ -3796,7 +3886,7 @@
           if (selectedServiceClient) selectedServiceClient.textContent = 'Esperando servicios';
           if (selectedServiceSummary) selectedServiceSummary.textContent = 'Cuando entre un pedido nuevo quedara listo para tomar desde aqui.';
           if (selectedServiceTime) selectedServiceTime.textContent = '--';
-          if (selectedServiceDistance) selectedServiceDistance.textContent = '-- km';
+          if (selectedServiceDistance) selectedServiceDistance.textContent = 'Calculando...';
           selectedServicePanel.innerHTML = '<div class="servicios-empty te-preview-empty">No hay servicios disponibles. Esperando nuevos pedidos.</div>';
           return;
         }
@@ -3804,23 +3894,18 @@
         if (selectedServiceClient) selectedServiceClient.textContent = service.nombre || 'Cliente';
         if (selectedServiceSummary) selectedServiceSummary.textContent = service.direccion || 'Sin direccion disponible';
         if (selectedServiceTime) selectedServiceTime.textContent = service.hora || '--';
-        if (selectedServiceDistance) selectedServiceDistance.textContent = '-- km';
+        if (selectedServiceDistance) selectedServiceDistance.textContent = 'Calculando...';
+        const showCloseButton = selectedServiceSheetOrigin === 'marker';
 
         selectedServicePanel.innerHTML = `
-          <div class="servicios-card te-preview-card">
+          <div class="servicios-card te-preview-card${showCloseButton ? ' has-close' : ''}">
+            ${showCloseButton ? '<button type="button" class="te-preview-close" data-close-selected-service aria-label="Cerrar ficha">&times;</button>' : ''}
             <div class="te-compact-route">${escapeHtml(service.direccion || '')}</div>
             <div class="te-compact-meta">
               <span class="te-compact-chip">${escapeHtml(service.nombre || 'Cliente')}</span>
               <span class="te-compact-chip">${escapeHtml(service.telefono || '')}</span>
             </div>
             <div class="servicios-actions">
-              <button type="button" class="servicios-detail js-detail"
-                data-origen="${escapeHtml(service.direccion || '')}"
-                data-cliente="${escapeHtml(service.nombre || 'Cliente')}"
-                data-telefono="${escapeHtml(service.telefono || '')}"
-                data-hora="${escapeHtml(service.hora || '')}"
-                data-lat="${service.lat ?? ''}"
-                data-lng="${service.lng ?? ''}">Ver detalle</button>
               <form method="post" action="/tomar">
                 <input type="hidden" name="pedido_id" value="${service.id}" />
                 <div class="swipe-track" data-swipe>
@@ -3833,6 +3918,18 @@
             </div>
           </div>
         `;
+        const closePreviewBtn = selectedServicePanel.querySelector('[data-close-selected-service]');
+        if (closePreviewBtn) {
+          closePreviewBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            selectedServiceId = null;
+            selectedServiceSheetOrigin = null;
+            markSelectedServiceCard();
+            renderSelectedServicePanel(getSelectedService());
+            hideServiceBottomSheet();
+          });
+        }
         attachSwipeHandlers(selectedServicePanel);
         attachDetailHandlers(selectedServicePanel);
         syncServiceSheetCountdown();
@@ -3861,6 +3958,7 @@
       function selectService(id, options = {}) {
         if (hasActiveService) return;
         selectedServiceId = Number(id);
+        selectedServiceSheetOrigin = options.source || 'list';
         markSelectedServiceCard();
         renderSelectedServicePanel(getSelectedService());
         if (options.revealSheet) {
@@ -3879,7 +3977,7 @@
           card.dataset.selectBound = '1';
           card.addEventListener('click', (event) => {
             if (event.target.closest('button, form, a, input')) return;
-            selectService(card.dataset.serviceId, { keepDrawerOpen: true });
+            selectService(card.dataset.serviceId, { keepDrawerOpen: true, source: 'list' });
           });
         });
       }
@@ -3967,9 +4065,11 @@
         );
         if (latestServices.length && !latestServices.some((service) => String(service.id) === String(selectedServiceId))) {
           selectedServiceId = latestServices[0].id;
+          selectedServiceSheetOrigin = null;
         }
         if (!latestServices.length) {
           selectedServiceId = null;
+          selectedServiceSheetOrigin = null;
           hideServiceBottomSheet();
         }
         updateServiceCounters(latestServices.length);
@@ -4008,14 +4108,14 @@
 
         const clientIcon = L.divIcon({
           className: 'marker-wrap',
-          html: '<div style="width:28px;height:28px;border-radius:10px;background:#f2c744;color:#1b1203;font-weight:700;display:grid;place-items:center;">A</div>',
+          html: '<div style="width:28px;height:28px;border-radius:10px;background:#f2c744;color:#1b1203;font-weight:700;display:grid;place-items:center;">B</div>',
           iconSize: [28, 28],
           iconAnchor: [14, 28],
         });
 
         const driverIcon = L.divIcon({
           className: 'marker-wrap',
-          html: '<div style="width:28px;height:28px;border-radius:10px;background:#1f2937;color:#f2c744;font-weight:700;display:grid;place-items:center;border:1px solid rgba(242,199,68,0.6);">B</div>',
+          html: '<div style="width:28px;height:28px;border-radius:10px;background:#1f2937;color:#f2c744;font-weight:700;display:grid;place-items:center;border:1px solid rgba(242,199,68,0.6);">A</div>',
           iconSize: [28, 28],
           iconAnchor: [14, 28],
         });
@@ -4113,6 +4213,7 @@
           servicesList.innerHTML = '';
           if (!latestServices.length) {
             selectedServiceId = null;
+            selectedServiceSheetOrigin = null;
             renderSelectedServicePanel(null);
             hideServiceBottomSheet();
             scheduleServiceMapRefresh();
@@ -4121,6 +4222,7 @@
           }
           if (!latestServices.some((service) => String(service.id) === String(selectedServiceId))) {
             selectedServiceId = latestServices[0].id;
+            selectedServiceSheetOrigin = null;
           }
           latestServices.forEach((servicio, index) => {
             const card = document.createElement('div');
@@ -4222,6 +4324,7 @@
         if (!hasActiveService) {
           const normalizedService = normalizeService(service);
           selectedServiceId = Number(service.id);
+          selectedServiceSheetOrigin = 'priority';
           if (normalizedService && !latestServices.some((item) => String(item.id) === String(normalizedService.id))) {
             latestServices = sortServicesByArrival([...latestServices, normalizedService]);
           }
