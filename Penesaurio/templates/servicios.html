@@ -1,0 +1,307 @@
+﻿<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+    <title>Servicios | Despacho Ejecutivo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #050505;
+        --panel: rgba(18, 18, 20, 0.88);
+        --panel-strong: rgba(12, 12, 14, 0.95);
+        --gold: #f2c744;
+        --gold-2: #b99035;
+        --text: #f5f5f5;
+        --muted: #9d9d9d;
+        --stroke: rgba(255, 255, 255, 0.08);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Sora', sans-serif;
+        min-height: 100vh;
+      }
+      .app-shell {
+        position: relative;
+        min-height: 100vh;
+        overflow: hidden;
+        background: #000;
+      }
+      .map-layer {
+        position: absolute;
+        inset: 0;
+        background-image: url("{{ url_for('static', filename='FondoDashboard.jpg') }}");
+        background-size: cover;
+        background-position: center;
+        filter: saturate(0.55) brightness(0.45);
+      }
+      .app-shell::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 50% 45%, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.9) 70%);
+      }
+      .top-bar {
+        position: relative;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 18px 0;
+      }
+      .hamburger {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: 1px solid rgba(242, 199, 68, 0.4);
+        background: rgba(0, 0, 0, 0.6);
+        display: grid;
+        place-items: center;
+      }
+      .hamburger span {
+        display: block;
+        width: 18px;
+        height: 2px;
+        background: var(--gold);
+        margin: 3px 0;
+        border-radius: 999px;
+      }
+      .top-center {
+        text-align: center;
+      }
+      .brand-mini {
+        font-family: 'Space Grotesk', sans-serif;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-size: 0.62rem;
+        color: rgba(242, 199, 68, 0.75);
+      }
+      .earnings-card {
+        margin-top: 6px;
+        padding: 10px 18px;
+        border: 1px solid rgba(242, 199, 68, 0.55);
+        border-radius: 16px;
+        background: rgba(10, 10, 12, 0.9);
+        color: var(--gold);
+        font-family: 'Space Grotesk', sans-serif;
+        letter-spacing: 0.08em;
+      }
+      .earnings-card small {
+        display: block;
+        font-family: 'Sora', sans-serif;
+        letter-spacing: 0.2em;
+        color: rgba(242, 199, 68, 0.7);
+        font-size: 0.65rem;
+        margin-top: 2px;
+      }
+      .status-row {
+        position: relative;
+        z-index: 3;
+        text-align: center;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.85rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .list-wrap {
+        position: relative;
+        z-index: 3;
+        padding: 16px;
+        display: grid;
+        gap: 16px;
+      }
+      .service-card {
+        background: var(--panel);
+        border-radius: 18px;
+        border: 1px solid rgba(242, 199, 68, 0.3);
+        padding: 16px;
+        box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6);
+      }
+      .service-time {
+        text-align: right;
+        color: var(--gold);
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+      }
+      .service-row {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        gap: 10px;
+        padding: 6px 0;
+        align-items: center;
+      }
+      .service-row span {
+        color: var(--gold-2);
+      }
+      .service-row strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .service-actions {
+        display: grid;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .detail-btn,
+      .accept-btn {
+        width: 100%;
+        border-radius: 999px;
+        border: 1px solid rgba(242, 199, 68, 0.6);
+        padding: 10px 12px;
+        background: rgba(242, 199, 68, 0.12);
+        color: var(--gold);
+        font-family: 'Space Grotesk', sans-serif;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-decoration: none;
+        text-align: center;
+        display: inline-block;
+      }
+      .accept-btn {
+        background: linear-gradient(135deg, rgba(242, 199, 68, 0.25), rgba(242, 199, 68, 0.05));
+        color: #f7e6a6;
+        cursor: pointer;
+      }
+      .active-card {
+        background: rgba(16, 16, 18, 0.95);
+        border-radius: 18px;
+        border: 1px solid rgba(242, 199, 68, 0.35);
+        padding: 16px;
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.65);
+      }
+      .active-title {
+        font-family: 'Space Grotesk', sans-serif;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--gold);
+        margin-bottom: 8px;
+        font-size: 0.8rem;
+      }
+      .finish-btn {
+        margin-top: 10px;
+        width: 100%;
+        border-radius: 12px;
+        border: none;
+        padding: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        background: #f2c744;
+        color: #1b1203;
+        cursor: pointer;
+      }
+      .empty-card {
+        background: var(--panel);
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        border-radius: 16px;
+        padding: 16px;
+        color: var(--muted);
+        text-align: center;
+      }
+      .bottom-status {
+        position: relative;
+        z-index: 3;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        padding: 12px 0 24px;
+      }
+      @media (min-width: 768px) {
+        .app-shell {
+          max-width: 480px;
+          margin: 18px auto;
+          border-radius: 32px;
+          min-height: calc(100vh - 36px);
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="map-layer"></div>
+
+      <div class="top-bar">
+        <button class="hamburger" type="button" aria-label="Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="top-center">
+          <div class="brand-mini">Transporte Ejecutivo</div>
+          <div class="earnings-card">
+            {{ ganancias_total_formatted }}<small>COP</small>
+          </div>
+        </div>
+        <div style="width: 48px;"></div>
+      </div>
+
+      <div class="status-row">Servicios disponibles {{ pedidos|length }}</div>
+
+      <div class="list-wrap">
+        {% if active_pedido %}
+          <div class="active-card">
+            <div class="active-title">Servicio en curso</div>
+            <div class="service-row">
+              <span>Origen</span>
+              <strong>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</strong>
+            </div>
+            <div class="service-row">
+              <span>Cliente</span>
+              <strong>{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</strong>
+            </div>
+            <div class="service-row">
+              <span>Telefono</span>
+              <strong>{{ active_pedido.cliente_telefono }}</strong>
+            </div>
+            <form method="post" action="{{ url_for('finalizar_servicio') }}">
+              <button class="finish-btn" type="submit">Servicio finalizado</button>
+            </form>
+          </div>
+        {% endif %}
+
+        {% if pedidos %}
+          {% for pedido in pedidos %}
+            <div class="service-card">
+              <div class="service-time">{{ pedido.hora }}</div>
+              <div class="service-row">
+                <span>Origen</span>
+                <strong>{{ pedido.detalles.get('Direccion', pedido.mensaje_cliente) }}</strong>
+              </div>
+              <div class="service-row">
+                <span>Cliente</span>
+                <strong>{{ pedido.detalles.get('Nombre', 'Cliente') }} (WhatsApp)</strong>
+              </div>
+              <div class="service-row">
+                <span>Telefono</span>
+                <strong>{{ pedido.cliente_telefono }}</strong>
+              </div>
+              <div class="service-actions">
+                <a class="detail-btn" href="{{ url_for('servicio_detalle', pedido_id=pedido.id) }}">Ver detalle</a>
+                <form method="post" action="{{ url_for('tomar') }}">
+                  <input type="hidden" name="pedido_id" value="{{ pedido.id }}" />
+                  <button type="submit" class="accept-btn">Desliza para aceptar servicio</button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          {% if not active_pedido %}
+            <div class="empty-card">No hay servicios disponibles. Esperando nuevos pedidos.</div>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <div class="bottom-status">Buscando servicios...</div>
+    </div>
+  </body>
+</html>

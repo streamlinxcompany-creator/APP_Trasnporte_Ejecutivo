@@ -226,6 +226,9 @@
       .generator-panel {
         grid-column: span 4;
       }
+      .coords-panel {
+        grid-column: span 4;
+      }
 
       .active-panel {
         grid-column: span 4;
@@ -297,6 +300,26 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
         margin-top: 14px;
+      }
+      .coords-textarea {
+        width: 100%;
+        min-height: 160px;
+        resize: vertical;
+        border-radius: 12px;
+        border: 1px solid var(--stroke);
+        background: rgba(8, 12, 18, 0.7);
+        color: var(--text);
+        padding: 12px;
+        font-family: "Sora", sans-serif;
+        font-size: 13px;
+      }
+      .coords-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .coords-actions .button {
+        flex: 1;
       }
 
       .keypad button {
@@ -579,6 +602,36 @@
           max-height: 480px;
         }
       }
+      /* Clean minimal theme overrides */
+      :root {
+        --bg: #0b0d10;
+        --bg-soft: #12151b;
+        --panel: rgba(20, 24, 30, 0.95);
+        --panel-strong: #151a22;
+        --stroke: rgba(255, 255, 255, 0.08);
+        --accent: #36c487;
+        --accent-soft: rgba(54, 196, 135, 0.18);
+        --success: #36c487;
+        --danger: #ff6b6b;
+        --info: #5aa2ff;
+        --text: #f2f4f7;
+        --muted: #9aa3ad;
+        --shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
+      }
+      body {
+        background: radial-gradient(circle at top, rgba(54, 196, 135, 0.08), transparent 45%),
+          radial-gradient(circle at 20% 20%, rgba(90, 162, 255, 0.12), transparent 40%),
+          var(--bg);
+      }
+      body::before {
+        opacity: 0.35;
+      }
+      .pill.ok {
+        color: #06110c;
+      }
+      .button.primary {
+        color: #06110c;
+      }
     </style>
   </head>
   <body>
@@ -660,6 +713,27 @@
             <button data-action="send" class="button primary">Enviar</button>
           </div>
           <div class="hint">Maximo 200 servicios por envio.</div>
+        </div>
+
+        <div class="panel coords-panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Servicios con coordenadas</h3>
+              <p class="panel-sub">Pega o edita las coordenadas (lat, lng)</p>
+            </div>
+          </div>
+          <textarea class="coords-textarea" id="coordsInput">6.036734, -75.419024
+6.017470, -75.430035
+6.029867, -75.433825
+6.081244, -75.333961
+6.029867, -75.433825
+6.021925, -75.422297
+6.034995, -75.433154</textarea>
+          <div class="coords-actions">
+            <button class="button" id="fillCoordsBtn">Reiniciar lista</button>
+            <button class="button primary" id="sendCoordsBtn">Enviar coordenadas</button>
+          </div>
+          <div class="hint">Cada linea genera un servicio con Latitude/Longitude.</div>
         </div>
 
         <div class="panel active-panel">
@@ -761,6 +835,9 @@
       const qtyInput = document.getElementById("qtyInput");
       const keypad = document.getElementById("keypad");
       const toast = document.getElementById("toast");
+      const coordsInput = document.getElementById("coordsInput");
+      const sendCoordsBtn = document.getElementById("sendCoordsBtn");
+      const fillCoordsBtn = document.getElementById("fillCoordsBtn");
 
       const credModal = document.getElementById("credModal");
       const credUser = document.getElementById("credUser");
@@ -1006,6 +1083,26 @@
         refreshServicesBtn.addEventListener("click", loadServices);
         refreshDriversBtn.addEventListener("click", loadDrivers);
 
+        sendCoordsBtn?.addEventListener("click", async () => {
+          const coords = coordsInput?.value || "";
+          const data = await fetchJson("/admin/api/services/generate_coords", {
+            method: "POST",
+            body: JSON.stringify({ coords })
+          });
+          if (data.ok) {
+            showToast(`Servicios creados: ${data.created.length}`);
+            loadServices();
+            loadOverview();
+          } else {
+            showToast(data.error || "No se pudo crear");
+          }
+        });
+
+        fillCoordsBtn?.addEventListener("click", () => {
+          if (!coordsInput) return;
+          coordsInput.value = `6.036734, -75.419024\n6.017470, -75.430035\n6.029867, -75.433825\n6.081244, -75.333961\n6.029867, -75.433825\n6.021925, -75.422297\n6.034995, -75.433154`;
+        });
+
         keypad.addEventListener("click", event => {
           const digit = event.target.getAttribute("data-digit");
           const action = event.target.getAttribute("data-action");
@@ -1059,3 +1156,4 @@
     </script>
   </body>
 </html>
+

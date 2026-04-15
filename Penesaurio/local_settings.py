@@ -1,4 +1,4 @@
 # --- CONFIGURACIÓN FINAL DE TRANSPORTE EJECUTIVO ---
-TWILIO_ACCOUNT_SID = "AC6fecd773e1769d3315956f762c617bd5" # Tu ID de cuenta
-TWILIO_AUTH_TOKEN = "debb1cc4eb3f5fec4c7d886c0a4cca28"    # Tu llave secreta
+TWILIO_ACCOUNT_SID = "ACd3312fcc83cb520e01c53cead105a7ff" # Tu ID de cuenta
+TWILIO_AUTH_TOKEN = "8b94a8beb4585f8327532a07f20e46c8"    # Tu llave secreta
 TWILIO_WHATSAPP_FROM = "whatsapp:+14155238886"           # EL NÚMERO DEL SANDBOX (No lo cambies)

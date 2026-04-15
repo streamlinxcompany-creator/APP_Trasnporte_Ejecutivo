@@ -39,6 +39,16 @@ EXPIRATION_MESSAGE = (
     "Por favor, intenta de nuevo en unos minutos."
 )
 
+TEST_COORDS = [
+    (6.036734, -75.419024),
+    (6.017470, -75.430035),
+    (6.029867, -75.433825),
+    (6.081244, -75.333961),
+    (6.029867, -75.433825),
+    (6.021925, -75.422297),
+    (6.034995, -75.433154),
+]
+
 
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
@@ -151,6 +161,9 @@ def init_db():
         cur.execute("ALTER TABLE conductores ADD COLUMN modelo TEXT")
     if "password_enc" not in conductor_cols:
         cur.execute("ALTER TABLE conductores ADD COLUMN password_enc TEXT")
+    if "is_online" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN is_online INTEGER DEFAULT 1")
+        cur.execute("UPDATE conductores SET is_online = 1 WHERE is_online IS NULL")
 
     cur.execute(
         """
@@ -1101,7 +1114,7 @@ def login():
 
         if not row["nombre_real"] or not row["placa"] or not row["vehiculo"] or not row["modelo"]:
             return redirect(url_for("perfil"))
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("inicio"))
 
     return render_template("login.html")
 
@@ -1118,7 +1131,7 @@ def index_root():
             or not session.get("conductor_modelo")
         ):
             return redirect(url_for("perfil"))
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("inicio"))
     return redirect(url_for("login"))
 
 
@@ -1133,7 +1146,7 @@ def perfil():
         and session.get("conductor_vehiculo")
         and session.get("conductor_modelo")
     ):
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("inicio"))
 
     if request.method == "POST":
         nombre = request.form.get("nombre_real", "").strip()
@@ -1157,7 +1170,7 @@ def perfil():
         session["conductor_placa"] = placa
         session["conductor_vehiculo"] = vehiculo
         session["conductor_modelo"] = modelo
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("inicio"))
 
     return render_template("profile.html")
 
@@ -1304,9 +1317,17 @@ def admin_generate_services_api():
         for i in range(qty):
             idx = next_counter + i
             nombre = f"Prueba {idx}"
-            direccion = f"Direccion Prueba {idx}"
+            coord = TEST_COORDS[idx % len(TEST_COORDS)] if TEST_COORDS else None
+            if coord:
+                lat, lng = coord
+                direccion = f"{lat:.6f}, {lng:.6f}"
+                mensaje_cliente = (
+                    f"Nombre: {nombre} | Direccion: {direccion} | Latitude: {lat} | Longitude: {lng}"
+                )
+            else:
+                direccion = f"Direccion Prueba {idx}"
+                mensaje_cliente = f"Nombre: {nombre} | Direccion: {direccion}"
             telefono = f"whatsapp:+57{3000000000 + idx}"
-            mensaje_cliente = f"Nombre: {nombre} | Direccion: {direccion}"
             fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cur = conn.execute(
                 """
@@ -1328,6 +1349,74 @@ def admin_generate_services_api():
 
     return jsonify({"ok": True, "created": created})
 
+
+@app.route("/admin/api/services/generate_coords", methods=["POST"])
+def admin_generate_services_coords_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    payload = request.get_json(silent=True) or {}
+    coords_raw = payload.get("coords") or ""
+    label_prefix = (payload.get("label_prefix") or "Prueba").strip()
+
+    lines = [line.strip() for line in str(coords_raw).splitlines() if line.strip()]
+    coords = []
+    for line in lines:
+        parts = [p.strip() for p in line.split(",")]
+        if len(parts) < 2:
+            continue
+        try:
+            lat = float(parts[0])
+            lng = float(parts[1])
+        except Exception:
+            continue
+        coords.append((lat, lng))
+
+    if not coords:
+        return jsonify({"ok": False, "error": "Sin coordenadas validas."}), 400
+
+    try:
+        conn = get_conn()
+        counter_row = conn.execute(
+            "SELECT value FROM config WHERE key = ?",
+            ("test_counter",),
+        ).fetchone()
+        counter_text = counter_row["value"] if counter_row and counter_row["value"] is not None else "1"
+        try:
+            next_counter = int(counter_text)
+        except Exception:
+            next_counter = 1
+
+        created = []
+        for lat, lng in coords:
+            idx = next_counter
+            next_counter += 1
+            nombre = f"{label_prefix} {idx}"
+            direccion = f"{lat:.6f}, {lng:.6f}"
+            telefono = f"whatsapp:+57{3000000000 + idx}"
+            mensaje_cliente = (
+                f"Nombre: {nombre} | Direccion: {direccion} | Latitude: {lat} | Longitude: {lng}"
+            )
+            fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cur = conn.execute(
+                """
+                INSERT INTO pedidos (cliente_telefono, mensaje_cliente, estado, timestamp)
+                VALUES (?, ?, 'Disponible', ?)
+                """,
+                (telefono, mensaje_cliente, fecha),
+            )
+            created.append(cur.lastrowid)
+
+        conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+            ("test_counter", str(next_counter)),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        return jsonify({"ok": False, "error": f"No se pudo crear. {exc}"}), 500
+
+    return jsonify({"ok": True, "created": created})
 
 @app.route("/admin/api/services/delete", methods=["POST"])
 def admin_delete_service_api():
@@ -1508,25 +1597,14 @@ def admin_twilio_toggle_api():
     return jsonify({"ok": True, "enabled": enabled})
 
 
-@app.route("/dashboard", methods=["GET"])
-def dashboard():
-    if not session.get("conductor_id"):
-        return redirect(url_for("login"))
-
-    if (
-        not session.get("conductor_nombre")
-        or not session.get("conductor_placa")
-        or not session.get("conductor_vehiculo")
-        or not session.get("conductor_modelo")
-    ):
-        return redirect(url_for("perfil"))
-
+def build_panel_context():
     conn = get_conn()
     active_row = conn.execute(
-        "SELECT active_pedido_id FROM conductores WHERE id = ?",
+        "SELECT active_pedido_id, is_online FROM conductores WHERE id = ?",
         (session.get("conductor_id"),),
     ).fetchone()
     active_pedido_id = active_row["active_pedido_id"] if active_row else None
+    driver_online = bool(active_row["is_online"]) if active_row and active_row["is_online"] is not None else True
 
     active_pedido = None
     chat_messages = []
@@ -1563,26 +1641,26 @@ def dashboard():
             active_pedido_id = None
 
     rows = []
-    rows_mios = []
-    if not active_pedido_id:
+    if not active_pedido_id and driver_online:
         rows = conn.execute(
             """
             SELECT id, cliente_telefono, mensaje_cliente, timestamp
             FROM pedidos
             WHERE lower(estado) IN ('disponible', 'pendiente')
-            ORDER BY id DESC
+            ORDER BY id ASC
             """
         ).fetchall()
 
-        rows_mios = conn.execute(
-            """
-            SELECT id, cliente_telefono, mensaje_cliente, timestamp
-            FROM pedidos
-            WHERE estado = 'Tomado' AND conductor_nombre = ? AND conductor_placa = ?
-            ORDER BY id DESC
-            """,
-            (session.get("conductor_nombre"), session.get("conductor_placa")),
-        ).fetchall()
+    rows_mios = conn.execute(
+        """
+        SELECT id, cliente_telefono, mensaje_cliente, timestamp
+        FROM pedidos
+        WHERE estado IN ('Tomado', 'Completado')
+          AND conductor_nombre = ? AND conductor_placa = ?
+        ORDER BY id DESC
+        """,
+        (session.get("conductor_nombre"), session.get("conductor_placa")),
+    ).fetchall()
 
     ganancias_row = conn.execute(
         "SELECT COALESCE(SUM(monto), 0) as total FROM ganancias WHERE conductor_id = ?",
@@ -1619,18 +1697,66 @@ def dashboard():
     ganancias_total = ganancias_row["total"] if ganancias_row else 0
     map_url = build_map_url()
 
-    return render_template(
-        "index.html",
-        pedidos=pedidos,
-        pedidos_mios=pedidos_mios,
-        conductor_nombre=session.get("conductor_nombre"),
-        conductor_placa=session.get("conductor_placa"),
-        ganancias_total=ganancias_total,
-        ganancias_total_formatted=format_cop(ganancias_total),
-        map_url=map_url,
-        active_pedido=active_pedido,
-        chat_messages=chat_messages,
+    return {
+        "pedidos": pedidos,
+        "pedidos_mios": pedidos_mios,
+        "ganancias_total": ganancias_total,
+        "ganancias_total_formatted": format_cop(ganancias_total),
+        "map_url": map_url,
+        "active_pedido": active_pedido,
+        "chat_messages": chat_messages,
+        "driver_online": driver_online,
+    }
+
+
+@app.route("/inicio")
+def inicio():
+    if not session.get("conductor_id"):
+        return redirect(url_for("login"))
+
+    if (
+        not session.get("conductor_nombre")
+        or not session.get("conductor_placa")
+        or not session.get("conductor_vehiculo")
+        or not session.get("conductor_modelo")
+    ):
+        return redirect(url_for("perfil"))
+
+    context = build_panel_context()
+    context.update(
+        {
+            "conductor_nombre": session.get("conductor_nombre"),
+            "conductor_placa": session.get("conductor_placa"),
+            "default_page": "inicio",
+        }
     )
+
+    return render_template("index.html", **context)
+
+
+@app.route("/dashboard", methods=["GET"])
+def dashboard():
+    if not session.get("conductor_id"):
+        return redirect(url_for("login"))
+
+    if (
+        not session.get("conductor_nombre")
+        or not session.get("conductor_placa")
+        or not session.get("conductor_vehiculo")
+        or not session.get("conductor_modelo")
+    ):
+        return redirect(url_for("perfil"))
+
+    context = build_panel_context()
+    context.update(
+        {
+            "conductor_nombre": session.get("conductor_nombre"),
+            "conductor_placa": session.get("conductor_placa"),
+            "default_page": "servicios",
+        }
+    )
+
+    return render_template("index.html", **context)
 
 
 @app.route("/tomar", methods=["POST"])
@@ -1649,6 +1775,18 @@ def tomar():
         return redirect(url_for("dashboard"))
 
     conn = get_conn()
+    availability_row = conn.execute(
+        "SELECT is_online FROM conductores WHERE id = ?",
+        (session.get("conductor_id"),),
+    ).fetchone()
+    is_online = bool(availability_row["is_online"]) if availability_row and availability_row["is_online"] is not None else True
+    if not is_online:
+        conn.close()
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"ok": False, "error": "Activa el modo disponible para tomar servicios."}), 409
+        flash("Activa el modo disponible para tomar servicios.")
+        return redirect(url_for("dashboard"))
+
     active_row = conn.execute(
         "SELECT active_pedido_id FROM conductores WHERE id = ?",
         (session.get("conductor_id"),),
@@ -1709,7 +1847,7 @@ def tomar():
         return jsonify({"ok": True, "pedido": pedido_to_dict(row)})
 
     flash("Servicio tomado. Aqui tienes los datos del cliente.")
-    return redirect(url_for("servicio_detalle", pedido_id=pedido_id))
+    return redirect(url_for("dashboard"))
 
 
 @app.route("/vaciar_tomados", methods=["POST"])
@@ -1874,6 +2012,15 @@ def servicios_status_api():
         return jsonify({"ok": False, "error": "No autenticado."}), 401
 
     conn = get_conn()
+    driver_row = conn.execute(
+        "SELECT is_online FROM conductores WHERE id = ?",
+        (session.get("conductor_id"),),
+    ).fetchone()
+    is_online = bool(driver_row["is_online"]) if driver_row and driver_row["is_online"] is not None else True
+    if not is_online:
+        conn.close()
+        return jsonify({"ok": True, "count": 0, "max_id": 0, "online": False})
+
     row = conn.execute(
         """
         SELECT COUNT(*) AS count, MAX(id) AS max_id
@@ -1885,7 +2032,77 @@ def servicios_status_api():
 
     count_val = row["count"] if row and row["count"] is not None else 0
     max_id_val = row["max_id"] if row and row["max_id"] is not None else 0
-    return jsonify({"ok": True, "count": count_val, "max_id": max_id_val})
+    return jsonify({"ok": True, "count": count_val, "max_id": max_id_val, "online": True})
+
+
+@app.route("/api/servicios/list")
+def servicios_list_api():
+    if not session.get("conductor_id"):
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    try:
+        conn = get_conn()
+        driver_row = conn.execute(
+            "SELECT is_online FROM conductores WHERE id = ?",
+            (session.get("conductor_id"),),
+        ).fetchone()
+        is_online = bool(driver_row["is_online"]) if driver_row and driver_row["is_online"] is not None else True
+        if not is_online:
+            conn.close()
+            return jsonify({"ok": True, "servicios": [], "online": False})
+        rows = conn.execute(
+            """
+            SELECT id, cliente_telefono, mensaje_cliente, timestamp
+            FROM pedidos
+            WHERE lower(estado) IN ('disponible', 'pendiente')
+            ORDER BY id ASC
+            """
+        ).fetchall()
+        conn.close()
+    except Exception:
+        rows = []
+
+    servicios = []
+    for row in rows:
+        detalles = parse_detalles(row["mensaje_cliente"] or "")
+        servicios.append(
+            {
+                "id": row["id"],
+                "telefono": row["cliente_telefono"] or "",
+                "hora": format_time(row["timestamp"]),
+                "direccion": detalles.get("Direccion", row["mensaje_cliente"] or ""),
+                "nombre": detalles.get("Nombre", "Cliente"),
+                "lat": detalles.get("Latitude") or detalles.get("Latitud") or "",
+                "lng": detalles.get("Longitude") or detalles.get("Longitud") or "",
+            }
+        )
+
+    return jsonify({"ok": True, "servicios": servicios, "online": True})
+
+
+@app.route("/api/conductor/availability", methods=["POST"])
+def conductor_availability_api():
+    if not session.get("conductor_id"):
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    data = request.get_json(silent=True) or {}
+    enabled = data.get("enabled")
+    if enabled is None:
+        enabled = request.form.get("enabled")
+
+    if isinstance(enabled, str):
+        enabled = enabled.strip().lower() in {"1", "true", "on", "si", "yes"}
+    else:
+        enabled = bool(enabled)
+
+    conn = get_conn()
+    conn.execute(
+        "UPDATE conductores SET is_online = ? WHERE id = ?",
+        (1 if enabled else 0, session.get("conductor_id")),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "online": enabled})
 
 
 @app.route("/api/chat/<int:pedido_id>")
