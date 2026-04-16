@@ -35,6 +35,7 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "servicios.db")
 EXPIRATION_MINUTES = 10
 FOLLOW_UP_INTERVAL_MINUTES = 2
 EXPIRATION_CHECK_SECONDS = 30
+TWILIO_SEND_RETRIES = 3
 EXPIRATION_MESSAGE = (
     "No logramos asignarte conductor en 10 minutos. "
     "Cancelamos la solicitud para no hacerte esperar. "
@@ -294,6 +295,7 @@ def init_db():
                 conductor_nombre TEXT,
                 conductor_placa TEXT,
                 chat_iniciado INTEGER DEFAULT 0,
+                assignment_notified INTEGER DEFAULT 0,
                 reminder_count INTEGER DEFAULT 0,
                 timestamp TEXT
             )
@@ -310,6 +312,7 @@ def init_db():
             "conductor_nombre",
             "conductor_placa",
             "chat_iniciado",
+            "assignment_notified",
             "reminder_count",
             "timestamp",
         ]
@@ -325,6 +328,7 @@ def init_db():
                     conductor_nombre TEXT,
                     conductor_placa TEXT,
                     chat_iniciado INTEGER DEFAULT 0,
+                    assignment_notified INTEGER DEFAULT 0,
                     reminder_count INTEGER DEFAULT 0,
                     timestamp TEXT
                 )
@@ -353,6 +357,7 @@ def init_db():
                 conductor_placa_col if conductor_placa_col != "NULL" else "NULL"
             )
             chat_iniciado_expr = chat_iniciado_col if chat_iniciado_col != "NULL" else "0"
+            assignment_notified_expr = "0"
             reminder_count_expr = "0"
             ts_expr = ts_col if ts_col != "NULL" else "datetime('now')"
 
@@ -365,6 +370,7 @@ def init_db():
                     conductor_nombre,
                     conductor_placa,
                     chat_iniciado,
+                    assignment_notified,
                     reminder_count,
                     timestamp
                 )
@@ -375,19 +381,28 @@ def init_db():
                     {conductor_nombre_expr},
                     {conductor_placa_expr},
                     {chat_iniciado_expr},
+                    {assignment_notified_expr},
                     {reminder_count_expr},
                     {ts_expr}
                 FROM pedidos_old
                 """
             )
             cur.execute("DROP TABLE pedidos_old")
-        elif "reminder_count" not in cols:
-            cur.execute(
-                "ALTER TABLE pedidos ADD COLUMN reminder_count INTEGER DEFAULT 0"
-            )
-            cur.execute(
-                "UPDATE pedidos SET reminder_count = 0 WHERE reminder_count IS NULL"
-            )
+        else:
+            if "assignment_notified" not in cols:
+                cur.execute(
+                    "ALTER TABLE pedidos ADD COLUMN assignment_notified INTEGER DEFAULT 0"
+                )
+                cur.execute(
+                    "UPDATE pedidos SET assignment_notified = 0 WHERE assignment_notified IS NULL"
+                )
+            if "reminder_count" not in cols:
+                cur.execute(
+                    "ALTER TABLE pedidos ADD COLUMN reminder_count INTEGER DEFAULT 0"
+                )
+                cur.execute(
+                    "UPDATE pedidos SET reminder_count = 0 WHERE reminder_count IS NULL"
+                )
 
     conn.commit()
     conn.close()
@@ -693,23 +708,28 @@ def get_twilio_client():
 def send_whatsapp_message(phone, body):
     if not is_twilio_enabled():
         print("Twilio desactivado: mensaje omitido.")
-        return True, "Twilio desactivado"
+        return False, "Twilio desactivado"
 
     client, from_number, error = get_twilio_client()
     if not client:
         return False, error
 
     to_number = ensure_whatsapp_prefix(phone)
-    try:
-        client.messages.create(
-            from_=from_number,
-            to=to_number,
-            body=body,
-        )
-        return True, ""
-    except Exception as exc:
-        print(f"Error enviando mensaje Twilio: {exc}")
-        return False, str(exc)
+    last_error = ""
+    for attempt in range(1, TWILIO_SEND_RETRIES + 1):
+        try:
+            client.messages.create(
+                from_=from_number,
+                to=to_number,
+                body=body,
+            )
+            return True, ""
+        except Exception as exc:
+            last_error = str(exc)
+            print(f"Error enviando mensaje Twilio (intento {attempt}): {exc}")
+            if attempt < TWILIO_SEND_RETRIES:
+                time.sleep(1)
+    return False, last_error or "No se pudo enviar el mensaje."
 
 
 def verificar_expiracion_servicios():
@@ -757,12 +777,13 @@ def verificar_expiracion_servicios():
             )
             if target_step > reminder_count:
                 next_step = reminder_count + 1
-                conn.execute(
-                    "UPDATE pedidos SET reminder_count = ? WHERE id = ?",
-                    (next_step, row["id"]),
-                )
                 follow_ups.append(
-                    (row["cliente_telefono"], build_follow_up_message(next_step))
+                    (
+                        row["id"],
+                        row["cliente_telefono"],
+                        next_step,
+                        build_follow_up_message(next_step),
+                    )
                 )
 
         for phone in expired_phones:
@@ -782,11 +803,22 @@ def verificar_expiracion_servicios():
         if not ok:
             print(f"No se pudo notificar expiracion a {phone}. {err}")
 
-    for phone, body in follow_ups:
+    for pedido_id, phone, next_step, body in follow_ups:
         if not phone:
             continue
         ok, err = send_whatsapp_message(phone, body)
-        if not ok:
+        if ok:
+            try:
+                conn = get_conn()
+                conn.execute(
+                    "UPDATE pedidos SET reminder_count = ? WHERE id = ?",
+                    (next_step, pedido_id),
+                )
+                conn.commit()
+                conn.close()
+            except Exception as exc:
+                print(f"No se pudo guardar seguimiento enviado para {pedido_id}: {exc}")
+        else:
             print(f"No se pudo enviar seguimiento a {phone}. {err}")
 
     return len(expired_phones)
@@ -796,6 +828,7 @@ def start_expiration_worker():
     def loop():
         while True:
             verificar_expiracion_servicios()
+            retry_assignment_notifications()
             time.sleep(EXPIRATION_CHECK_SECONDS)
 
     worker = threading.Thread(target=loop, name="servicios-expiracion", daemon=True)
@@ -814,6 +847,53 @@ def ensure_expiration_worker(debug_mode=False):
         return None
     expiration_worker = start_expiration_worker()
     return expiration_worker
+
+
+def retry_assignment_notifications():
+    try:
+        conn = get_conn()
+        rows = conn.execute(
+            """
+            SELECT id, cliente_telefono, conductor_nombre, conductor_placa
+            FROM pedidos
+            WHERE estado = 'Tomado'
+              AND COALESCE(assignment_notified, 0) = 0
+              AND cliente_telefono IS NOT NULL
+              AND cliente_telefono != ''
+            ORDER BY id ASC
+            """
+        ).fetchall()
+        conn.close()
+    except Exception as exc:
+        print(f"Error consultando notificaciones pendientes: {exc}")
+        return 0
+
+    sent_count = 0
+    for row in rows:
+        enviado, razon = send_assignment_message(
+            row["cliente_telefono"],
+            row["conductor_nombre"] or "Tu conductor",
+            row["conductor_placa"] or "-",
+        )
+        if not enviado:
+            print(
+                f"No se pudo reenviar asignacion a {row['cliente_telefono']}. {razon}"
+            )
+            continue
+        try:
+            conn = get_conn()
+            conn.execute(
+                "UPDATE pedidos SET assignment_notified = 1 WHERE id = ?",
+                (row["id"],),
+            )
+            conn.commit()
+            conn.close()
+            sent_count += 1
+        except Exception as exc:
+            print(
+                f"No se pudo marcar asignacion enviada para pedido {row['id']}: {exc}"
+            )
+    return sent_count
 
 
 def send_assignment_message(phone, conductor_nombre, conductor_placa):
@@ -1971,7 +2051,7 @@ def tomar():
     cur = conn.execute(
         """
         UPDATE pedidos
-        SET estado = 'Tomado', conductor_nombre = ?, conductor_placa = ?
+        SET estado = 'Tomado', conductor_nombre = ?, conductor_placa = ?, assignment_notified = 0
         WHERE id = ? AND lower(estado) IN ('disponible', 'pendiente')
         """,
         (session["conductor_nombre"], session["conductor_placa"], pedido_id),
@@ -2003,6 +2083,19 @@ def tomar():
             session["conductor_nombre"],
             session["conductor_placa"],
         )
+        if enviado:
+            try:
+                conn = get_conn()
+                conn.execute(
+                    "UPDATE pedidos SET assignment_notified = 1 WHERE id = ?",
+                    (pedido_id,),
+                )
+                conn.commit()
+                conn.close()
+            except Exception as exc:
+                print(
+                    f"No se pudo marcar asignacion enviada para pedido {pedido_id}: {exc}"
+                )
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             if not enviado:
                 detalle = razon or "Revisa Twilio y que el numero este habilitado."
@@ -2462,6 +2555,18 @@ def reenviar_asignacion(pedido_id):
         session.get("conductor_placa"),
     )
     if enviado:
+        try:
+            conn = get_conn()
+            conn.execute(
+                "UPDATE pedidos SET assignment_notified = 1 WHERE id = ?",
+                (pedido_id,),
+            )
+            conn.commit()
+            conn.close()
+        except Exception as exc:
+            print(
+                f"No se pudo marcar asignacion reenviada para pedido {pedido_id}: {exc}"
+            )
         flash("Mensaje enviado al cliente.")
     else:
         detalle = razon or "Revisa Twilio."
