@@ -238,6 +238,10 @@
         grid-column: span 12;
       }
 
+      .logs-panel {
+        grid-column: span 12;
+      }
+
       .toggle-row {
         display: flex;
         align-items: center;
@@ -433,6 +437,99 @@
         text-align: center;
         color: var(--muted);
         grid-column: 1 / -1;
+      }
+
+      .logs-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .logs-source {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .logs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 360px;
+        overflow: auto;
+        padding-right: 4px;
+      }
+
+      .log-item {
+        border: 1px solid var(--stroke);
+        border-radius: 14px;
+        padding: 12px 14px;
+        background: rgba(10, 13, 18, 0.8);
+      }
+
+      .log-item.error {
+        border-color: rgba(255, 107, 107, 0.35);
+      }
+
+      .log-item.warn {
+        border-color: rgba(242, 193, 78, 0.35);
+      }
+
+      .log-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .log-badges {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .log-badge {
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border: 1px solid var(--stroke);
+        color: var(--muted);
+      }
+
+      .log-badge.error {
+        color: var(--danger);
+        border-color: rgba(255, 107, 107, 0.4);
+      }
+
+      .log-badge.warn {
+        color: var(--accent);
+        border-color: rgba(242, 193, 78, 0.4);
+      }
+
+      .log-badge.info {
+        color: var(--info);
+        border-color: rgba(85, 169, 255, 0.4);
+      }
+
+      .log-time {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .log-message {
+        font-size: 13px;
+        margin-bottom: 6px;
+      }
+
+      .log-details {
+        font-size: 12px;
+        color: var(--muted);
+        white-space: pre-wrap;
+        word-break: break-word;
       }
 
       .table-panel {
@@ -760,6 +857,23 @@
             <div class="empty-state">Cargando servicios...</div>
           </div>
         </div>
+
+        <div class="panel logs-panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Logs del sistema</h3>
+              <p class="panel-sub">Errores e intentos recientes de Twilio y recordatorios</p>
+            </div>
+            <div class="logs-toolbar">
+              <span class="logs-source" id="logsSource">Cargando fuente...</span>
+              <button class="button" id="refreshLogsBtn">Recargar</button>
+              <button class="button danger" id="clearLogsBtn">Limpiar</button>
+            </div>
+          </div>
+          <div class="logs-list" id="logsList">
+            <div class="empty-state">Cargando logs...</div>
+          </div>
+        </div>
       </section>
 
       <section class="table-panel">
@@ -832,12 +946,16 @@
       const driversTableBody = document.getElementById("driversTableBody");
       const refreshServicesBtn = document.getElementById("refreshServicesBtn");
       const refreshDriversBtn = document.getElementById("refreshDriversBtn");
+      const refreshLogsBtn = document.getElementById("refreshLogsBtn");
+      const clearLogsBtn = document.getElementById("clearLogsBtn");
       const qtyInput = document.getElementById("qtyInput");
       const keypad = document.getElementById("keypad");
       const toast = document.getElementById("toast");
       const coordsInput = document.getElementById("coordsInput");
       const sendCoordsBtn = document.getElementById("sendCoordsBtn");
       const fillCoordsBtn = document.getElementById("fillCoordsBtn");
+      const logsList = document.getElementById("logsList");
+      const logsSource = document.getElementById("logsSource");
 
       const credModal = document.getElementById("credModal");
       const credUser = document.getElementById("credUser");
@@ -983,6 +1101,49 @@
         });
       }
 
+      async function loadLogs() {
+        const data = await fetchJson("/admin/api/logs?limit=80");
+        if (!data.ok) return;
+        const logs = data.logs || [];
+        logsSource.textContent = data.twilio_source || "-";
+        logsList.innerHTML = "";
+
+        if (!logs.length) {
+          logsList.innerHTML = '<div class="empty-state">No hay logs recientes.</div>';
+          return;
+        }
+
+        logs.forEach(log => {
+          const item = document.createElement("div");
+          item.className = `log-item ${log.level || "info"}`;
+          item.innerHTML = `
+            <div class="log-top">
+              <div class="log-badges">
+                <span class="log-badge ${log.level || "info"}">${log.level || "info"}</span>
+                <span class="log-badge">${log.category || "general"}</span>
+              </div>
+              <div class="log-time">${log.timestamp || "-"}</div>
+            </div>
+            <div class="log-message">${log.message || "-"}</div>
+            <div class="log-details">${log.details || ""}</div>
+          `;
+          logsList.appendChild(item);
+        });
+      }
+
+      async function clearLogs() {
+        const data = await fetchJson("/admin/api/logs/clear", {
+          method: "POST",
+          body: "{}"
+        });
+        if (data.ok) {
+          showToast("Logs limpiados");
+          loadLogs();
+        } else {
+          showToast(data.error || "No se pudieron limpiar");
+        }
+      }
+
       async function toggleTwilio() {
         const data = await fetchJson("/admin/api/twilio/toggle", { method: "POST", body: "{}" });
         if (data.ok) {
@@ -1076,12 +1237,15 @@
         loadOverview();
         loadServices();
         loadDrivers();
+        loadLogs();
       }
 
       function setupEvents() {
         twilioToggleBtn.addEventListener("click", toggleTwilio);
         refreshServicesBtn.addEventListener("click", loadServices);
         refreshDriversBtn.addEventListener("click", loadDrivers);
+        refreshLogsBtn.addEventListener("click", loadLogs);
+        clearLogsBtn.addEventListener("click", clearLogs);
 
         sendCoordsBtn?.addEventListener("click", async () => {
           const coords = coordsInput?.value || "";
