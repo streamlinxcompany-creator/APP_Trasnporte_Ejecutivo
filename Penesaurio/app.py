@@ -1137,6 +1137,80 @@ def send_chat_messages(phone, conductor_placa, conductor_message, include_system
     return False, err_msg or err_system
 
 
+def queue_assignment_notification(pedido_id, phone, conductor_nombre, conductor_placa):
+    if not phone:
+        return
+
+    def run():
+        enviado, razon = send_assignment_message(
+            phone,
+            conductor_nombre,
+            conductor_placa,
+        )
+        if enviado:
+            try:
+                conn = get_conn()
+                conn.execute(
+                    "UPDATE pedidos SET assignment_notified = 1 WHERE id = ?",
+                    (pedido_id,),
+                )
+                conn.commit()
+                conn.close()
+                log_system_event(
+                    "info",
+                    "assignment",
+                    "Asignacion enviada al tomar servicio",
+                    f"pedido={pedido_id} telefono={phone} placa={conductor_placa}",
+                )
+            except Exception as exc:
+                print(
+                    f"No se pudo marcar asignacion enviada para pedido {pedido_id}: {exc}"
+                )
+        else:
+            detalle = razon or "Revisa Twilio y que el numero este habilitado."
+            log_system_event(
+                "error",
+                "assignment",
+                "Fallo asignacion al tomar servicio",
+                f"pedido={pedido_id} telefono={phone} error={detalle}",
+            )
+
+    threading.Thread(
+        target=run,
+        name=f"pedido-{pedido_id}-assignment",
+        daemon=True,
+    ).start()
+
+
+def queue_service_completion_notification(pedido_id, phone):
+    if not phone:
+        return
+
+    def run():
+        ok, err = send_whatsapp_message(phone, "Conductor fuera de linea.")
+        if not ok:
+            detalle = err or "No se pudo notificar al cliente."
+            log_system_event(
+                "error",
+                "completion",
+                "Fallo notificacion al finalizar servicio",
+                f"pedido={pedido_id} telefono={phone} error={detalle}",
+            )
+        else:
+            log_system_event(
+                "info",
+                "completion",
+                "Notificacion enviada al finalizar servicio",
+                f"pedido={pedido_id} telefono={phone}",
+            )
+
+    threading.Thread(
+        target=run,
+        name=f"pedido-{pedido_id}-completion",
+        daemon=True,
+    ).start()
+
+
 def build_map_url():
     token = os.environ.get("MAPBOX_TOKEN")
     if local_settings:
@@ -2308,9 +2382,10 @@ def tomar():
     if not session.get("conductor_nombre") or not session.get("conductor_placa"):
         return redirect(url_for("perfil"))
 
+    is_xhr = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     pedido_id = request.form.get("pedido_id", "").strip()
     if not pedido_id:
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        if is_xhr:
             return jsonify({"ok": False, "error": "Pedido invalido."}), 400
         flash("Pedido invalido.")
         return redirect(url_for("dashboard"))
@@ -2323,7 +2398,7 @@ def tomar():
     is_online = bool(availability_row["is_online"]) if availability_row and availability_row["is_online"] is not None else True
     if not is_online:
         conn.close()
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        if is_xhr:
             return jsonify({"ok": False, "error": "Activa el modo disponible para tomar servicios."}), 409
         flash("Activa el modo disponible para tomar servicios.")
         return redirect(url_for("dashboard"))
@@ -2334,7 +2409,7 @@ def tomar():
     ).fetchone()
     if active_row and active_row["active_pedido_id"]:
         conn.close()
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        if is_xhr:
             return jsonify({"ok": False, "error": "Ya tienes un viaje activo."}), 409
         flash("Ya tienes un viaje activo.")
         return redirect(url_for("dashboard"))
@@ -2350,7 +2425,7 @@ def tomar():
 
     if cur.rowcount == 0:
         conn.close()
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        if is_xhr:
             return jsonify({"ok": False, "error": "Este servicio ya fue tomado."}), 409
         flash("Este servicio ya fue tomado por otro conductor.")
         return redirect(url_for("dashboard"))
@@ -2367,6 +2442,22 @@ def tomar():
     conn.close()
 
     cliente_telefono = row["cliente_telefono"] if row else ""
+    if is_xhr:
+        if cliente_telefono:
+            queue_assignment_notification(
+                pedido_id,
+                cliente_telefono,
+                session["conductor_nombre"],
+                session["conductor_placa"],
+            )
+        return jsonify(
+            {
+                "ok": True,
+                "pedido": pedido_to_dict(row),
+                "notification_queued": bool(cliente_telefono),
+            }
+        )
+
     if cliente_telefono:
         enviado, razon = send_assignment_message(
             cliente_telefono,
@@ -2392,19 +2483,6 @@ def tomar():
                 print(
                     f"No se pudo marcar asignacion enviada para pedido {pedido_id}: {exc}"
                 )
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            if not enviado:
-                detalle = razon or "Revisa Twilio y que el numero este habilitado."
-                log_system_event(
-                    "error",
-                    "assignment",
-                    "Fallo asignacion al tomar servicio",
-                    f"pedido={pedido_id} telefono={cliente_telefono} error={detalle}",
-                )
-                return jsonify(
-                    {"ok": True, "pedido": pedido_to_dict(row), "warning": detalle}
-                )
-            return jsonify({"ok": True, "pedido": pedido_to_dict(row)})
         if not enviado:
             detalle = razon or "Revisa Twilio y que el numero este habilitado."
             log_system_event(
@@ -2414,9 +2492,6 @@ def tomar():
                 f"pedido={pedido_id} telefono={cliente_telefono} error={detalle}",
             )
             flash(f"No se pudo enviar el mensaje al cliente. {detalle}")
-
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return jsonify({"ok": True, "pedido": pedido_to_dict(row)})
 
     flash("Servicio tomado. Aqui tienes los datos del cliente.")
     return redirect(url_for("dashboard"))
@@ -2448,6 +2523,7 @@ def finalizar_servicio():
     if not session.get("conductor_id"):
         return redirect(url_for("login"))
 
+    is_xhr = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     conn = get_conn()
     active_row = conn.execute(
         "SELECT active_pedido_id FROM conductores WHERE id = ?",
@@ -2457,7 +2533,7 @@ def finalizar_servicio():
 
     if not active_id:
         conn.close()
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        if is_xhr:
             return jsonify({"ok": False, "error": "No tienes viaje activo."}), 400
         flash("No tienes viaje activo.")
         return redirect(url_for("dashboard"))
@@ -2491,6 +2567,21 @@ def finalizar_servicio():
     conn.close()
 
     warning = ""
+    if is_xhr:
+        if pedido_row and pedido_row["cliente_telefono"]:
+            queue_service_completion_notification(
+                active_id,
+                pedido_row["cliente_telefono"],
+            )
+        return jsonify(
+            {
+                "ok": True,
+                "notification_queued": bool(
+                    pedido_row and pedido_row["cliente_telefono"]
+                ),
+            }
+        )
+
     if pedido_row:
         ok, err = send_whatsapp_message(
             pedido_row["cliente_telefono"],
@@ -2498,11 +2589,6 @@ def finalizar_servicio():
         )
         if not ok:
             warning = err or "No se pudo notificar al cliente."
-
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        if warning:
-            return jsonify({"ok": True, "warning": warning})
-        return jsonify({"ok": True})
 
     if warning:
         flash(warning)
@@ -2770,6 +2856,7 @@ def chat_send_api():
     include_system = row["chat_iniciado"] == 0
     inserted = []
     cur = conn.cursor()
+    sent_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if include_system:
         cur.execute(
             """
@@ -2779,7 +2866,7 @@ def chat_send_api():
             (
                 pedido_id,
                 f"Tu conductor ({session.get('conductor_placa')}) entro al chat.",
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                sent_at,
             ),
         )
         inserted.append(
@@ -2787,6 +2874,7 @@ def chat_send_api():
                 "id": cur.lastrowid,
                 "sender": "sistema",
                 "message": f"Tu conductor ({session.get('conductor_placa')}) entro al chat.",
+                "timestamp": sent_at,
             }
         )
         cur.execute(
@@ -2799,13 +2887,14 @@ def chat_send_api():
         INSERT INTO chat_mensajes (pedido_id, sender, message, timestamp)
         VALUES (?, 'conductor', ?, ?)
         """,
-        (pedido_id, message, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+        (pedido_id, message, sent_at),
     )
     inserted.append(
         {
             "id": cur.lastrowid,
             "sender": "conductor",
             "message": message,
+            "timestamp": sent_at,
         }
     )
     conn.commit()

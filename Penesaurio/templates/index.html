@@ -195,6 +195,10 @@
         background: var(--accent);
         box-shadow: 0 0 8px rgba(242, 199, 68, 0.6);
       }
+      .icon-dot.is-hidden {
+        opacity: 0;
+        transform: scale(0.4);
+      }
       .greeting {
         font-size: 0.95rem;
         color: var(--muted);
@@ -338,12 +342,21 @@
         position: relative;
         overflow: hidden;
         box-shadow: var(--shadow);
+        padding: 0;
+        appearance: none;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
       }
       .safety-card::after {
         content: '';
         position: absolute;
         inset: 0;
         background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(6, 8, 12, 0.7) 100%);
+      }
+      .safety-card.one::after {
+        background:
+          linear-gradient(180deg, rgba(7, 9, 13, 0.04) 0%, rgba(7, 9, 13, 0.12) 48%, rgba(7, 9, 13, 0.72) 100%);
       }
       .safety-label {
         position: absolute;
@@ -353,12 +366,27 @@
         font-weight: 600;
       }
       .safety-card.one {
-        background-image: url("{{ url_for('static', filename='FondoDashboard.jpg') }}");
-        background-size: cover;
-        background-position: center;
+        background: #dfe8f2;
       }
       .safety-card.two {
         background-image: linear-gradient(135deg, rgba(242, 199, 68, 0.15), rgba(54, 196, 135, 0.2));
+      }
+      .safety-map {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+      }
+      .safety-map .leaflet-control-container {
+        display: none;
+      }
+      .safety-card.one .safety-label {
+        display: grid;
+        gap: 2px;
+      }
+      .safety-card.one .safety-label small {
+        color: rgba(244, 246, 248, 0.72);
+        font-size: 0.72rem;
+        font-weight: 500;
       }
       .servicios-panel {
         display: grid;
@@ -650,6 +678,9 @@
         animation: swipe-countdown linear forwards;
         animation-duration: var(--countdown-ms, 7000ms);
         animation-fill-mode: forwards;
+      }
+      .swipe-track.is-submitting {
+        opacity: 0.72;
       }
       @keyframes swipe-countdown {
         from { transform: scaleX(1); }
@@ -1172,8 +1203,544 @@
         display: none;
       }
       .te-bottom-sheet.active-service {
-        max-height: 58%;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 0;
+        border-radius: 28px 28px 0 0;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(238, 243, 249, 0.98) 100%);
+        box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.2);
+        height: var(--active-sheet-height, 78%);
+        max-height: calc(100% - 18px);
+        transform: translateY(var(--active-sheet-offset, 0px));
+        transition: transform 0.24s ease, box-shadow 0.24s ease;
+        overflow: hidden;
+        backdrop-filter: blur(18px);
+      }
+      .te-bottom-sheet.active-service.is-dragging {
+        transition: none;
+      }
+      .te-stage.has-active-service .te-drawer-edge,
+      .te-stage.has-active-service .te-drawer-tab,
+      .te-stage.has-active-service .te-drawer-backdrop,
+      .te-stage.has-active-service .te-drawer,
+      .te-stage.has-active-service .te-menu-button {
+        display: none !important;
+      }
+      .te-stage.has-active-service .te-floating-bar {
+        justify-content: flex-end;
+      }
+      .te-stage.has-active-service .te-map-gradient {
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.04) 22%, rgba(10, 14, 22, 0) 56%, rgba(10, 14, 22, 0.24) 100%),
+          linear-gradient(0deg, rgba(7, 12, 22, 0.1), rgba(7, 12, 22, 0.1));
+      }
+      .te-sheet-dragger {
+        display: grid;
+        place-items: center;
+        gap: 8px;
+        padding: 10px 18px 12px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0));
+        cursor: ns-resize;
+        touch-action: none;
+        user-select: none;
+      }
+      .te-sheet-grip {
+        width: 54px;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(71, 85, 105, 0.24);
+      }
+      .te-sheet-drag-copy {
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #64748b;
+        text-align: center;
+      }
+      .te-active-scroll {
+        flex: 1 1 auto;
         overflow-y: auto;
+        padding: 0 14px calc(var(--nav-height) + env(safe-area-inset-bottom) + 34px);
+        overscroll-behavior: contain;
+      }
+      .te-sheet-head.te-sheet-head-active {
+        align-items: start;
+        padding-top: 2px;
+      }
+      .te-active-hero {
+        display: grid;
+        gap: 14px;
+        margin: 14px 0 12px;
+        padding: 16px;
+        border-radius: 22px;
+        background: linear-gradient(135deg, rgba(15, 35, 72, 0.96) 0%, rgba(20, 57, 122, 0.96) 52%, rgba(16, 116, 196, 0.94) 100%);
+        color: #eff6ff;
+        box-shadow: 0 18px 34px rgba(15, 23, 42, 0.2);
+      }
+      .te-active-route-label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.66rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(191, 219, 254, 0.84);
+      }
+      .te-active-route strong {
+        display: block;
+        font-size: 1rem;
+        line-height: 1.35;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        overflow-wrap: anywhere;
+      }
+      .te-active-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .te-active-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(191, 219, 254, 0.24);
+        background: rgba(255, 255, 255, 0.08);
+        color: #eff6ff;
+        font-size: 0.74rem;
+        line-height: 1;
+      }
+      .te-active-chip-status {
+        background: rgba(16, 185, 129, 0.16);
+        border-color: rgba(110, 231, 183, 0.34);
+        color: #d1fae5;
+      }
+      .te-active-overview {
+        display: grid;
+        gap: 14px;
+      }
+      .te-active-grid {
+        display: grid;
+        gap: 14px;
+      }
+      .te-card-eyebrow {
+        font-size: 0.64rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 6px;
+      }
+      .te-active-card,
+      .te-chat-card {
+        border-radius: 24px !important;
+        border: 1px solid rgba(148, 163, 184, 0.22) !important;
+        background: rgba(255, 255, 255, 0.94) !important;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08) !important;
+      }
+      .te-active-card .servicios-title,
+      .te-chat-card .chat-title {
+        font-size: 0.84rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .te-active-card .servicios-row {
+        grid-template-columns: 76px minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        padding: 7px 0;
+      }
+      .te-active-card .servicios-row span {
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #64748b;
+      }
+      .te-active-card .servicios-row strong {
+        font-size: 1rem;
+        line-height: 1.35;
+        color: #0f172a;
+        overflow-wrap: anywhere;
+      }
+      .te-active-actions {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+      }
+      .te-service-summary-card {
+        padding: 16px;
+      }
+      .te-service-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .te-service-summary-item {
+        display: grid;
+        gap: 6px;
+        padding: 12px 14px;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+      }
+      .te-service-summary-item.is-wide {
+        grid-column: 1 / -1;
+      }
+      .te-service-summary-item span {
+        font-size: 0.68rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #64748b;
+      }
+      .te-service-summary-item strong {
+        font-size: 1rem;
+        line-height: 1.35;
+        color: #0f172a;
+        overflow-wrap: anywhere;
+      }
+      .te-chat-launcher {
+        width: 100%;
+        border: 1px solid rgba(37, 99, 235, 0.14);
+        border-radius: 22px;
+        background: linear-gradient(135deg, rgba(239, 246, 255, 0.96) 0%, rgba(224, 242, 254, 0.94) 100%);
+        color: #0f172a;
+        display: grid;
+        gap: 10px;
+        padding: 14px 16px;
+        text-align: left;
+        cursor: pointer;
+        box-shadow: 0 14px 28px rgba(37, 99, 235, 0.08);
+      }
+      .te-chat-launcher-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .te-chat-launcher-kicker {
+        font-size: 0.64rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #2563eb;
+      }
+      .te-chat-launcher-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .te-chat-launcher-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(16, 185, 129, 0.12);
+        color: #047857;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .te-chat-launcher-pill::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.1);
+      }
+      .te-chat-launcher-copy {
+        color: #475569;
+        font-size: 0.92rem;
+        line-height: 1.45;
+      }
+      .te-chat-launcher-preview {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        color: #0f172a;
+      }
+      .te-chat-launcher-preview span {
+        font-size: 0.84rem;
+        line-height: 1.35;
+      }
+      .te-chat-launcher-preview strong {
+        flex: 0 0 auto;
+        font-size: 0.76rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #2563eb;
+      }
+      .te-bottom-sheet.active-service .te-chat-panel {
+        display: none;
+      }
+      .te-bottom-sheet.active-service.chat-open .te-active-overview {
+        display: none;
+      }
+      .te-bottom-sheet.active-service.chat-open .te-chat-panel {
+        display: grid;
+        gap: 10px;
+      }
+      .te-bottom-sheet.active-service.chat-open .te-sheet-dragger {
+        padding-bottom: 6px;
+      }
+      .te-bottom-sheet.active-service.chat-open .te-sheet-drag-copy {
+        display: none;
+      }
+      .te-chat-panel-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 2px 2px 0;
+      }
+      .te-chat-panel-kicker {
+        font-size: 0.64rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #64748b;
+      }
+      .te-chat-panel-title {
+        margin-top: 4px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #0f172a;
+      }
+      .te-chat-panel-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .te-chat-close {
+        width: 38px;
+        height: 38px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 14px;
+        background: #ffffff;
+        color: #0f172a;
+        font-size: 1.2rem;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+      }
+      .te-chat-panel-card {
+        border-radius: 24px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+        padding: 14px;
+        display: grid;
+        grid-template-rows: auto minmax(220px, 1fr) auto auto;
+        min-height: 420px;
+        gap: 12px;
+      }
+      .te-chat-card-copy {
+        color: #64748b;
+        font-size: 0.88rem;
+        line-height: 1.45;
+      }
+      .nav-btn {
+        width: 100%;
+        border: none;
+        border-radius: 18px;
+        padding: 14px 16px;
+        background: linear-gradient(135deg, #0f3ca8 0%, #2563eb 100%);
+        color: #eff6ff;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        text-decoration: none;
+        text-align: center;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 16px 28px rgba(37, 99, 235, 0.24);
+      }
+      .nav-btn::before {
+        content: '↗';
+        font-size: 1rem;
+        line-height: 1;
+      }
+      .te-nav-options {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .te-nav-option {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 10px;
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-decoration: none;
+      }
+      .te-nav-option.waze {
+        color: #0f172a;
+        background: #ecfeff;
+        border-color: rgba(8, 145, 178, 0.2);
+      }
+      .te-nav-option.call {
+        color: #065f46;
+        background: #ecfdf5;
+        border-color: rgba(16, 185, 129, 0.22);
+      }
+      .te-nav-option.is-disabled {
+        opacity: 0.55;
+        pointer-events: none;
+      }
+      .te-active-actions .swipe-track {
+        min-height: 58px;
+        padding: 7px 10px;
+        border-color: rgba(217, 119, 6, 0.28);
+        background: linear-gradient(135deg, rgba(255, 251, 235, 0.98) 0%, rgba(254, 243, 199, 0.96) 100%);
+        color: #92400e;
+      }
+      .te-active-actions .swipe-progress {
+        background: linear-gradient(90deg, rgba(245, 158, 11, 0.34), rgba(245, 158, 11, 0.12));
+      }
+      .te-active-actions .swipe-handle {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: #fff7ed;
+        box-shadow: 0 10px 18px rgba(217, 119, 6, 0.24);
+      }
+      .te-active-actions .swipe-text {
+        color: #92400e;
+        font-size: 0.7rem;
+      }
+      .chat-header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .chat-subtitle {
+        font-size: 0.8rem;
+        color: #64748b;
+        line-height: 1.4;
+      }
+      .te-chat-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(16, 185, 129, 0.1);
+        color: #047857;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .te-chat-status::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.12);
+      }
+      .chat-messages {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        align-content: flex-start;
+        gap: 10px;
+        min-height: 220px;
+        max-height: 260px;
+        overflow-y: auto;
+        padding-right: 2px;
+        padding-bottom: 18px;
+      }
+      .chat-bubble {
+        display: grid;
+        gap: 4px;
+        width: fit-content;
+        max-width: 88%;
+        padding: 11px 13px 10px;
+        border-radius: 18px;
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+      .chat-bubble-text {
+        display: block;
+      }
+      .chat-bubble-time {
+        display: block;
+        font-size: 0.7rem;
+        opacity: 0.72;
+      }
+      .quick-replies {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin: 14px 0 12px;
+      }
+      .quick-replies button {
+        min-height: 42px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background: #f8fafc;
+        color: #0f172a;
+        border-radius: 14px;
+        padding: 8px 10px;
+        font-size: 0.76rem;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .chat-form {
+        align-items: stretch;
+      }
+      .chat-input {
+        min-height: 46px;
+        border-radius: 14px;
+        padding: 10px 12px;
+        font-size: 16px;
+      }
+      .chat-send {
+        min-width: 96px;
+        border-radius: 14px;
+        padding: 0 16px;
+        font-size: 0.84rem;
+      }
+      .te-bottom-sheet.active-service.is-expanded {
+        box-shadow: 0 -26px 46px rgba(15, 23, 42, 0.24);
+      }
+      .te-bottom-sheet.active-service.is-collapsed .te-chat-card {
+        opacity: 0.98;
+      }
+      @media (min-width: 900px) {
+        .te-active-grid {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          align-items: start;
+        }
       }
       .te-sheet-head {
         display: flex;
@@ -1527,6 +2094,99 @@
           font-size: 0.62rem;
           letter-spacing: 0.06em;
         }
+        .te-bottom-sheet.active-service {
+          left: 0;
+          right: 0;
+          bottom: 0;
+          padding: 0;
+          border-radius: 26px 26px 0 0;
+          height: var(--active-sheet-height, 82%);
+          max-height: calc(100% - 10px);
+        }
+        .te-active-scroll {
+          padding: 0 12px calc(var(--nav-height) + env(safe-area-inset-bottom) + 38px);
+        }
+        .te-sheet-dragger {
+          padding: 10px 14px 10px;
+        }
+        .te-sheet-drag-copy {
+          font-size: 0.62rem;
+        }
+        .te-sheet-head.te-sheet-head-active {
+          gap: 12px;
+        }
+        .te-sheet-head-active .te-sheet-title {
+          font-size: 1.08rem;
+        }
+        .te-sheet-head-active .te-sheet-sub {
+          font-size: 0.82rem;
+        }
+        .te-active-hero {
+          margin: 12px 0 10px;
+          padding: 14px;
+          border-radius: 20px;
+        }
+        .te-active-route strong {
+          font-size: 0.92rem;
+        }
+        .te-active-chip {
+          font-size: 0.68rem;
+        }
+        .te-active-card .servicios-row {
+          grid-template-columns: 68px minmax(0, 1fr);
+          gap: 8px;
+        }
+        .te-active-card .servicios-row strong {
+          font-size: 0.92rem;
+        }
+        .te-service-summary-grid {
+          grid-template-columns: 1fr;
+        }
+        .te-service-summary-item.is-wide {
+          grid-column: auto;
+        }
+        .te-nav-options {
+          grid-template-columns: 1fr;
+        }
+        .nav-btn {
+          min-height: 52px;
+          font-size: 0.76rem;
+        }
+        .te-chat-launcher-top,
+        .te-chat-launcher-preview {
+          display: grid;
+        }
+        .te-chat-launcher-preview strong {
+          justify-self: start;
+        }
+        .te-chat-panel-actions {
+          gap: 8px;
+        }
+        .te-chat-panel-title {
+          font-size: 0.92rem;
+        }
+        .te-chat-panel-card {
+          min-height: 390px;
+          grid-template-rows: auto minmax(200px, 1fr) auto auto;
+        }
+        .chat-header {
+          display: grid;
+        }
+        .chat-messages {
+          min-height: 200px;
+          max-height: 250px;
+        }
+        .quick-replies {
+          grid-template-columns: 1fr;
+        }
+        .chat-form {
+          display: grid;
+          grid-template-columns: 1fr auto;
+        }
+        .chat-send {
+          min-width: 88px;
+          min-height: 46px;
+        }
       }
       .servicios-actions-row {
         display: grid;
@@ -1535,17 +2195,23 @@
       }
       .nav-btn {
         width: 100%;
-        border-radius: 999px;
-        border: 1px solid rgba(242, 199, 68, 0.7);
-        padding: 10px 12px;
-        background: rgba(242, 199, 68, 0.18);
-        color: #f7e6a6;
+        border: none;
+        border-radius: 18px;
+        padding: 14px 16px;
+        background: linear-gradient(135deg, #0f3ca8 0%, #2563eb 100%);
+        color: #eff6ff;
         font-family: 'Space Grotesk', sans-serif;
-        letter-spacing: 0.08em;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
         text-decoration: none;
         text-align: center;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 16px 28px rgba(37, 99, 235, 0.24);
       }
       .account-menu-btn {
         width: 48px;
@@ -1567,80 +2233,90 @@
         border-radius: 999px;
       }
       .chat-card {
-        background: rgba(18, 18, 20, 0.9);
-        border: 1px solid rgba(242, 199, 68, 0.3);
-        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 24px;
         padding: 14px;
-        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
       }
       .chat-title {
-        color: var(--accent);
+        color: #0f172a;
         font-family: 'Space Grotesk', sans-serif;
-        letter-spacing: 0.08em;
-        font-size: 0.8rem;
+        letter-spacing: 0.14em;
+        font-size: 0.84rem;
         text-transform: uppercase;
-        margin-bottom: 10px;
       }
       .chat-messages {
         display: grid;
-        gap: 8px;
-        max-height: 220px;
+        gap: 10px;
+        max-height: 260px;
         overflow-y: auto;
-        padding-right: 4px;
+        padding-right: 2px;
       }
       .chat-bubble {
-        padding: 8px 12px;
-        border-radius: 16px;
+        display: grid;
+        gap: 4px;
+        padding: 11px 13px 10px;
+        border-radius: 18px;
         font-size: 0.9rem;
         width: fit-content;
-        max-width: 85%;
+        max-width: 88%;
+        line-height: 1.4;
       }
       .chat-bubble.conductor {
         margin-left: auto;
-        background: rgba(242, 199, 68, 0.2);
-        border: 1px solid rgba(242, 199, 68, 0.5);
+        background: rgba(37, 99, 235, 0.14);
+        border: 1px solid rgba(37, 99, 235, 0.18);
       }
       .chat-bubble.cliente {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(226, 232, 240, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.22);
       }
       .chat-bubble.sistema {
-        background: rgba(185, 144, 53, 0.2);
-        border: 1px solid rgba(185, 144, 53, 0.4);
-        color: #f8e2a0;
+        background: rgba(249, 115, 22, 0.12);
+        border: 1px solid rgba(249, 115, 22, 0.2);
+        color: #0f172a;
       }
       .quick-replies {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
-        margin: 12px 0 10px;
+        margin: 14px 0 12px;
       }
       .quick-replies button {
-        border: 1px solid rgba(242, 199, 68, 0.35);
-        background: rgba(242, 199, 68, 0.08);
-        color: var(--text);
-        border-radius: 10px;
-        padding: 6px 8px;
-        font-size: 0.72rem;
+        min-height: 42px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background: #f8fafc;
+        color: #0f172a;
+        border-radius: 14px;
+        padding: 8px 10px;
+        font-size: 0.76rem;
+        font-weight: 600;
+        line-height: 1.2;
       }
       .chat-form {
         display: flex;
         gap: 8px;
+        align-items: stretch;
       }
       .chat-input {
         flex: 1;
-        background: rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(242, 199, 68, 0.3);
-        border-radius: 12px;
-        color: var(--text);
-        padding: 8px 10px;
+        min-height: 46px;
+        background: rgba(241, 245, 249, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        border-radius: 14px;
+        color: #0f172a;
+        padding: 10px 12px;
+        font-size: 0.92rem;
       }
       .chat-send {
-        background: var(--accent);
+        min-width: 96px;
+        background: #0f2b8d;
         border: none;
-        border-radius: 12px;
-        color: #1b1203;
-        padding: 8px 12px;
+        border-radius: 14px;
+        color: #ffffff;
+        padding: 0 16px;
+        font-size: 0.84rem;
         font-weight: 600;
       }
       .detail-modal {
@@ -1698,6 +2374,167 @@
         border: 1px solid rgba(242, 199, 68, 0.35);
         overflow: hidden;
         background: rgba(10, 10, 12, 0.6);
+      }
+      .action-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 11;
+      }
+      .action-modal.show {
+        display: flex;
+      }
+      .action-sheet {
+        position: relative;
+        z-index: 1;
+        width: min(92%, 420px);
+        max-height: min(82vh, 720px);
+        overflow-y: auto;
+        border-radius: 20px;
+        background: rgba(13, 16, 22, 0.96);
+        border: 1px solid rgba(242, 199, 68, 0.3);
+        padding: 18px;
+        box-shadow: 0 22px 42px rgba(0, 0, 0, 0.7);
+      }
+      .action-sheet::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+      }
+      .action-subtitle {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.4;
+      }
+      .action-body {
+        margin-top: 14px;
+        display: grid;
+        gap: 12px;
+      }
+      .action-footer {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .modal-metrics {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .modal-metric {
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .modal-metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.74rem;
+        margin-bottom: 6px;
+      }
+      .modal-metric strong {
+        display: block;
+        font-size: 0.95rem;
+        line-height: 1.35;
+      }
+      .modal-list {
+        display: grid;
+        gap: 10px;
+      }
+      .modal-list-item {
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .modal-list-item strong {
+        display: block;
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+      }
+      .modal-list-item p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+        line-height: 1.5;
+      }
+      .modal-note {
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px dashed rgba(242, 199, 68, 0.32);
+        background: rgba(242, 199, 68, 0.08);
+        color: rgba(244, 246, 248, 0.88);
+        font-size: 0.82rem;
+        line-height: 1.5;
+      }
+      .modal-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: fit-content;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: rgba(54, 196, 135, 0.16);
+        color: #9af0c8;
+      }
+      .modal-pill.is-offline {
+        background: rgba(248, 113, 113, 0.16);
+        color: #fcb2b2;
+      }
+      .modal-choice {
+        width: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text);
+        text-align: left;
+        cursor: pointer;
+      }
+      .modal-choice.active {
+        border-color: rgba(242, 199, 68, 0.52);
+        background: rgba(242, 199, 68, 0.1);
+      }
+      .modal-choice strong {
+        display: block;
+        font-size: 0.92rem;
+        margin-bottom: 4px;
+      }
+      .modal-choice span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
+      .action-btn {
+        border: none;
+        border-radius: 14px;
+        min-height: 44px;
+        padding: 10px 14px;
+        font-size: 0.86rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .action-btn.primary {
+        background: var(--accent);
+        color: #1b1203;
+      }
+      .action-btn.secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .action-btn.ghost {
+        background: transparent;
+        color: var(--muted);
+        border: 1px dashed rgba(255, 255, 255, 0.12);
       }
       #detailMap {
         width: 100%;
@@ -2400,26 +3237,26 @@
             <header class="top-bar">
               <div class="top-title">Inicio</div>
               <div class="top-actions">
-                <button class="icon-btn" type="button" aria-label="Ideas">
+                <button class="icon-btn" type="button" aria-label="Ideas" id="ideasBtn">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
                     <path d="M9 18h6" />
                     <path d="M10 22h4" />
                     <path d="M12 2a7 7 0 0 0-4 12c1 .9 1.5 1.8 1.7 3h4.6c.2-1.2.7-2.1 1.7-3A7 7 0 0 0 12 2z" />
                   </svg>
                 </button>
-                <button class="icon-btn" type="button" aria-label="Notificaciones">
+                <button class="icon-btn" type="button" aria-label="Notificaciones" id="notificationsBtn">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
                     <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14v-3a6 6 0 1 0-12 0v3a2 2 0 0 1-.6 1.4L4 17h5" />
                     <path d="M9 17a3 3 0 0 0 6 0" />
                   </svg>
-                  <span class="icon-dot"></span>
+                  <span class="icon-dot" id="notificationsDot"></span>
                 </button>
-                <button class="icon-btn" type="button" aria-label="Idioma">
+                <button class="icon-btn" type="button" aria-label="Idioma" id="localeBtn">
                   <span class="flag-dot"></span>
                 </button>
               </div>
             </header>
-            <div class="greeting">Hola {{ conductor_nombre or 'Conductor' }}, que necesitas hoy?</div>
+            <div class="greeting" id="homeGreeting">Hola {{ conductor_nombre or 'Conductor' }}, que necesitas hoy?</div>
             <div class="section-title services-title" id="servicesAnchor">Servicios</div>
             <div class="services-grid" id="servicesMenu">
               <button class="service-card" type="button" data-label="Ganancias">
@@ -2453,7 +3290,17 @@
                 </div>
                 <div class="trip-meta">Estandar · Efectivo</div>
                 <div class="trip-meta">{{ ultimo.timestamp }}</div>
-                <button class="trip-cta" type="button">Ver detalles</button>
+                <button
+                  class="trip-cta"
+                  type="button"
+                  id="lastTripActionBtn"
+                  data-trip-id="{{ ultimo.id }}"
+                  data-trip-origen="{{ ultimo.detalles.get('Direccion', ultimo.mensaje_cliente) }}"
+                  data-trip-cliente="{{ ultimo.detalles.get('Nombre', 'Cliente') }}"
+                  data-trip-telefono="{{ ultimo.cliente_telefono }}"
+                  data-trip-hora="{{ ultimo.hora }}"
+                  data-trip-timestamp="{{ ultimo.timestamp }}"
+                >Ver detalles</button>
               {% else %}
                 <div class="trip-header">
                   <div class="trip-icon">TR</div>
@@ -2462,18 +3309,19 @@
                     <div class="trip-meta">Tus proximos servicios apareceran aqui.</div>
                   </div>
                 </div>
-                <button class="trip-cta" type="button">Solicitar servicio</button>
+                <button class="trip-cta" type="button" id="lastTripActionBtn" data-empty-trip="1">Solicitar servicio</button>
               {% endif %}
             </div>
 
             <div class="section-title">Viaja con seguridad</div>
             <div class="safety-scroll">
-              <div class="safety-card one">
-                <div class="safety-label">Rastreo en vivo</div>
-              </div>
-              <div class="safety-card two">
+              <button class="safety-card one" type="button" id="safetyTrackingBtn">
+                <div class="safety-map" id="safetyLiveMap" aria-hidden="true"></div>
+                <div class="safety-label">Rastreo en vivo<small>Tu ubicacion actual</small></div>
+              </button>
+              <button class="safety-card two" type="button" id="safetyVerifiedBtn">
                 <div class="safety-label">Conductores verificados</div>
-              </div>
+              </button>
             </div>
           </section>
 
@@ -2481,7 +3329,7 @@
             {% set active_lat = active_pedido.detalles.get('Latitude', active_pedido.detalles.get('Latitud', '')) if active_pedido else '' %}
             {% set active_lng = active_pedido.detalles.get('Longitude', active_pedido.detalles.get('Longitud', '')) if active_pedido else '' %}
             <div class="servicios-panel te-panel-shell">
-              <div class="te-stage" id="teStage">
+              <div class="te-stage{% if active_pedido %} has-active-service{% endif %}" id="teStage">
                 <div class="route-map-wrap te-map-shell" id="serviceMapWrap"
                   data-client-lat="{{ active_lat }}"
                   data-client-lng="{{ active_lng }}">
@@ -2627,63 +3475,132 @@
 
                 <div class="te-bottom-sheet{% if active_pedido %} active-service{% else %} is-hidden{% endif %}" id="serviceBottomSheet">
                   {% if active_pedido %}
-                    <div class="te-sheet-head">
-                      <div>
-                        <div class="te-sheet-kicker">Servicio en curso</div>
-                        <div class="te-sheet-title">{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</div>
-                        <div class="te-sheet-sub">{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</div>
-                      </div>
-                      <div class="te-sheet-meta">
-                        <strong>{{ active_pedido.hora }}</strong>
-                        <span class="te-active-summary">En ruta</span>
-                      </div>
+                    <div class="te-sheet-dragger" id="activeServiceGrabber" role="button" tabindex="0" aria-label="Deslizar panel del servicio">
+                      <span class="te-sheet-grip" aria-hidden="true"></span>
+                      <span class="te-sheet-drag-copy">Desliza para ver mapa, acciones y chat</span>
                     </div>
 
-                    <div class="servicios-card active te-active-card">
-                      <div class="servicios-title">Datos del servicio</div>
-                      <div class="servicios-row">
-                        <span>Origen</span>
-                        <strong>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</strong>
-                      </div>
-                      <div class="servicios-row">
-                        <span>Cliente</span>
-                        <strong>{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</strong>
-                      </div>
-                      <div class="servicios-row">
-                        <span>Telefono</span>
-                        <strong>{{ active_pedido.cliente_telefono }}</strong>
-                      </div>
-                      <div class="servicios-actions-row">
-                        <a class="nav-btn" href="https://www.google.com/maps/search/?api=1&query={{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente)|urlencode }}" target="_blank" rel="noopener">
-                          Navega
-                        </a>
-                        <form method="post" action="{{ url_for('finalizar_servicio') }}">
-                          <div class="swipe-track" data-swipe>
-                            <div class="swipe-progress"></div>
-                            <span class="swipe-handle">»</span>
-                            <span class="swipe-text">Desliza para finalizar servicio</span>
+                    <div class="te-active-scroll" id="activeServiceContent">
+                      <div class="te-active-overview" id="activeServiceOverview">
+                        <div class="te-sheet-head te-sheet-head-active">
+                          <div>
+                            <div class="te-sheet-kicker">Servicio en curso</div>
+                            <div class="te-sheet-title">{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</div>
+                            <div class="te-sheet-sub">{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</div>
                           </div>
-                        </form>
-                      </div>
-                    </div>
+                          <div class="te-sheet-meta">
+                            <strong>{{ active_pedido.hora }}</strong>
+                            <span class="te-active-summary">En ruta</span>
+                          </div>
+                        </div>
 
-                    <div class="chat-card te-chat-card">
-                      <div class="chat-title">Chat con cliente</div>
-                      <div class="chat-messages" id="chatMessages" data-last-id="{% if chat_messages %}{{ chat_messages[-1].id }}{% else %}0{% endif %}">
-                        {% for msg in chat_messages %}
-                          <div class="chat-bubble {{ msg.sender }}">{{ msg.message }}</div>
-                        {% endfor %}
+                        <div class="te-active-hero">
+                          <div class="te-active-route">
+                            <span class="te-active-route-label">Origen</span>
+                            <strong>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</strong>
+                          </div>
+                          <div class="te-active-chip-row">
+                            <span class="te-active-chip">{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</span>
+                            <span class="te-active-chip">{{ active_pedido.cliente_telefono }}</span>
+                            <span class="te-active-chip te-active-chip-status">Listo para navegar</span>
+                          </div>
+                        </div>
+
+                        <button type="button" class="te-chat-launcher" id="openChatPanelBtn">
+                          <div class="te-chat-launcher-top">
+                            <div>
+                              <div class="te-chat-launcher-kicker">Mensajes</div>
+                              <div class="te-chat-launcher-title">Chat</div>
+                            </div>
+                            <span class="te-chat-launcher-pill">En vivo</span>
+                          </div>
+                          <div class="te-chat-launcher-copy">Abre el chat cuando necesites escribirle al cliente, sin dejar todo tan pegado en la pantalla.</div>
+                          <div class="te-chat-launcher-preview">
+                            <span id="chatLauncherPreview">Ver conversacion con el cliente</span>
+                            <strong>Abrir</strong>
+                          </div>
+                        </button>
+
+                        <div class="servicios-card active te-active-card te-service-summary-card">
+                          <div class="te-card-eyebrow">Servicio</div>
+                          <div class="servicios-title">Datos del servicio</div>
+                          <div class="te-service-summary-grid">
+                            <div class="te-service-summary-item is-wide">
+                              <span>Origen</span>
+                              <strong>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</strong>
+                            </div>
+                            <div class="te-service-summary-item">
+                              <span>Cliente</span>
+                              <strong>{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</strong>
+                            </div>
+                            <div class="te-service-summary-item">
+                              <span>Telefono</span>
+                              <strong>{{ active_pedido.cliente_telefono }}</strong>
+                            </div>
+                          </div>
+                          <div class="te-active-actions">
+                            <button
+                              type="button"
+                              class="nav-btn"
+                              id="openNavigationBtn"
+                              data-destination-lat="{{ active_lat }}"
+                              data-destination-lng="{{ active_lng }}"
+                              data-destination-address="{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}"
+                              data-destination-label="{{ active_pedido.detalles.get('Nombre', 'Cliente') }}"
+                              data-destination-phone="{{ active_pedido.cliente_telefono }}"
+                            >
+                              Abrir en mi app
+                            </button>
+                            <div class="te-nav-options">
+                              <a class="te-nav-option google" id="googleMapsBtn" href="https://www.google.com/maps/search/?api=1&query={{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente)|urlencode }}" target="_blank" rel="noopener">Google</a>
+                              <a class="te-nav-option waze" id="wazeBtn" href="https://waze.com/ul?q={{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente)|urlencode }}&navigate=yes" target="_blank" rel="noopener">Waze</a>
+                            </div>
+                            <form method="post" action="{{ url_for('finalizar_servicio') }}">
+                              <div class="swipe-track" data-swipe>
+                                <div class="swipe-progress"></div>
+                                <span class="swipe-handle">»</span>
+                                <span class="swipe-text">Desliza para finalizar servicio</span>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
                       </div>
-                      <div class="quick-replies">
-                        <button type="button" class="js-quick" data-text="Estoy afuera">Estoy afuera</button>
-                        <button type="button" class="js-quick" data-text="Voy en camino">Voy en camino</button>
-                        <button type="button" class="js-quick" data-text="Donde te encuentras?">Donde te encuentras?</button>
+
+                      <div class="te-chat-panel" id="activeChatPanel">
+                        <div class="te-chat-panel-top">
+                          <div>
+                            <div class="te-chat-panel-kicker">Mensajes</div>
+                            <div class="te-chat-panel-title">Chat con cliente</div>
+                          </div>
+                          <div class="te-chat-panel-actions">
+                            <div class="te-chat-status" id="chatStatus">En vivo</div>
+                            <button type="button" class="te-chat-close" id="closeChatPanelBtn" aria-label="Cerrar chat">×</button>
+                          </div>
+                        </div>
+                        <div class="te-chat-panel-card">
+                          <div class="te-chat-card-copy">Escribe cuando lo necesites. Dejamos mas aire dentro del chat para que la conversacion respire mejor.</div>
+                          <div class="chat-messages" id="chatMessages" data-last-id="{% if chat_messages %}{{ chat_messages[-1].id }}{% else %}0{% endif %}">
+                            {% for msg in chat_messages %}
+                              <div class="chat-bubble {{ msg.sender }}">
+                                <span class="chat-bubble-text">{{ msg.message }}</span>
+                                {% if msg.timestamp %}
+                                  <span class="chat-bubble-time">{{ msg.timestamp[11:16] }}</span>
+                                {% endif %}
+                              </div>
+                            {% endfor %}
+                          </div>
+                          <div class="quick-replies">
+                            <button type="button" class="js-quick" data-text="Ya llegue al punto">Ya llegue</button>
+                            <button type="button" class="js-quick" data-text="Voy en camino, dame un momento">Voy en camino</button>
+                            <button type="button" class="js-quick" data-text="Me confirmas tu ubicacion exacta?">Confirmar ubicacion</button>
+                          </div>
+                          <form class="chat-form" id="chatForm">
+                            <input type="hidden" id="chatPedidoId" value="{{ active_pedido.id }}" />
+                            <input type="text" class="chat-input" id="chatInput" placeholder="Escribe un mensaje..." autocomplete="off" />
+                            <button type="submit" class="chat-send">Enviar</button>
+                          </form>
+                        </div>
                       </div>
-                      <form class="chat-form" id="chatForm">
-                        <input type="hidden" id="chatPedidoId" value="{{ active_pedido.id }}" />
-                        <input type="text" class="chat-input" id="chatInput" placeholder="Escribe un mensaje..." autocomplete="off" />
-                        <button type="submit" class="chat-send">Enviar</button>
-                      </form>
                     </div>
                   {% else %}
                     <div class="te-sheet-head">
@@ -2890,6 +3807,21 @@
         </div>
       </div>
 
+      <div class="action-modal" id="actionModal" aria-hidden="true">
+        <div class="detail-backdrop" data-action-close></div>
+        <div class="action-sheet">
+          <div class="d-flex justify-content-between align-items-center" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <div>
+              <div class="detail-title" id="actionModalTitle">Centro rapido</div>
+              <div class="action-subtitle" id="actionModalSubtitle"></div>
+            </div>
+            <button type="button" class="detail-close" id="actionModalClose">Cerrar</button>
+          </div>
+          <div class="action-body" id="actionModalBody"></div>
+          <div class="action-footer" id="actionModalFooter"></div>
+        </div>
+      </div>
+
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -2908,6 +3840,7 @@
       const servicesList = document.getElementById('servicesList');
       const servicesStatus = document.getElementById('servicesStatus');
       const servicesFooter = document.getElementById('servicesFooter');
+      const safetyLiveMap = document.getElementById('safetyLiveMap');
       const teStage = document.getElementById('teStage');
       const teFloatingBar = document.querySelector('.te-floating-bar');
       const topOnlineCard = document.getElementById('topOnlineCard');
@@ -2933,6 +3866,25 @@
       const routeDistance = document.getElementById('routeDistance');
       const geoBtn = document.getElementById('geoBtn');
       const backToServiceBtn = document.getElementById('backToServiceBtn');
+      const homeGreeting = document.getElementById('homeGreeting');
+      const ideasBtn = document.getElementById('ideasBtn');
+      const notificationsBtn = document.getElementById('notificationsBtn');
+      const notificationsDot = document.getElementById('notificationsDot');
+      const localeBtn = document.getElementById('localeBtn');
+      const lastTripActionBtn = document.getElementById('lastTripActionBtn');
+      const safetyTrackingBtn = document.getElementById('safetyTrackingBtn');
+      const safetyVerifiedBtn = document.getElementById('safetyVerifiedBtn');
+      const activeServiceGrabber = document.getElementById('activeServiceGrabber');
+      const activeServiceContent = document.getElementById('activeServiceContent');
+      const activeServiceOverview = document.getElementById('activeServiceOverview');
+      const activeChatPanel = document.getElementById('activeChatPanel');
+      const openChatPanelBtn = document.getElementById('openChatPanelBtn');
+      const closeChatPanelBtn = document.getElementById('closeChatPanelBtn');
+      const chatLauncherPreview = document.getElementById('chatLauncherPreview');
+      const activeSheetDragCopy = document.querySelector('.te-sheet-drag-copy');
+      const openNavigationBtn = document.getElementById('openNavigationBtn');
+      const googleMapsBtn = document.getElementById('googleMapsBtn');
+      const wazeBtn = document.getElementById('wazeBtn');
       const accountAvailabilityToggle = document.getElementById('accountAvailabilityToggle');
       const accountAvailabilityDot = document.getElementById('accountAvailabilityDot');
       const accountAvailabilityText = document.getElementById('accountAvailabilityText');
@@ -2974,11 +3926,61 @@
       const SERVICE_ROUTE_ANIMATION_MS = window.innerWidth <= 480 ? 950 : 650;
       const detailDistance = document.getElementById('detailDistance');
       const detailGeoBtn = document.getElementById('detailGeoBtn');
+      const actionModal = document.getElementById('actionModal');
+      const actionModalTitle = document.getElementById('actionModalTitle');
+      const actionModalSubtitle = document.getElementById('actionModalSubtitle');
+      const actionModalBody = document.getElementById('actionModalBody');
+      const actionModalFooter = document.getElementById('actionModalFooter');
+      const actionModalClose = document.getElementById('actionModalClose');
       let detailMap = null;
       let detailMarkers = [];
       let detailRoute = null;
       let detailLine = null;
+      let safetyMap = null;
+      let safetyDriverMarker = null;
       let availabilityRequestInFlight = false;
+      let activeServiceSheetState = hasActiveService ? 'mid' : null;
+      let activeServiceSheetOffset = 0;
+      let chatPollTimer = null;
+      let chatRequestInFlight = false;
+      let notificationsSeen = false;
+      let notificationDigest = '';
+      const LOCALE_STORAGE_KEY = 'driver-dashboard-locale';
+      const LOCALE_OPTIONS = [
+        {
+          code: 'es-CO',
+          label: 'Espanol (Colombia)',
+          note: 'Formato recomendado para COP y horarios locales.',
+          greeting: (name) => `Hola ${name}, que necesitas hoy?`,
+        },
+        {
+          code: 'es',
+          label: 'Espanol internacional',
+          note: 'Mantiene el panel en espanol con formato neutral.',
+          greeting: (name) => `Hola ${name}, que necesitas hoy?`,
+        },
+        {
+          code: 'en-US',
+          label: 'English',
+          note: 'Aplica formato en ingles para resumenes y alertas rapidas.',
+          greeting: (name) => `Hi ${name}, what do you need today?`,
+        },
+      ];
+      let activeLocaleCode = 'es-CO';
+      const dashboardData = {
+        conductorNombre: {{ (conductor_nombre or 'Conductor')|tojson }},
+        conductorPlaca: {{ (conductor_placa or '')|tojson }},
+        conductorVehiculo: {{ (session.get('conductor_vehiculo') or '')|tojson }},
+        conductorModelo: {{ (session.get('conductor_modelo') or '')|tojson }},
+        gananciasTotal: {{ ganancias_total|int }},
+        gananciasFormatted: {{ ganancias_total_formatted|tojson }},
+        tripCount: {{ pedidos_mios|length }},
+        availableCount: {{ pedidos|length }},
+        latestTrip: {{ (pedidos_mios[0] if pedidos_mios else none)|tojson }},
+        recentTrips: {{ pedidos_mios[:4]|tojson }},
+        activeService: {{ active_pedido|tojson }},
+        flashMessages: {{ get_flashed_messages()|tojson }},
+      };
 
       function setActivePage(target) {
         pages.forEach((page) => {
@@ -3005,6 +4007,432 @@
             serviceMap.invalidateSize();
           }, 150);
         }
+        if (target === 'inicio' && safetyMap) {
+          setTimeout(() => {
+            safetyMap.invalidateSize();
+          }, 150);
+        }
+      }
+
+      function showToast(message, duration = 2200) {
+        if (!toast || !message) return;
+        toast.textContent = message;
+        toast.classList.add('show');
+        if (showToast.timer) {
+          clearTimeout(showToast.timer);
+        }
+        showToast.timer = setTimeout(() => {
+          toast.classList.remove('show');
+        }, duration);
+      }
+
+      function getStoredLocale() {
+        try {
+          return localStorage.getItem(LOCALE_STORAGE_KEY) || 'es-CO';
+        } catch (error) {
+          return 'es-CO';
+        }
+      }
+
+      function saveLocale(code) {
+        try {
+          localStorage.setItem(LOCALE_STORAGE_KEY, code);
+        } catch (error) {
+          // no-op
+        }
+      }
+
+      function getLocaleConfig(code) {
+        return LOCALE_OPTIONS.find((option) => option.code === code) || LOCALE_OPTIONS[0];
+      }
+
+      function applyDashboardLocale(code, options = {}) {
+        const selected = getLocaleConfig(code);
+        activeLocaleCode = selected.code;
+        saveLocale(selected.code);
+        document.documentElement.lang = selected.code;
+        if (homeGreeting) {
+          homeGreeting.textContent = selected.greeting(dashboardData.conductorNombre || 'Conductor');
+        }
+        if (localeBtn) {
+          localeBtn.setAttribute('title', selected.label);
+          localeBtn.setAttribute('aria-label', `Idioma ${selected.label}`);
+        }
+        if (options.announce) {
+          showToast(`Preferencia guardada: ${selected.label}`, 1800);
+        }
+      }
+
+      function formatMoney(amount, localeCode = activeLocaleCode) {
+        const value = Number(amount || 0);
+        return new Intl.NumberFormat(localeCode, {
+          style: 'currency',
+          currency: 'COP',
+          maximumFractionDigits: 0,
+        }).format(Number.isFinite(value) ? value : 0);
+      }
+
+      function formatDateLabel(value, localeCode = activeLocaleCode) {
+        if (!value) return '--';
+        const normalized = String(value).replace(' ', 'T');
+        const date = new Date(normalized);
+        if (Number.isNaN(date.getTime())) return String(value);
+        return new Intl.DateTimeFormat(localeCode, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(date);
+      }
+
+      function getLiveAvailableCount() {
+        if (hasActiveService) return 0;
+        if (Array.isArray(latestServices) && latestServices.length) {
+          return latestServices.length;
+        }
+        return Number(dashboardData.availableCount || 0);
+      }
+
+      function getAverageIncomePerTrip() {
+        if (!dashboardData.tripCount) return 0;
+        return Math.round(Number(dashboardData.gananciasTotal || 0) / Number(dashboardData.tripCount || 1));
+      }
+
+      function getNotificationDigest() {
+        return JSON.stringify({
+          flashCount: dashboardData.flashMessages?.length || 0,
+          hasActiveService,
+          driverOnline,
+          availableCount: getLiveAvailableCount(),
+        });
+      }
+
+      function updateNotificationDot() {
+        if (!notificationsDot) return;
+        const nextDigest = getNotificationDigest();
+        if (notificationDigest !== nextDigest) {
+          notificationDigest = nextDigest;
+          notificationsSeen = false;
+        }
+        const shouldShow = !notificationsSeen && Boolean(
+          dashboardData.flashMessages?.length ||
+          hasActiveService ||
+          !driverOnline ||
+          getLiveAvailableCount() > 0
+        );
+        notificationsDot.classList.toggle('is-hidden', !shouldShow);
+      }
+
+      function closeActionModal() {
+        if (!actionModal) return;
+        actionModal.classList.remove('show');
+        actionModal.setAttribute('aria-hidden', 'true');
+      }
+
+      function openActionModal(config) {
+        if (!actionModal || !actionModalBody || !actionModalFooter) return;
+        actionModalTitle.textContent = config?.title || 'Centro rapido';
+        actionModalSubtitle.textContent = config?.subtitle || '';
+        actionModalBody.innerHTML = config?.body || '';
+        actionModalFooter.innerHTML = '';
+
+        (config?.actions || []).forEach((action) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = `action-btn ${action.kind || 'secondary'}`;
+          button.textContent = action.label || 'Continuar';
+          button.addEventListener('click', () => {
+            if (action.closeOnClick !== false) {
+              closeActionModal();
+            }
+            action.onClick?.();
+          });
+          actionModalFooter.appendChild(button);
+        });
+
+        actionModal.classList.add('show');
+        actionModal.setAttribute('aria-hidden', 'false');
+      }
+
+      function openDashboardPage(target, options = {}) {
+        setActivePage(target);
+        if (contentWrap) {
+          contentWrap.scrollTop = 0;
+        }
+        if (target === 'servicios' && !hasActiveService) {
+          setDrawerOpen(true);
+          refreshServicesList();
+          if (options.focusMap) {
+            requestDriverPosition(true);
+          }
+        }
+        if (options.toastMessage) {
+          showToast(options.toastMessage, options.toastDuration || 1800);
+        }
+      }
+
+      function openIdeasPanel() {
+        const items = [];
+        if (hasActiveService && dashboardData.activeService) {
+          items.push({
+            title: 'Servicio activo',
+            copy: `Tienes a ${dashboardData.activeService.detalles?.Nombre || 'tu cliente'} en curso. Conviene abrir el panel del servicio para navegar o escribir por chat.`,
+          });
+        } else if (!driverOnline) {
+          items.push({
+            title: 'Vuelve a estar disponible',
+            copy: 'Tu panel esta offline. Si quieres recibir nuevos pedidos, activa el modo disponible desde servicios o mi cuenta.',
+          });
+        } else if (getLiveAvailableCount() > 0) {
+          items.push({
+            title: 'Hay trabajo en cola',
+            copy: `Ahora mismo tienes ${getLiveAvailableCount()} servicio(s) disponible(s). Puedes abrir la cola y revisar el mas cercano.`,
+          });
+        } else {
+          items.push({
+            title: 'Panel listo',
+            copy: 'Tu dashboard esta atento a nuevos pedidos. Mantente online para recibir servicios apenas entren.',
+          });
+        }
+
+        items.push({
+          title: 'Balance del turno',
+          copy: dashboardData.tripCount
+            ? `Llevas ${dashboardData.tripCount} viaje(s) y un promedio cercano de ${formatMoney(getAverageIncomePerTrip())} por servicio.`
+            : 'Aun no hay viajes suficientes para calcular un promedio de ingreso por servicio.',
+        });
+
+        items.push({
+          title: 'Ruta rapida',
+          copy: 'Desde este inicio ya puedes saltar directo a servicios, balance, viajes y cuenta sin dejar botones sueltos.',
+        });
+
+        const primaryTarget = hasActiveService ? 'servicios' : (!driverOnline ? 'cuenta' : 'servicios');
+        const primaryLabel = hasActiveService ? 'Abrir servicio' : (!driverOnline ? 'Ir a mi cuenta' : 'Ver servicios');
+
+        openActionModal({
+          title: 'Ideas para este turno',
+          subtitle: 'Acciones utiles segun tu estado actual.',
+          body: `
+            <div class="modal-list">
+              ${items.map((item) => `
+                <div class="modal-list-item">
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <p>${escapeHtml(item.copy)}</p>
+                </div>
+              `).join('')}
+            </div>
+          `,
+          actions: [
+            { label: primaryLabel, kind: 'primary', onClick: () => openDashboardPage(primaryTarget) },
+            { label: 'Ver balance', kind: 'secondary', onClick: () => openDashboardPage('balance') },
+          ],
+        });
+      }
+
+      function openNotificationsPanel() {
+        notificationsSeen = true;
+        updateNotificationDot();
+
+        const notifications = [];
+        if (dashboardData.flashMessages?.length) {
+          notifications.push({
+            title: 'Mensaje reciente',
+            copy: dashboardData.flashMessages[dashboardData.flashMessages.length - 1],
+          });
+        }
+        if (hasActiveService && dashboardData.activeService) {
+          notifications.push({
+            title: 'Servicio en curso',
+            copy: `Sigue activo el servicio de ${dashboardData.activeService.detalles?.Nombre || 'Cliente'} con placa ${dashboardData.conductorPlaca || '-'}.`,
+          });
+        } else if (driverOnline && getLiveAvailableCount() > 0) {
+          notifications.push({
+            title: 'Servicios disponibles',
+            copy: `Hay ${getLiveAvailableCount()} pedido(s) esperando conductor en este momento.`,
+          });
+        } else if (!driverOnline) {
+          notifications.push({
+            title: 'Modo offline',
+            copy: 'No estas recibiendo servicios porque el conductor esta fuera de linea.',
+          });
+        } else {
+          notifications.push({
+            title: 'Sin alertas nuevas',
+            copy: 'Todo esta en orden. El sistema seguira vigilando nuevas entradas para avisarte.',
+          });
+        }
+
+        if (dashboardData.tripCount) {
+          const lastTrip = dashboardData.latestTrip;
+          const tripAddress = lastTrip?.detalles?.Direccion || lastTrip?.mensaje_cliente || 'Tu ultimo destino';
+          notifications.push({
+            title: 'Ultimo viaje',
+            copy: `Tu viaje mas reciente fue hacia ${tripAddress}. Puedes abrir el historial para revisarlo.`,
+          });
+        }
+
+        openActionModal({
+          title: 'Notificaciones',
+          subtitle: 'Resumen rapido del estado del conductor.',
+          body: `
+            <div class="modal-list">
+              ${notifications.map((item) => `
+                <div class="modal-list-item">
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <p>${escapeHtml(item.copy)}</p>
+                </div>
+              `).join('')}
+            </div>
+          `,
+          actions: [
+            { label: hasActiveService ? 'Abrir servicio' : 'Ir a servicios', kind: 'primary', onClick: () => openDashboardPage('servicios') },
+            { label: 'Mis viajes', kind: 'secondary', onClick: () => openDashboardPage('viajes') },
+          ],
+        });
+      }
+
+      function openLocalePanel() {
+        openActionModal({
+          title: 'Idioma y region',
+          subtitle: 'Ajusta como quieres ver los resumenes rapidos del dashboard.',
+          body: `
+            <div class="modal-list">
+              ${LOCALE_OPTIONS.map((option) => `
+                <button
+                  type="button"
+                  class="modal-choice${option.code === activeLocaleCode ? ' active' : ''}"
+                  data-locale-choice="${escapeHtml(option.code)}"
+                >
+                  <strong>${escapeHtml(option.label)}</strong>
+                  <span>${escapeHtml(option.note)}</span>
+                </button>
+              `).join('')}
+            </div>
+          `,
+          actions: [
+            { label: 'Cerrar', kind: 'ghost' },
+          ],
+        });
+
+        actionModalBody.querySelectorAll('[data-locale-choice]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const nextCode = button.getAttribute('data-locale-choice');
+            applyDashboardLocale(nextCode, { announce: true });
+            closeActionModal();
+          });
+        });
+      }
+
+      function openTariffsPanel() {
+        const avgIncome = getAverageIncomePerTrip();
+        const liveCount = getLiveAvailableCount();
+        const statusLabel = driverOnline ? 'Disponible' : 'Fuera de linea';
+
+        openActionModal({
+          title: 'Tarifas y referencia',
+          subtitle: 'Resumen basado en tus viajes y ganancias acumuladas.',
+          body: `
+            <div class="modal-metrics">
+              <div class="modal-metric">
+                <span>Ganancia total</span>
+                <strong>${escapeHtml(formatMoney(dashboardData.gananciasTotal))}</strong>
+              </div>
+              <div class="modal-metric">
+                <span>Promedio por viaje</span>
+                <strong>${dashboardData.tripCount ? escapeHtml(formatMoney(avgIncome)) : 'Sin historial'}</strong>
+              </div>
+              <div class="modal-metric">
+                <span>Viajes registrados</span>
+                <strong>${escapeHtml(String(dashboardData.tripCount || 0))}</strong>
+              </div>
+              <div class="modal-metric">
+                <span>Estado actual</span>
+                <strong>${escapeHtml(statusLabel)}</strong>
+              </div>
+            </div>
+            <div class="modal-note">
+              Esta vista usa datos reales del panel. Si despues agregamos una tabla formal de tarifas, este boton ya queda listo para mostrarla sin perder el acceso rapido.
+            </div>
+            <div class="modal-list-item">
+              <strong>Servicios disponibles ahora</strong>
+              <p>${liveCount ? `Tienes ${liveCount} servicio(s) en cola para revisar.` : 'No hay servicios nuevos en cola por ahora.'}</p>
+            </div>
+          `,
+          actions: [
+            { label: 'Ir a balance', kind: 'primary', onClick: () => openDashboardPage('balance') },
+            { label: 'Ver servicios', kind: 'secondary', onClick: () => openDashboardPage('servicios') },
+          ],
+        });
+      }
+
+      function openLastTripPanel() {
+        if (!dashboardData.latestTrip) {
+          openDashboardPage('servicios', {
+            toastMessage: driverOnline ? 'Abriendo servicios disponibles.' : 'Activa el modo disponible para recibir servicios.',
+            focusMap: true,
+          });
+          return;
+        }
+
+        const trip = dashboardData.latestTrip;
+        const tripAddress = trip.detalles?.Direccion || trip.mensaje_cliente || '-';
+        const tripClient = trip.detalles?.Nombre || 'Cliente';
+        const sameAsActive = Boolean(dashboardData.activeService && Number(dashboardData.activeService.id) === Number(trip.id));
+
+        openActionModal({
+          title: 'Ultimo viaje',
+          subtitle: sameAsActive ? 'Este servicio sigue activo en tu panel.' : 'Detalle rapido de tu viaje mas reciente.',
+          body: `
+            <div class="modal-metrics">
+              <div class="modal-metric">
+                <span>Cliente</span>
+                <strong>${escapeHtml(tripClient)}</strong>
+              </div>
+              <div class="modal-metric">
+                <span>Telefono</span>
+                <strong>${escapeHtml(trip.cliente_telefono || '-')}</strong>
+              </div>
+              <div class="modal-metric">
+                <span>Hora</span>
+                <strong>${escapeHtml(trip.hora || '--')}</strong>
+              </div>
+              <div class="modal-metric">
+                <span>Fecha</span>
+                <strong>${escapeHtml(formatDateLabel(trip.timestamp))}</strong>
+              </div>
+            </div>
+            <div class="modal-list-item">
+              <strong>Origen</strong>
+              <p>${escapeHtml(tripAddress)}</p>
+            </div>
+          `,
+          actions: [
+            { label: sameAsActive ? 'Ver servicio' : 'Mis viajes', kind: 'primary', onClick: () => openDashboardPage(sameAsActive ? 'servicios' : 'viajes') },
+            { label: 'Ver balance', kind: 'secondary', onClick: () => openDashboardPage('balance') },
+          ],
+        });
+      }
+
+      function openVerificationPanel() {
+        openActionModal({
+          title: 'Perfil operativo',
+          subtitle: 'Resumen de la informacion visible en tu cuenta de conductor.',
+          body: `
+            <div class="modal-list">
+              <div class="modal-list-item">
+                <strong>${escapeHtml(dashboardData.conductorNombre || 'Conductor')}</strong>
+                <p>Placa ${escapeHtml(dashboardData.conductorPlaca || '-')} · ${escapeHtml(dashboardData.conductorVehiculo || 'Vehiculo')} ${escapeHtml(dashboardData.conductorModelo || '')}</p>
+              </div>
+            </div>
+            <div class="modal-note">
+              Tu informacion del conductor ya esta cargada en el panel. Desde mi cuenta puedes revisar disponibilidad y estado general cuando lo necesites.
+            </div>
+            <span class="modal-pill${driverOnline ? '' : ' is-offline'}">${driverOnline ? 'Disponible' : 'Offline'}</span>
+          `,
+          actions: [
+            { label: 'Mi cuenta', kind: 'primary', onClick: () => openDashboardPage('cuenta') },
+            { label: 'Cerrar', kind: 'secondary' },
+          ],
+        });
       }
 
       function setAvailabilityTogglesDisabled(disabled) {
@@ -3122,6 +4550,39 @@
         });
       });
 
+      [actionModalClose, ...document.querySelectorAll('[data-action-close]')].forEach((element) => {
+        element?.addEventListener('click', () => {
+          closeActionModal();
+        });
+      });
+
+      ideasBtn?.addEventListener('click', () => {
+        openIdeasPanel();
+      });
+
+      notificationsBtn?.addEventListener('click', () => {
+        openNotificationsPanel();
+      });
+
+      localeBtn?.addEventListener('click', () => {
+        openLocalePanel();
+      });
+
+      lastTripActionBtn?.addEventListener('click', () => {
+        openLastTripPanel();
+      });
+
+      safetyTrackingBtn?.addEventListener('click', () => {
+        openDashboardPage('servicios', {
+          toastMessage: 'Mostrando rastreo en vivo.',
+          focusMap: true,
+        });
+      });
+
+      safetyVerifiedBtn?.addEventListener('click', () => {
+        openVerificationPanel();
+      });
+
       navItems.forEach((btn) => {
         btn.addEventListener('click', () => {
           setActivePage(btn.dataset.target);
@@ -3141,6 +4602,11 @@
       }
 
       function setDrawerOpen(open) {
+        if (hasActiveService) {
+          drawerOpen = false;
+          teStage?.classList.remove('drawer-open');
+          return;
+        }
         drawerOpen = Boolean(open);
         if (!teStage) return;
         teStage.classList.toggle('drawer-open', drawerOpen);
@@ -3187,16 +4653,270 @@
       attachDrawerGesture(servicesDrawerEdge, 'open');
       attachDrawerGesture(servicesDrawer, 'close');
 
+      function formatChatTime(value) {
+        if (!value) return '';
+        const pieces = String(value).split(' ');
+        if (pieces[1] && pieces[1].length >= 5) {
+          return pieces[1].slice(0, 5);
+        }
+        return String(value).slice(0, 5);
+      }
+
+      function buildChatBubble(message) {
+        const bubble = document.createElement('div');
+        bubble.className = `chat-bubble ${message.sender || 'sistema'}`;
+
+        const text = document.createElement('span');
+        text.className = 'chat-bubble-text';
+        text.textContent = message.message || '';
+        bubble.appendChild(text);
+
+        const timeLabel = formatChatTime(message.timestamp);
+        if (timeLabel) {
+          const time = document.createElement('span');
+          time.className = 'chat-bubble-time';
+          time.textContent = timeLabel;
+          bubble.appendChild(time);
+        }
+
+        return bubble;
+      }
+
+      function appendChatMessages(messages, options = {}) {
+        if (!chatMessages || !Array.isArray(messages) || !messages.length) return;
+        const nearBottom =
+          options.forceScroll ||
+          (chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight) < 84;
+
+        messages.forEach((message) => {
+          chatMessages.appendChild(buildChatBubble(message));
+          if (message.id) {
+            chatMessages.dataset.lastId = String(message.id);
+          }
+        });
+
+        if (nearBottom) {
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        const latestMessage = messages[messages.length - 1];
+        if (chatLauncherPreview && latestMessage?.message) {
+          chatLauncherPreview.textContent = latestMessage.message;
+        }
+      }
+
+      function buildNavigationLinks(destination) {
+        const lat = destination?.lat;
+        const lng = destination?.lng;
+        const address = destination?.address || '';
+        const label = destination?.label || 'Servicio';
+        const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+        const destinationQuery = hasCoords ? `${lat},${lng}` : address;
+        const encodedQuery = encodeURIComponent(destinationQuery);
+        const encodedAddress = encodeURIComponent(address || destinationQuery);
+        const googleUrl = hasCoords
+          ? `https://www.google.com/maps/dir/?api=1&destination=${encodedQuery}&travelmode=driving`
+          : `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+        const wazeUrl = hasCoords
+          ? `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`
+          : `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
+        const geoLabel = encodeURIComponent(label);
+        const geoUrl = hasCoords
+          ? `geo:${lat},${lng}?q=${lat},${lng}(${geoLabel})`
+          : `geo:0,0?q=${encodedAddress}`;
+
+        return { googleUrl, wazeUrl, geoUrl };
+      }
+
+      function configureActiveServiceActions() {
+        if (!hasActiveService || !openNavigationBtn) return;
+
+        const lat = parseCoord(openNavigationBtn.dataset.destinationLat);
+        const lng = parseCoord(openNavigationBtn.dataset.destinationLng);
+        const address = openNavigationBtn.dataset.destinationAddress || '';
+        const label = openNavigationBtn.dataset.destinationLabel || 'Servicio';
+        const links = buildNavigationLinks({ lat, lng, address, label });
+        const preferredUrl = /Android/i.test(navigator.userAgent || '') ? links.geoUrl : links.googleUrl;
+
+        googleMapsBtn?.setAttribute('href', links.googleUrl);
+        wazeBtn?.setAttribute('href', links.wazeUrl);
+
+        openNavigationBtn.addEventListener('click', () => {
+          window.location.href = preferredUrl;
+        });
+      }
+
+      function setActiveChatPanel(open) {
+        if (!hasActiveService || !serviceBottomSheet) return;
+        serviceBottomSheet.classList.toggle('chat-open', Boolean(open));
+        if (activeSheetDragCopy) {
+          activeSheetDragCopy.textContent = open
+            ? 'Desliza para ajustar el chat sobre el mapa'
+            : 'Desliza para ver mapa, acciones y chat';
+        }
+        if (open) {
+          setActiveServiceSheetState('expanded');
+          if (chatMessages) {
+            requestAnimationFrame(() => {
+              chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+          }
+        } else {
+          setActiveServiceSheetState('mid');
+        }
+      }
+
+      function getActiveServiceSheetMetrics() {
+        if (!hasActiveService || !teStage || !serviceBottomSheet) return null;
+        const stageRect = teStage.getBoundingClientRect();
+        const maxHeight = Math.max(360, stageRect.height - 14);
+        const collapsedVisible = Math.min(Math.max(250, stageRect.height * 0.34), 310);
+        const midVisible = Math.min(Math.max(420, stageRect.height * 0.62), maxHeight - 18);
+
+        return {
+          maxHeight,
+          expanded: 0,
+          mid: Math.max(0, maxHeight - midVisible),
+          collapsed: Math.max(0, maxHeight - collapsedVisible),
+        };
+      }
+
+      function applyActiveServiceSheetOffset(offset, options = {}) {
+        if (!hasActiveService || !serviceBottomSheet) return;
+        const metrics = getActiveServiceSheetMetrics();
+        if (!metrics) return;
+
+        const clampedOffset = Math.min(Math.max(offset, metrics.expanded), metrics.collapsed);
+        const animate = options.animate !== false;
+        activeServiceSheetOffset = clampedOffset;
+
+        serviceBottomSheet.classList.toggle('is-dragging', !animate);
+        serviceBottomSheet.style.setProperty('--active-sheet-height', `${metrics.maxHeight}px`);
+        serviceBottomSheet.style.setProperty('--active-sheet-offset', `${clampedOffset}px`);
+      }
+
+      function getClosestActiveServiceState(offset, metrics) {
+        const entries = [
+          ['expanded', metrics.expanded],
+          ['mid', metrics.mid],
+          ['collapsed', metrics.collapsed],
+        ];
+        const closest = entries.reduce((winner, current) => {
+          return Math.abs(current[1] - offset) < Math.abs(winner[1] - offset) ? current : winner;
+        });
+        return closest[0];
+      }
+
+      function setActiveServiceSheetState(nextState, options = {}) {
+        if (!hasActiveService || !serviceBottomSheet) return;
+        const metrics = getActiveServiceSheetMetrics();
+        if (!metrics) return;
+
+        activeServiceSheetState = nextState in metrics ? nextState : 'mid';
+        applyActiveServiceSheetOffset(metrics[activeServiceSheetState], options);
+        serviceBottomSheet.classList.toggle('is-expanded', activeServiceSheetState === 'expanded');
+        serviceBottomSheet.classList.toggle('is-collapsed', activeServiceSheetState === 'collapsed');
+
+        window.requestAnimationFrame(() => {
+          serviceMap?.invalidateSize(false);
+          scheduleServiceMapRefresh(true);
+        });
+      }
+
+      function initActiveServiceSheet() {
+        if (!hasActiveService || !activeServiceGrabber || !serviceBottomSheet) return;
+
+        const defaultState = window.innerWidth <= 480 ? 'mid' : 'collapsed';
+        setActiveServiceSheetState(defaultState, { animate: false });
+        serviceBottomSheet.classList.remove('is-dragging');
+
+        let dragging = false;
+        let startY = 0;
+        let startOffset = 0;
+
+        activeServiceGrabber.addEventListener('pointerdown', (event) => {
+          dragging = true;
+          startY = event.clientY;
+          startOffset = activeServiceSheetOffset;
+          activeServiceGrabber.setPointerCapture(event.pointerId);
+          serviceBottomSheet.classList.add('is-dragging');
+          if (event.cancelable) event.preventDefault();
+        });
+
+        activeServiceGrabber.addEventListener('pointermove', (event) => {
+          if (!dragging) return;
+          const delta = event.clientY - startY;
+          applyActiveServiceSheetOffset(startOffset + delta, { animate: false });
+          if (event.cancelable) event.preventDefault();
+        });
+
+        const finishDrag = () => {
+          if (!dragging) return;
+          dragging = false;
+          const metrics = getActiveServiceSheetMetrics();
+          if (!metrics) return;
+          const nextState = getClosestActiveServiceState(activeServiceSheetOffset, metrics);
+          setActiveServiceSheetState(nextState);
+        };
+
+        activeServiceGrabber.addEventListener('pointerup', finishDrag);
+        activeServiceGrabber.addEventListener('pointercancel', finishDrag);
+        activeServiceGrabber.addEventListener('lostpointercapture', finishDrag);
+        activeServiceGrabber.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          const nextState = activeServiceSheetState === 'expanded' ? 'mid' : 'expanded';
+          setActiveServiceSheetState(nextState);
+        });
+
+        window.addEventListener('resize', () => {
+          setActiveServiceSheetState(activeServiceSheetState || defaultState, { animate: false });
+        });
+      }
+
+      async function pollChatMessages() {
+        if (!hasActiveService || !chatPedidoId || !chatMessages || chatRequestInFlight) return;
+        try {
+          const sinceId = chatMessages.dataset.lastId || '0';
+          const res = await fetch(`/api/chat/${chatPedidoId.value}?since_id=${sinceId}`);
+          const data = await res.json();
+          if (!data.ok) return;
+          if (data.inactive) {
+            if (chatStatus) chatStatus.textContent = 'Cerrado';
+            return;
+          }
+          appendChatMessages(data.messages || []);
+        } catch (error) {
+          // no-op
+        }
+      }
+
 
       serviceButtons.forEach((btn) => {
         btn.addEventListener('click', () => {
           serviceButtons.forEach((card) => card.classList.remove('active'));
           btn.classList.add('active');
-          if (toast) {
-            toast.textContent = `Servicio seleccionado: ${btn.dataset.label}`;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 1600);
+          const selectedLabel = btn.dataset.label || '';
+          if (selectedLabel === 'S.O.S') {
+            showToast('SOS queda pendiente para que lo completes despues.', 1800);
+            return;
           }
+          if (selectedLabel === 'Ganancias') {
+            openDashboardPage('balance', { toastMessage: 'Abriendo tu balance.' });
+            return;
+          }
+          if (selectedLabel === 'Servicios') {
+            openDashboardPage('servicios', {
+              toastMessage: driverOnline ? 'Mostrando servicios disponibles.' : 'Panel de servicios listo.',
+              focusMap: true,
+            });
+            return;
+          }
+          if (selectedLabel === 'Tarifas') {
+            openTariffsPanel();
+            return;
+          }
+          showToast(`Servicio seleccionado: ${selectedLabel}`, 1600);
         });
       });
 
@@ -3245,6 +4965,7 @@
       const chatInput = document.getElementById('chatInput');
       const chatPedidoId = document.getElementById('chatPedidoId');
       const chatMessages = document.getElementById('chatMessages');
+      const chatStatus = document.getElementById('chatStatus');
       document.querySelectorAll('.js-quick').forEach((btn) => {
         btn.addEventListener('click', () => {
           if (chatInput) chatInput.value = btn.dataset.text || '';
@@ -3254,26 +4975,47 @@
       if (chatForm) {
         chatForm.addEventListener('submit', async (event) => {
           event.preventDefault();
-          if (!chatInput || !chatPedidoId) return;
+          if (!chatInput || !chatPedidoId || chatRequestInFlight) return;
           const message = chatInput.value.trim();
           if (!message) return;
+          chatRequestInFlight = true;
+          if (chatStatus) chatStatus.textContent = 'Enviando';
+          const sendButton = chatForm.querySelector('.chat-send');
+          if (sendButton) sendButton.disabled = true;
           const formData = new FormData();
           formData.append('pedido_id', chatPedidoId.value);
           formData.append('message', message);
-          const res = await fetch('{{ url_for("chat_send_api") }}', { method: 'POST', body: formData });
-          const data = await res.json();
-          if (data && data.messages && chatMessages) {
-            data.messages.forEach((msg) => {
-              const bubble = document.createElement('div');
-              bubble.className = `chat-bubble ${msg.sender}`;
-              bubble.textContent = msg.message;
-              chatMessages.appendChild(bubble);
-            });
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+          try {
+            const res = await fetch('{{ url_for("chat_send_api") }}', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data && data.messages && chatMessages) {
+              appendChatMessages(data.messages, { forceScroll: true });
+            }
+            if (data?.warning && toast) {
+              toast.textContent = data.warning;
+              toast.classList.add('show');
+              setTimeout(() => toast.classList.remove('show'), 2200);
+            }
+          } catch (error) {
+            if (toast) {
+              toast.textContent = 'No se pudo enviar el mensaje.';
+              toast.classList.add('show');
+              setTimeout(() => toast.classList.remove('show'), 2200);
+            }
+          } finally {
+            chatRequestInFlight = false;
+            if (chatStatus) chatStatus.textContent = 'En vivo';
+            if (sendButton) sendButton.disabled = false;
           }
           chatInput.value = '';
         });
       }
+      openChatPanelBtn?.addEventListener('click', () => {
+        setActiveChatPanel(true);
+      });
+      closeChatPanelBtn?.addEventListener('click', () => {
+        setActiveChatPanel(false);
+      });
 
       function attachSwipeHandlers(scope) {
         const swipeTracks = (scope || document).querySelectorAll('[data-swipe]');
@@ -3315,6 +5057,52 @@
               progress.style.opacity = '0';
             }
             track.classList.remove('accepted');
+            track.classList.remove('is-submitting');
+          };
+
+          const submitFormAsync = async (form) => {
+            if (!form) {
+              resetTrack();
+              return;
+            }
+
+            const action = form.getAttribute('action') || '';
+            const shouldUseAsync = action === '/tomar' || action === '/finalizar';
+            if (!shouldUseAsync) {
+              form.submit();
+              return;
+            }
+
+            track.classList.add('is-submitting');
+            track.style.pointerEvents = 'none';
+
+            try {
+              const res = await fetch(action, {
+                method: (form.getAttribute('method') || 'POST').toUpperCase(),
+                headers: {
+                  'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: new FormData(form),
+              });
+              const data = await res.json();
+              if (!res.ok || !data?.ok) {
+                throw new Error(data?.error || 'No se pudo procesar la solicitud.');
+              }
+              if (toast && data?.warning) {
+                toast.textContent = data.warning;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2200);
+              }
+              window.location.href = '/dashboard';
+            } catch (error) {
+              resetTrack();
+              track.style.pointerEvents = '';
+              if (toast) {
+                toast.textContent = error.message || 'No se pudo completar la accion.';
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2200);
+              }
+            }
           };
 
           track.addEventListener('pointerdown', (event) => {
@@ -3340,7 +5128,7 @@
             if (currentX >= max * 0.8) {
               const form = track.closest('form');
               if (form) {
-                form.submit();
+                submitFormAsync(form);
                 return;
               }
             }
@@ -3531,6 +5319,7 @@
         if (mapModeLabel && !hasActiveService) {
           mapModeLabel.textContent = !driverOnline ? 'Fuera de linea' : count ? 'En linea' : 'Sin cola';
         }
+        updateNotificationDot();
       }
 
       function updateDriverStatus(text) {
@@ -3603,6 +5392,17 @@
         driverMarker.setLatLng([lat, lng]);
       }
 
+      function updateSafetyDriverMarker(lat, lng) {
+        if (!safetyMap) return;
+        if (!safetyDriverMarker) {
+          safetyDriverMarker = L.marker([lat, lng], { icon: buildMarkerIcon('driver') }).addTo(safetyMap);
+          safetyMap.setView([lat, lng], 15);
+          return;
+        }
+        safetyDriverMarker.setLatLng([lat, lng]);
+        safetyMap.setView([lat, lng], safetyMap.getZoom(), { animate: true, duration: 0.6 });
+      }
+
       function fitMapBounds(points, maxZoom = 16) {
         if (!serviceMap || !points.length) return;
         if (points.length === 1) {
@@ -3647,7 +5447,7 @@
             )
           : bottomInsetRaw;
 
-        const leftInset = servicesDrawerHandle
+        const leftInset = !hasActiveService && servicesDrawerHandle
           ? Math.max(basePad, Math.max(0, servicesDrawerHandle.getBoundingClientRect().right - mapRect.left) + (isMobileViewport ? 10 : 16))
           : basePad;
 
@@ -3987,6 +5787,7 @@
       function handleDriverPosition(lat, lng, centerMap = false) {
         driverPosition = { lat, lng };
         updateDriverMarker(lat, lng);
+        updateSafetyDriverMarker(lat, lng);
         updateDriverStatus('Carro ubicado en tiempo real');
         if (centerMap && serviceMap && !getMapTarget()) {
           serviceMap.setView([lat, lng], 15);
@@ -4054,8 +5855,35 @@
         scheduleServiceMapRefresh();
       }
 
+      function initSafetyMap() {
+        if (!safetyLiveMap || safetyMap) return;
+        safetyMap = L.map('safetyLiveMap', {
+          zoomControl: false,
+          attributionControl: false,
+          scrollWheelZoom: false,
+          dragging: false,
+          doubleClickZoom: false,
+          boxZoom: false,
+          keyboard: false,
+          tap: false,
+          touchZoom: false,
+        }).setView(driverPosition ? [driverPosition.lat, driverPosition.lng] : DEFAULT_MAP_CENTER, driverPosition ? 15 : 13);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap &copy; CARTO',
+        }).addTo(safetyMap);
+
+        if (driverPosition) {
+          updateSafetyDriverMarker(driverPosition.lat, driverPosition.lng);
+        }
+      }
+
       if (mapWrap) {
         initServiceMap();
+      }
+      if (safetyLiveMap) {
+        initSafetyMap();
       }
 
       function hydrateServicesFromDom() {
@@ -4385,6 +6213,19 @@
       attachDetailHandlers(document);
       attachServiceSelectionHandlers(document);
       applyAvailabilityState(driverOnline);
+      if (hasActiveService) {
+        configureActiveServiceActions();
+        initActiveServiceSheet();
+        if (chatMessages) {
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+          const latestBubbleText = chatMessages.querySelector('.chat-bubble:last-child .chat-bubble-text')?.textContent;
+          if (chatLauncherPreview && latestBubbleText) {
+            chatLauncherPreview.textContent = latestBubbleText;
+          }
+        }
+        pollChatMessages();
+        chatPollTimer = setInterval(pollChatMessages, 4000);
+      }
       if (!hasActiveService) {
         hydrateServicesFromDom();
         startSearchingDots();
@@ -4396,6 +6237,13 @@
         setInterval(checkPriority, 5000);
       }
 
+      applyDashboardLocale(getStoredLocale());
+      updateNotificationDot();
+      if (dashboardData.flashMessages?.length) {
+        setTimeout(() => {
+          showToast(dashboardData.flashMessages[dashboardData.flashMessages.length - 1], 2600);
+        }, 160);
+      }
       setActivePage(defaultPage);
     </script>
   </body>
