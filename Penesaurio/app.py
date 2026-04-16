@@ -5,6 +5,9 @@ import re
 import sqlite3
 import threading
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timedelta
 from secrets import token_urlsafe
 
@@ -83,6 +86,40 @@ def set_config_value(key, value):
     )
     conn.commit()
     conn.close()
+
+
+def log_system_event(level, category, message, details=""):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        conn = get_conn()
+        conn.execute(
+            """
+            INSERT INTO system_logs (level, category, message, details, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                (level or "info").strip().lower(),
+                (category or "general").strip().lower(),
+                (message or "").strip()[:255],
+                (details or "").strip()[:4000],
+                timestamp,
+            ),
+        )
+        conn.execute(
+            """
+            DELETE FROM system_logs
+            WHERE id NOT IN (
+                SELECT id
+                FROM system_logs
+                ORDER BY id DESC
+                LIMIT 500
+            )
+            """
+        )
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        print(f"No se pudo guardar log del sistema: {exc}")
 
 
 def normalize_fernet_key(raw_key):
@@ -239,6 +276,19 @@ def init_db():
         CREATE TABLE IF NOT EXISTS config (
             key TEXT PRIMARY KEY,
             value TEXT
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS system_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            level TEXT NOT NULL,
+            category TEXT NOT NULL,
+            message TEXT NOT NULL,
+            details TEXT,
+            timestamp TEXT
         )
         """
     )
@@ -689,7 +739,32 @@ def is_twilio_enabled():
     return value_text not in {"0", "false", "off", "no"}
 
 
-def get_twilio_client():
+def mask_value(value, prefix=6, suffix=4):
+    if not value:
+        return "-"
+    text = str(value)
+    if len(text) <= prefix + suffix:
+        return text
+    return f"{text[:prefix]}...{text[-suffix:]}"
+
+
+def get_twilio_source_summary():
+    env_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    env_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    env_from = os.environ.get("TWILIO_WHATSAPP_FROM")
+    local_sid = getattr(local_settings, "TWILIO_ACCOUNT_SID", None) if local_settings else None
+    local_token = getattr(local_settings, "TWILIO_AUTH_TOKEN", None) if local_settings else None
+    local_from = getattr(local_settings, "TWILIO_WHATSAPP_FROM", None) if local_settings else None
+    source = "env" if any([env_sid, env_token, env_from]) else "local_settings"
+    active_sid = env_sid or local_sid
+    active_from = env_from or local_from
+    return (
+        f"Twilio source={source} sid={mask_value(active_sid)} "
+        f"from={active_from or '-'}"
+    )
+
+
+def get_twilio_settings():
     account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
     auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
     from_number = os.environ.get("TWILIO_WHATSAPP_FROM")
@@ -699,34 +774,130 @@ def get_twilio_client():
         auth_token = auth_token or getattr(local_settings, "TWILIO_AUTH_TOKEN", None)
         from_number = from_number or getattr(local_settings, "TWILIO_WHATSAPP_FROM", None)
 
-    if not all([account_sid, auth_token, from_number, Client]):
-        return None, None, "Twilio no configurado"
+    if not all([account_sid, auth_token, from_number]):
+        return None, None, None, "Twilio no configurado"
+    return account_sid, auth_token, from_number, ""
 
-    return Client(account_sid, auth_token), from_number, ""
+
+def get_twilio_client():
+    account_sid, auth_token, from_number, error = get_twilio_settings()
+    if error:
+        return None, None, None, error
+    if not Client:
+        return None, account_sid, from_number, "SDK Twilio no disponible"
+    return Client(account_sid, auth_token), account_sid, from_number, ""
+
+
+def send_twilio_message_via_http(account_sid, auth_token, from_number, to_number, body):
+    form_data = urllib.parse.urlencode(
+        {
+            "From": from_number,
+            "To": to_number,
+            "Body": body,
+        }
+    ).encode("utf-8")
+    request = urllib.request.Request(
+        f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json",
+        data=form_data,
+        method="POST",
+    )
+    credentials = base64.b64encode(
+        f"{account_sid}:{auth_token}".encode("utf-8")
+    ).decode("ascii")
+    request.add_header("Authorization", f"Basic {credentials}")
+    request.add_header("Content-Type", "application/x-www-form-urlencoded")
+    with urllib.request.urlopen(request, timeout=15) as response:
+        payload = response.read().decode("utf-8", errors="ignore")
+        status_code = getattr(response, "status", 200)
+        if 200 <= status_code < 300:
+            return True, payload
+        return False, payload
 
 
 def send_whatsapp_message(phone, body):
     if not is_twilio_enabled():
         print("Twilio desactivado: mensaje omitido.")
+        log_system_event(
+            "warn",
+            "twilio",
+            "Envio omitido porque Twilio esta apagado",
+            f"{get_twilio_source_summary()} to={ensure_whatsapp_prefix(phone)} body={body[:180]}",
+        )
         return False, "Twilio desactivado"
 
-    client, from_number, error = get_twilio_client()
-    if not client:
-        return False, error
+    print(f"Intentando envio WhatsApp. {get_twilio_source_summary()} to={ensure_whatsapp_prefix(phone)}")
+    account_sid, auth_token, from_number, settings_error = get_twilio_settings()
+    if settings_error:
+        log_system_event("error", "twilio", "Twilio no configurado", settings_error)
+        return False, settings_error
 
     to_number = ensure_whatsapp_prefix(phone)
     last_error = ""
     for attempt in range(1, TWILIO_SEND_RETRIES + 1):
         try:
-            client.messages.create(
-                from_=from_number,
-                to=to_number,
-                body=body,
-            )
+            client, _, _, client_error = get_twilio_client()
+            if client:
+                try:
+                    client.messages.create(
+                        from_=from_number,
+                        to=to_number,
+                        body=body,
+                    )
+                except Exception as sdk_exc:
+                    print(
+                        f"SDK Twilio fallo en intento {attempt}, usando HTTP directo: {sdk_exc}"
+                    )
+                    ok_http, http_response = send_twilio_message_via_http(
+                        account_sid,
+                        auth_token,
+                        from_number,
+                        to_number,
+                        body,
+                    )
+                    if not ok_http:
+                        raise RuntimeError(http_response or str(sdk_exc))
+                    log_system_event(
+                        "info",
+                        "twilio",
+                        "Envio WhatsApp exitoso por HTTP fallback",
+                        f"to={to_number} intento={attempt} body={body[:180]}",
+                    )
+            else:
+                ok_http, http_response = send_twilio_message_via_http(
+                    account_sid,
+                    auth_token,
+                    from_number,
+                    to_number,
+                    body,
+                )
+                if not ok_http:
+                    raise RuntimeError(client_error or http_response)
+                log_system_event(
+                    "info",
+                    "twilio",
+                    "Envio WhatsApp exitoso por HTTP directo",
+                    f"to={to_number} intento={attempt} body={body[:180]}",
+                )
+            if client:
+                log_system_event(
+                    "info",
+                    "twilio",
+                    "Envio WhatsApp exitoso por SDK",
+                    f"to={to_number} intento={attempt} body={body[:180]}",
+                )
             return True, ""
         except Exception as exc:
             last_error = str(exc)
-            print(f"Error enviando mensaje Twilio (intento {attempt}): {exc}")
+            print(
+                f"Error enviando mensaje Twilio (intento {attempt}): {exc} | "
+                f"{get_twilio_source_summary()}"
+            )
+            log_system_event(
+                "error",
+                "twilio",
+                f"Error enviando WhatsApp en intento {attempt}",
+                f"to={to_number} body={body[:180]} error={last_error} source={get_twilio_source_summary()}",
+            )
             if attempt < TWILIO_SEND_RETRIES:
                 time.sleep(1)
     return False, last_error or "No se pudo enviar el mensaje."
@@ -802,6 +973,19 @@ def verificar_expiracion_servicios():
         ok, err = send_whatsapp_message(phone, EXPIRATION_MESSAGE)
         if not ok:
             print(f"No se pudo notificar expiracion a {phone}. {err}")
+            log_system_event(
+                "error",
+                "reminder",
+                "Fallo aviso de expiracion",
+                f"telefono={phone} error={err}",
+            )
+        else:
+            log_system_event(
+                "warn",
+                "reminder",
+                "Servicio expirado por tiempo",
+                f"telefono={phone}",
+            )
 
     for pedido_id, phone, next_step, body in follow_ups:
         if not phone:
@@ -816,10 +1000,22 @@ def verificar_expiracion_servicios():
                 )
                 conn.commit()
                 conn.close()
+                log_system_event(
+                    "info",
+                    "reminder",
+                    f"Recordatorio enviado #{next_step}",
+                    f"pedido={pedido_id} telefono={phone}",
+                )
             except Exception as exc:
                 print(f"No se pudo guardar seguimiento enviado para {pedido_id}: {exc}")
         else:
             print(f"No se pudo enviar seguimiento a {phone}. {err}")
+            log_system_event(
+                "error",
+                "reminder",
+                f"Fallo recordatorio #{next_step}",
+                f"pedido={pedido_id} telefono={phone} error={err}",
+            )
 
     return len(expired_phones)
 
@@ -879,6 +1075,12 @@ def retry_assignment_notifications():
             print(
                 f"No se pudo reenviar asignacion a {row['cliente_telefono']}. {razon}"
             )
+            log_system_event(
+                "error",
+                "assignment",
+                "Fallo reintento de asignacion",
+                f"pedido={row['id']} telefono={row['cliente_telefono']} error={razon}",
+            )
             continue
         try:
             conn = get_conn()
@@ -889,6 +1091,12 @@ def retry_assignment_notifications():
             conn.commit()
             conn.close()
             sent_count += 1
+            log_system_event(
+                "info",
+                "assignment",
+                "Asignacion reenviada al cliente",
+                f"pedido={row['id']} telefono={row['cliente_telefono']} placa={row['conductor_placa'] or '-'}",
+            )
         except Exception as exc:
             print(
                 f"No se pudo marcar asignacion enviada para pedido {row['id']}: {exc}"
@@ -1845,7 +2053,72 @@ def admin_twilio_toggle_api():
 
     enabled = not is_twilio_enabled()
     set_config_value("twilio_enabled", "1" if enabled else "0")
+    log_system_event(
+        "warn",
+        "admin",
+        f"Twilio {'encendido' if enabled else 'apagado'} desde admin",
+        get_twilio_source_summary(),
+    )
     return jsonify({"ok": True, "enabled": enabled})
+
+
+@app.route("/admin/api/logs")
+def admin_logs_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    limit_text = request.args.get("limit", "80").strip()
+    try:
+        limit = int(limit_text)
+    except Exception:
+        limit = 80
+    limit = max(10, min(limit, 200))
+
+    try:
+        conn = get_conn()
+        rows = conn.execute(
+            """
+            SELECT id, level, category, message, details, timestamp
+            FROM system_logs
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        conn.close()
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+    logs = []
+    for row in rows:
+        logs.append(
+            {
+                "id": row["id"],
+                "level": row["level"],
+                "category": row["category"],
+                "message": row["message"],
+                "details": row["details"] or "",
+                "timestamp": row["timestamp"] or "",
+            }
+        )
+    return jsonify({"ok": True, "logs": logs, "twilio_source": get_twilio_source_summary()})
+
+
+@app.route("/admin/api/logs/clear", methods=["POST"])
+def admin_logs_clear_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    try:
+        conn = get_conn()
+        conn.execute("DELETE FROM system_logs")
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+    log_system_event("warn", "admin", "Logs limpiados desde admin", "")
+    return jsonify({"ok": True})
 
 
 def build_panel_context():
@@ -2092,6 +2365,12 @@ def tomar():
                 )
                 conn.commit()
                 conn.close()
+                log_system_event(
+                    "info",
+                    "assignment",
+                    "Asignacion enviada al tomar servicio",
+                    f"pedido={pedido_id} telefono={cliente_telefono} placa={session['conductor_placa']}",
+                )
             except Exception as exc:
                 print(
                     f"No se pudo marcar asignacion enviada para pedido {pedido_id}: {exc}"
@@ -2099,12 +2378,24 @@ def tomar():
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             if not enviado:
                 detalle = razon or "Revisa Twilio y que el numero este habilitado."
+                log_system_event(
+                    "error",
+                    "assignment",
+                    "Fallo asignacion al tomar servicio",
+                    f"pedido={pedido_id} telefono={cliente_telefono} error={detalle}",
+                )
                 return jsonify(
                     {"ok": True, "pedido": pedido_to_dict(row), "warning": detalle}
                 )
             return jsonify({"ok": True, "pedido": pedido_to_dict(row)})
         if not enviado:
             detalle = razon or "Revisa Twilio y que el numero este habilitado."
+            log_system_event(
+                "error",
+                "assignment",
+                "Fallo asignacion al tomar servicio",
+                f"pedido={pedido_id} telefono={cliente_telefono} error={detalle}",
+            )
             flash(f"No se pudo enviar el mensaje al cliente. {detalle}")
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -2582,6 +2873,8 @@ def logout():
 
 
 init_db()
+print(get_twilio_source_summary())
+log_system_event("info", "startup", "Aplicacion iniciada", get_twilio_source_summary())
 
 if __name__ == "__main__":
     debug_mode = True
