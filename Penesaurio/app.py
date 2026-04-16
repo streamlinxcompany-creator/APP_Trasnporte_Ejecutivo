@@ -1020,6 +1020,13 @@ def verificar_expiracion_servicios():
 
 def start_expiration_worker():
     def loop():
+        print("Worker de recordatorios iniciado.")
+        log_system_event(
+            "info",
+            "worker",
+            "Worker de recordatorios iniciado",
+            threading.current_thread().name,
+        )
         while True:
             verificar_expiracion_servicios()
             retry_assignment_notifications()
@@ -1041,6 +1048,16 @@ def ensure_expiration_worker(debug_mode=False):
         return None
     expiration_worker = start_expiration_worker()
     return expiration_worker
+
+
+def ensure_runtime_workers(reason="runtime"):
+    worker_was_alive = bool(expiration_worker and expiration_worker.is_alive())
+    worker = ensure_expiration_worker(debug_mode=False)
+    if worker and worker.is_alive() and not worker_was_alive:
+        details = f"reason={reason} thread={worker.name}"
+        print(f"Worker de recordatorios activo. {details}")
+        log_system_event("info", "worker", "Worker de recordatorios activo", details)
+    return worker
 
 
 def retry_assignment_notifications():
@@ -1188,6 +1205,11 @@ def respond_client(phone, text):
     xml = str(resp)
     print(f"TwiML -> {xml}")
     return xml, 200, {"Content-Type": "text/xml; charset=utf-8"}
+
+
+@app.before_request
+def ensure_background_runtime():
+    ensure_runtime_workers(reason=request.path or "request")
 
 
 def admin_session_active():
