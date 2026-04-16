@@ -1,6 +1,7 @@
 ﻿import base64
 import hashlib
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -484,7 +485,7 @@ def build_direcciones_prompt(direcciones):
         return ""
     lineas = ["Selecciona una de tus ubicaciones guardadas o escribe una nueva:"]
     for idx, row in enumerate(direcciones, start=1):
-        direccion = row["direccion"]
+        direccion = format_saved_address(row["direccion"])
         lineas.append(f"{idx}. [{direccion}]")
     lineas.append("Escribe NUEVA para agregar otra direcciÃ³n.")
     return "\n".join(lineas)
@@ -519,6 +520,30 @@ def normalize_text(value):
     for key, val in replacements.items():
         text = text.replace(key, val)
     return " ".join(text.split())
+
+
+def parse_coords_from_text(value):
+    if not value:
+        return None, None
+    matches = re.findall(r"-?\d+(?:\.\d+)?", str(value))
+    if len(matches) < 2:
+        return None, None
+    try:
+        lat = float(matches[0])
+        lng = float(matches[1])
+    except Exception:
+        return None, None
+    return lat, lng
+
+
+def format_saved_address(value):
+    text = (value or "").strip().strip("[]")
+    if not text:
+        return ""
+    normalized = normalize_text(text)
+    if normalized.startswith("ubicacion:"):
+        text = text.split(":", 1)[1].strip()
+    return text
 
 
 def is_reserved_direccion(value):
@@ -606,9 +631,16 @@ def get_latest_taken_service(cur, telefono):
 
 def build_customer_request_payload(nombre, direccion, location_payload):
     partes = [f"Nombre: {nombre}", f"Direccion: {direccion}"]
-    if location_payload.get("latitude") and location_payload.get("longitude"):
-        partes.append(f"Latitude: {location_payload['latitude']}")
-        partes.append(f"Longitude: {location_payload['longitude']}")
+    latitude = location_payload.get("latitude")
+    longitude = location_payload.get("longitude")
+    if (not latitude or not longitude) and direccion:
+        parsed_lat, parsed_lng = parse_coords_from_text(direccion)
+        if parsed_lat is not None and parsed_lng is not None:
+            latitude = str(parsed_lat)
+            longitude = str(parsed_lng)
+    if latitude and longitude:
+        partes.append(f"Latitude: {latitude}")
+        partes.append(f"Longitude: {longitude}")
     return " | ".join(partes)
 
 
@@ -769,6 +801,19 @@ def start_expiration_worker():
     worker = threading.Thread(target=loop, name="servicios-expiracion", daemon=True)
     worker.start()
     return worker
+
+
+expiration_worker = None
+
+
+def ensure_expiration_worker(debug_mode=False):
+    global expiration_worker
+    if expiration_worker and expiration_worker.is_alive():
+        return expiration_worker
+    if debug_mode and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        return None
+    expiration_worker = start_expiration_worker()
+    return expiration_worker
 
 
 def send_assignment_message(phone, conductor_nombre, conductor_placa):
@@ -2191,15 +2236,23 @@ def servicios_list_api():
     servicios = []
     for row in rows:
         detalles = parse_detalles(row["mensaje_cliente"] or "")
+        direccion = detalles.get("Direccion", row["mensaje_cliente"] or "")
+        lat = detalles.get("Latitude") or detalles.get("Latitud") or ""
+        lng = detalles.get("Longitude") or detalles.get("Longitud") or ""
+        if (not lat or not lng) and direccion:
+            parsed_lat, parsed_lng = parse_coords_from_text(direccion)
+            if parsed_lat is not None and parsed_lng is not None:
+                lat = str(parsed_lat)
+                lng = str(parsed_lng)
         servicios.append(
             {
                 "id": row["id"],
                 "telefono": row["cliente_telefono"] or "",
                 "hora": format_time(row["timestamp"]),
-                "direccion": detalles.get("Direccion", row["mensaje_cliente"] or ""),
+                "direccion": format_saved_address(direccion),
                 "nombre": detalles.get("Nombre", "Cliente"),
-                "lat": detalles.get("Latitude") or detalles.get("Latitud") or "",
-                "lng": detalles.get("Longitude") or detalles.get("Longitud") or "",
+                "lat": lat,
+                "lng": lng,
             }
         )
 
@@ -2427,8 +2480,9 @@ init_db()
 
 if __name__ == "__main__":
     debug_mode = True
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not debug_mode:
-        start_expiration_worker()
+    ensure_expiration_worker(debug_mode=debug_mode)
     app.run(host="0.0.0.0", port=5000, debug=debug_mode)
+else:
+    ensure_expiration_worker(debug_mode=False)
 
 

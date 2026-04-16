@@ -3409,14 +3409,16 @@
 
       function normalizeService(service) {
         if (!service) return null;
+        const direccion = service.direccion || service.origen || '';
+        const parsedCoords = parseCoordsFromText(direccion);
         return {
           id: Number(service.id),
           nombre: service.nombre || 'Cliente',
           telefono: service.telefono || '',
-          direccion: service.direccion || service.origen || '',
+          direccion,
           hora: service.hora || '',
-          lat: parseCoord(service.lat),
-          lng: parseCoord(service.lng),
+          lat: parseCoord(service.lat) ?? parsedCoords?.lat ?? null,
+          lng: parseCoord(service.lng) ?? parsedCoords?.lng ?? null,
         };
       }
 
