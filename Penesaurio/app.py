@@ -734,9 +734,7 @@ def get_config_value(key, default=None):
 
 
 def is_twilio_enabled():
-    value = get_config_value("twilio_enabled", "1")
-    value_text = str(value).strip().lower()
-    return value_text not in {"0", "false", "off", "no"}
+    return True
 
 
 def mask_value(value, prefix=6, suffix=4):
@@ -2050,16 +2048,13 @@ def admin_driver_password_api():
 def admin_twilio_toggle_api():
     if not admin_session_active():
         return jsonify({"ok": False, "error": "No autenticado."}), 401
-
-    enabled = not is_twilio_enabled()
-    set_config_value("twilio_enabled", "1" if enabled else "0")
-    log_system_event(
-        "warn",
-        "admin",
-        f"Twilio {'encendido' if enabled else 'apagado'} desde admin",
-        get_twilio_source_summary(),
-    )
-    return jsonify({"ok": True, "enabled": enabled})
+    return jsonify(
+        {
+            "ok": False,
+            "error": "Twilio queda siempre activo. Esta opcion fue removida.",
+            "enabled": True,
+        }
+    ), 400
 
 
 @app.route("/admin/api/logs")

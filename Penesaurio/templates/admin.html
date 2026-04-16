@@ -774,17 +774,16 @@
           <div class="panel-header">
             <div>
               <h3 class="panel-title">Canal Twilio</h3>
-              <p class="panel-sub">Control de mensajeria</p>
+              <p class="panel-sub">Mensajeria siempre activa</p>
             </div>
           </div>
           <div class="toggle-row">
             <div class="toggle-indicator">
               <span class="dot" id="twilioDot"></span>
-              <span id="twilioLabel">Estado</span>
+              <span id="twilioLabel">Twilio siempre activo</span>
             </div>
-            <button class="button" id="twilioToggleBtn">Cambiar</button>
           </div>
-          <div class="hint">Si el canal esta apagado, no se envian mensajes a WhatsApp.</div>
+          <div class="hint">La mensajeria ya no se puede apagar desde este panel.</div>
         </div>
 
         <div class="panel generator-panel">
@@ -940,7 +939,6 @@
       const syncStatus = document.getElementById("syncStatus");
       const twilioDot = document.getElementById("twilioDot");
       const twilioLabel = document.getElementById("twilioLabel");
-      const twilioToggleBtn = document.getElementById("twilioToggleBtn");
       const servicesList = document.getElementById("servicesList");
       const activeDriversList = document.getElementById("activeDriversList");
       const driversTableBody = document.getElementById("driversTableBody");
@@ -1022,8 +1020,7 @@
         twilioDot.style.boxShadow = data.twilio_enabled
           ? "0 0 12px rgba(70, 225, 159, 0.6)"
           : "0 0 12px rgba(255, 107, 107, 0.6)";
-        twilioLabel.textContent = data.twilio_enabled ? "Twilio encendido" : "Twilio apagado";
-        twilioToggleBtn.textContent = data.twilio_enabled ? "Apagar" : "Encender";
+        twilioLabel.textContent = "Twilio siempre activo";
 
         renderActiveDrivers(data.active_drivers || []);
       }
@@ -1144,14 +1141,6 @@
         }
       }
 
-      async function toggleTwilio() {
-        const data = await fetchJson("/admin/api/twilio/toggle", { method: "POST", body: "{}" });
-        if (data.ok) {
-          showToast(data.enabled ? "Twilio encendido" : "Twilio apagado");
-          loadOverview();
-        }
-      }
-
       async function generateServices(qty) {
         const data = await fetchJson("/admin/api/services/generate", {
           method: "POST",
@@ -1241,7 +1230,6 @@
       }
 
       function setupEvents() {
-        twilioToggleBtn.addEventListener("click", toggleTwilio);
         refreshServicesBtn.addEventListener("click", loadServices);
         refreshDriversBtn.addEventListener("click", loadDrivers);
         refreshLogsBtn.addEventListener("click", loadLogs);
