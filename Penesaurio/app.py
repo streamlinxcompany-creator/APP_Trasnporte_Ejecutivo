@@ -2259,7 +2259,7 @@ def build_panel_context():
     if not active_pedido_id and driver_online:
         rows = conn.execute(
             """
-            SELECT id, cliente_telefono, mensaje_cliente, timestamp
+            SELECT id, estado, cliente_telefono, mensaje_cliente, timestamp
             FROM pedidos
             WHERE lower(estado) IN ('disponible', 'pendiente')
             ORDER BY id ASC
@@ -2268,7 +2268,7 @@ def build_panel_context():
 
     rows_mios = conn.execute(
         """
-        SELECT id, cliente_telefono, mensaje_cliente, timestamp
+        SELECT id, estado, cliente_telefono, mensaje_cliente, timestamp
         FROM pedidos
         WHERE estado IN ('Tomado', 'Completado')
           AND conductor_nombre = ? AND conductor_placa = ?
@@ -2288,6 +2288,7 @@ def build_panel_context():
         pedidos.append(
             {
                 "id": row["id"],
+                "estado": row["estado"],
                 "cliente_telefono": row["cliente_telefono"],
                 "mensaje_cliente": row["mensaje_cliente"],
                 "timestamp": row["timestamp"],
@@ -2301,6 +2302,7 @@ def build_panel_context():
         pedidos_mios.append(
             {
                 "id": row["id"],
+                "estado": row["estado"],
                 "cliente_telefono": row["cliente_telefono"],
                 "mensaje_cliente": row["mensaje_cliente"],
                 "timestamp": row["timestamp"],

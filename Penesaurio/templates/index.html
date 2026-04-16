@@ -124,6 +124,8 @@
         align-items: center;
         justify-content: space-between;
         margin-bottom: 18px;
+        position: relative;
+        z-index: 9;
       }
       .service-alert {
         display: flex;
@@ -174,6 +176,11 @@
         cursor: pointer;
         appearance: none;
       }
+      .icon-btn.is-open {
+        border-color: rgba(242, 199, 68, 0.5);
+        background: rgba(28, 31, 39, 0.96);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+      }
       .icon-btn svg {
         width: 18px;
         height: 18px;
@@ -198,6 +205,69 @@
       .icon-dot.is-hidden {
         opacity: 0;
         transform: scale(0.4);
+      }
+      .top-dropdown {
+        position: absolute;
+        top: calc(100% + 10px);
+        right: 0;
+        width: min(330px, calc(100vw - 36px));
+        padding: 14px;
+        border-radius: 20px;
+        border: 1px solid rgba(242, 199, 68, 0.26);
+        background:
+          radial-gradient(circle at top right, rgba(242, 199, 68, 0.14), transparent 36%),
+          linear-gradient(180deg, rgba(16, 19, 26, 0.98), rgba(11, 13, 18, 0.98));
+        box-shadow: 0 26px 48px rgba(0, 0, 0, 0.44);
+        backdrop-filter: blur(16px);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-10px) scale(0.98);
+        transform-origin: top right;
+        transition: opacity 0.2s ease, transform 0.22s ease;
+      }
+      .top-dropdown.show {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0) scale(1);
+      }
+      .top-dropdown::before {
+        content: '';
+        position: absolute;
+        top: -7px;
+        right: 18px;
+        width: 14px;
+        height: 14px;
+        border-left: 1px solid rgba(242, 199, 68, 0.22);
+        border-top: 1px solid rgba(242, 199, 68, 0.22);
+        background: rgba(18, 22, 30, 0.98);
+        transform: rotate(45deg);
+      }
+      .top-dropdown-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .top-dropdown-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      .top-dropdown-body {
+        margin-top: 12px;
+        display: grid;
+        gap: 10px;
+      }
+      .top-dropdown-footer {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
       }
       .greeting {
         font-size: 0.95rem;
@@ -2732,11 +2802,108 @@
       .viajes-panel {
         display: grid;
         gap: 14px;
+        min-width: 0;
+        max-width: 100%;
       }
       .viajes-summary {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
         gap: 12px;
+        min-width: 0;
+      }
+      .viajes-toolbar {
+        display: grid;
+        gap: 10px;
+        padding: 14px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        min-width: 0;
+        overflow: hidden;
+      }
+      .viajes-toolbar-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-width: 0;
+      }
+      .viajes-toolbar-copy {
+        min-width: 0;
+      }
+      .viajes-toolbar-copy strong {
+        display: block;
+        font-size: 0.94rem;
+        margin-bottom: 4px;
+        overflow-wrap: anywhere;
+      }
+      .viajes-toolbar-copy span {
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+      .viajes-filter-scroll {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .viajes-filter-scroll::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+      }
+      .viajes-filter-chip {
+        flex: 0 0 auto;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        min-height: 38px;
+        padding: 0 14px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .viajes-filter-chip.active {
+        border-color: rgba(242, 199, 68, 0.44);
+        background: rgba(242, 199, 68, 0.14);
+        color: var(--accent);
+      }
+      .viajes-date-tools {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex-wrap: wrap;
+      }
+      .viajes-date-input {
+        flex: 1 1 auto;
+        min-height: 42px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(8, 10, 14, 0.52);
+        color: var(--text);
+        padding: 0 12px;
+        font-family: inherit;
+        min-width: 0;
+      }
+      .viajes-clear-btn {
+        flex: 0 0 auto;
+        min-height: 42px;
+        padding: 0 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .viajes-clear-btn.is-hidden {
+        display: none;
       }
       .viajes-stat {
         background: rgba(255, 255, 255, 0.04);
@@ -2746,6 +2913,7 @@
         display: grid;
         gap: 6px;
         min-height: 88px;
+        min-width: 0;
       }
       .viajes-stat span {
         font-size: 0.68rem;
@@ -2757,24 +2925,35 @@
         font-size: 1.1rem;
         font-weight: 600;
         color: var(--text);
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
       .viajes-stat small {
         font-size: 0.75rem;
         color: var(--muted);
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
       .viajes-list {
         display: grid;
         gap: 12px;
+        min-width: 0;
       }
       .viaje-card {
         display: grid;
         grid-template-columns: auto 1fr;
         gap: 12px;
-        padding: 12px;
+        padding: 14px;
         border-radius: 18px;
         background: rgba(18, 20, 26, 0.92);
         border: 1px solid rgba(242, 199, 68, 0.18);
         box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+      }
+      .viaje-card.is-hidden {
+        display: none;
       }
       .viaje-badge {
         width: 44px;
@@ -2790,15 +2969,38 @@
       }
       .viaje-body {
         display: grid;
-        gap: 6px;
+        gap: 8px;
+        min-width: 0;
+      }
+      .viaje-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        min-width: 0;
       }
       .viaje-title {
         font-weight: 600;
         font-size: 0.95rem;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .viaje-date {
+        flex: 0 0 auto;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(54, 196, 135, 0.12);
+        color: #b6f3d8;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
       }
       .viaje-sub {
         font-size: 0.8rem;
         color: var(--muted);
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
       .viaje-meta {
         display: flex;
@@ -2806,11 +3008,17 @@
         gap: 8px;
         font-size: 0.76rem;
         color: rgba(255, 255, 255, 0.72);
+        min-width: 0;
+      }
+      .viaje-meta span {
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
       .viaje-chips {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
+        min-width: 0;
       }
       .viaje-chip {
         padding: 4px 10px;
@@ -2826,6 +3034,21 @@
         border-color: rgba(54, 196, 135, 0.4);
         color: #b6f3d8;
       }
+      .viaje-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 4px;
+        min-width: 0;
+      }
+      .viaje-action {
+        min-height: 42px;
+        border-radius: 14px;
+        font-size: 0.76rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        min-width: 0;
+      }
       .viaje-empty {
         padding: 14px;
         border-radius: 16px;
@@ -2833,6 +3056,9 @@
         border: 1px dashed rgba(255, 255, 255, 0.12);
         color: var(--muted);
         font-size: 0.85rem;
+      }
+      .viaje-empty.is-hidden {
+        display: none;
       }
       .balance-card {
         background: linear-gradient(135deg, rgba(54, 196, 135, 0.22), rgba(11, 13, 16, 0.85));
@@ -3255,6 +3481,17 @@
                   <span class="flag-dot"></span>
                 </button>
               </div>
+              <div class="top-dropdown" id="topDropdown" aria-hidden="true">
+                <div class="top-dropdown-head">
+                  <div>
+                    <div class="detail-title" id="topDropdownTitle">Centro rapido</div>
+                    <div class="action-subtitle" id="topDropdownSubtitle"></div>
+                  </div>
+                  <button type="button" class="top-dropdown-close" id="topDropdownClose" aria-label="Cerrar menu">×</button>
+                </div>
+                <div class="top-dropdown-body" id="topDropdownBody"></div>
+                <div class="top-dropdown-footer" id="topDropdownFooter"></div>
+              </div>
             </header>
             <div class="greeting" id="homeGreeting">Hola {{ conductor_nombre or 'Conductor' }}, que necesitas hoy?</div>
             <div class="section-title services-title" id="servicesAnchor">Servicios</div>
@@ -3626,47 +3863,125 @@
           <section class="page" data-page="viajes">
             <div class="section-title">Mis viajes</div>
             <div class="viajes-panel">
+              <div class="viajes-toolbar">
+                <div class="viajes-toolbar-top">
+                  <div class="viajes-toolbar-copy">
+                    <strong>Historial del conductor</strong>
+                    <span>Filtra por rango o busca un dia exacto para ver solo los viajes que te interesan.</span>
+                  </div>
+                </div>
+                <div class="viajes-filter-scroll">
+                  <button type="button" class="viajes-filter-chip active" data-trip-range="today">Hoy</button>
+                  <button type="button" class="viajes-filter-chip" data-trip-range="yesterday">Ayer</button>
+                  <button type="button" class="viajes-filter-chip" data-trip-range="7d">7 dias</button>
+                  <button type="button" class="viajes-filter-chip" data-trip-range="month">Este mes</button>
+                  <button type="button" class="viajes-filter-chip" data-trip-range="all">Todo</button>
+                </div>
+                <div class="viajes-date-tools">
+                  <input type="date" class="viajes-date-input" id="tripDateFilter" />
+                  <button type="button" class="viajes-clear-btn is-hidden" id="tripClearDateBtn">Limpiar</button>
+                </div>
+              </div>
               <div class="viajes-summary">
                 <div class="viajes-stat">
                   <span>Total</span>
                   <strong>{{ pedidos_mios|length }}</strong>
-                  <small>Servicios completados</small>
+                  <small>Servicios registrados</small>
                 </div>
                 <div class="viajes-stat">
-                  <span>Ultimo viaje</span>
+                  <span>Mostrando</span>
+                  <strong id="tripsVisibleCount">0</strong>
+                  <small id="tripsFilterLabel">Filtro actual</small>
+                </div>
+                <div class="viajes-stat">
+                  <span>Ultimo visible</span>
                   {% if pedidos_mios %}
-                    <strong>{{ pedidos_mios[0].hora }}</strong>
-                    <small>{{ pedidos_mios[0].detalles.get('Direccion', pedidos_mios[0].mensaje_cliente) }}</small>
+                    <strong id="tripsLastVisible">{{ pedidos_mios[0].hora }}</strong>
+                    <small id="tripsLastVisibleLabel">{{ pedidos_mios[0].detalles.get('Direccion', pedidos_mios[0].mensaje_cliente) }}</small>
                   {% else %}
-                    <strong>--</strong>
-                    <small>Sin viajes registrados</small>
+                    <strong id="tripsLastVisible">--</strong>
+                    <small id="tripsLastVisibleLabel">Sin viajes registrados</small>
                   {% endif %}
                 </div>
               </div>
               <div class="viajes-list">
                 {% if pedidos_mios %}
-                  {% for pedido in pedidos_mios[:4] %}
+                  {% for pedido in pedidos_mios %}
                     {% set cliente_nombre = pedido.detalles.get('Nombre', 'CL') %}
                     {% set iniciales = (cliente_nombre[:2] if cliente_nombre else 'CL') %}
-                    <div class="viaje-card">
+                    {% set viaje_direccion = pedido.detalles.get('Direccion', pedido.mensaje_cliente) %}
+                    {% set viaje_lat = pedido.detalles.get('Latitude', pedido.detalles.get('Latitud', '')) %}
+                    {% set viaje_lng = pedido.detalles.get('Longitude', pedido.detalles.get('Longitud', '')) %}
+                    <div
+                      class="viaje-card"
+                      data-trip-card
+                      data-trip-id="{{ pedido.id }}"
+                      data-trip-estado="{{ pedido.estado }}"
+                      data-trip-date="{{ pedido.timestamp[:10] if pedido.timestamp else '' }}"
+                      data-trip-timestamp="{{ pedido.timestamp }}"
+                      data-trip-hora="{{ pedido.hora }}"
+                      data-trip-cliente="{{ pedido.detalles.get('Nombre', 'Cliente') }}"
+                      data-trip-telefono="{{ pedido.cliente_telefono }}"
+                      data-trip-origen="{{ viaje_direccion }}"
+                      data-trip-lat="{{ viaje_lat }}"
+                      data-trip-lng="{{ viaje_lng }}"
+                    >
                       <div class="viaje-badge">{{ iniciales|upper }}</div>
                       <div class="viaje-body">
-                        <div class="viaje-title">{{ pedido.detalles.get('Direccion', pedido.mensaje_cliente) }}</div>
+                        <div class="viaje-head">
+                          <div class="viaje-title">{{ viaje_direccion }}</div>
+                          <div class="viaje-date">{{ pedido.hora }}</div>
+                        </div>
                         <div class="viaje-sub">{{ pedido.detalles.get('Nombre', 'Cliente') }}</div>
                         <div class="viaje-meta">
                           <span>{{ pedido.hora }}</span>
+                          <span>{{ pedido.timestamp[:10] if pedido.timestamp else '--' }}</span>
                           <span>{{ pedido.cliente_telefono }}</span>
                         </div>
                         <div class="viaje-chips">
-                          <span class="viaje-chip highlight">Completado</span>
+                          <span class="viaje-chip highlight">{{ pedido.estado }}</span>
                           <span class="viaje-chip">WhatsApp</span>
+                          {% if viaje_lat and viaje_lng %}
+                            <span class="viaje-chip">Con ubicacion</span>
+                          {% endif %}
+                        </div>
+                        <div class="viaje-actions">
+                          <button
+                            type="button"
+                            class="action-btn secondary viaje-action js-trip-detail"
+                            data-trip-id="{{ pedido.id }}"
+                            data-trip-timestamp="{{ pedido.timestamp }}"
+                            data-trip-hora="{{ pedido.hora }}"
+                            data-trip-estado="{{ pedido.estado }}"
+                            data-trip-cliente="{{ pedido.detalles.get('Nombre', 'Cliente') }}"
+                            data-trip-telefono="{{ pedido.cliente_telefono }}"
+                            data-trip-origen="{{ viaje_direccion }}"
+                            data-trip-lat="{{ viaje_lat }}"
+                            data-trip-lng="{{ viaje_lng }}"
+                          >Ver detalles</button>
+                          <button
+                            type="button"
+                            class="action-btn primary viaje-action js-detail"
+                            data-origen="{{ viaje_direccion }}"
+                            data-cliente="{{ pedido.detalles.get('Nombre', 'Cliente') }}"
+                            data-telefono="{{ pedido.cliente_telefono }}"
+                            data-hora="{{ pedido.hora }}"
+                            data-timestamp="{{ pedido.timestamp }}"
+                            data-lat="{{ viaje_lat }}"
+                            data-lng="{{ viaje_lng }}"
+                          >Ver ubicacion</button>
                         </div>
                       </div>
                     </div>
                   {% endfor %}
                 {% else %}
-                  <div class="viaje-empty">
+                  <div class="viaje-empty" id="tripEmptyState">
                     Aun no tienes viajes registrados. Cuando tomes un servicio aparecera aqui.
+                  </div>
+                {% endif %}
+                {% if pedidos_mios %}
+                  <div class="viaje-empty is-hidden" id="tripEmptyState">
+                    No hay viajes para ese dia o rango. Prueba con otro filtro para revisar tu historial.
                   </div>
                 {% endif %}
               </div>
@@ -3871,9 +4186,23 @@
       const notificationsBtn = document.getElementById('notificationsBtn');
       const notificationsDot = document.getElementById('notificationsDot');
       const localeBtn = document.getElementById('localeBtn');
+      const topDropdown = document.getElementById('topDropdown');
+      const topDropdownTitle = document.getElementById('topDropdownTitle');
+      const topDropdownSubtitle = document.getElementById('topDropdownSubtitle');
+      const topDropdownBody = document.getElementById('topDropdownBody');
+      const topDropdownFooter = document.getElementById('topDropdownFooter');
+      const topDropdownClose = document.getElementById('topDropdownClose');
       const lastTripActionBtn = document.getElementById('lastTripActionBtn');
       const safetyTrackingBtn = document.getElementById('safetyTrackingBtn');
       const safetyVerifiedBtn = document.getElementById('safetyVerifiedBtn');
+      const tripRangeButtons = document.querySelectorAll('[data-trip-range]');
+      const tripDateFilter = document.getElementById('tripDateFilter');
+      const tripClearDateBtn = document.getElementById('tripClearDateBtn');
+      const tripEmptyState = document.getElementById('tripEmptyState');
+      const tripsVisibleCount = document.getElementById('tripsVisibleCount');
+      const tripsFilterLabel = document.getElementById('tripsFilterLabel');
+      const tripsLastVisible = document.getElementById('tripsLastVisible');
+      const tripsLastVisibleLabel = document.getElementById('tripsLastVisibleLabel');
       const activeServiceGrabber = document.getElementById('activeServiceGrabber');
       const activeServiceContent = document.getElementById('activeServiceContent');
       const activeServiceOverview = document.getElementById('activeServiceOverview');
@@ -3945,6 +4274,8 @@
       let chatRequestInFlight = false;
       let notificationsSeen = false;
       let notificationDigest = '';
+      let activeTopDropdown = '';
+      let activeTripRange = 'today';
       const LOCALE_STORAGE_KEY = 'driver-dashboard-locale';
       const LOCALE_OPTIONS = [
         {
@@ -3983,6 +4314,9 @@
       };
 
       function setActivePage(target) {
+        if (target !== 'inicio') {
+          closeTopDropdown();
+        }
         pages.forEach((page) => {
           page.classList.toggle('is-active', page.dataset.page === target);
         });
@@ -4121,6 +4455,57 @@
         notificationsDot.classList.toggle('is-hidden', !shouldShow);
       }
 
+      function syncTopActionButtons(activeButton = null) {
+        [ideasBtn, notificationsBtn, localeBtn].forEach((button) => {
+          button?.classList.toggle('is-open', button === activeButton);
+        });
+      }
+
+      function closeTopDropdown() {
+        if (!topDropdown) return;
+        topDropdown.classList.remove('show');
+        topDropdown.setAttribute('aria-hidden', 'true');
+        activeTopDropdown = '';
+        syncTopActionButtons();
+      }
+
+      function openTopDropdown(key, button, config) {
+        if (!topDropdown || !topDropdownBody || !topDropdownFooter) return;
+        activeTopDropdown = key;
+        topDropdownTitle.textContent = config?.title || 'Centro rapido';
+        topDropdownSubtitle.textContent = config?.subtitle || '';
+        topDropdownBody.innerHTML = config?.body || '';
+        topDropdownFooter.innerHTML = '';
+
+        const actions = config?.actions || [];
+        topDropdownFooter.style.display = actions.length ? 'grid' : 'none';
+        actions.forEach((action) => {
+          const actionButton = document.createElement('button');
+          actionButton.type = 'button';
+          actionButton.className = `action-btn ${action.kind || 'secondary'}`;
+          actionButton.textContent = action.label || 'Continuar';
+          actionButton.addEventListener('click', () => {
+            if (action.closeOnClick !== false) {
+              closeTopDropdown();
+            }
+            action.onClick?.();
+          });
+          topDropdownFooter.appendChild(actionButton);
+        });
+
+        topDropdown.classList.add('show');
+        topDropdown.setAttribute('aria-hidden', 'false');
+        syncTopActionButtons(button);
+      }
+
+      function toggleTopDropdown(key, button, builder) {
+        if (activeTopDropdown === key && topDropdown?.classList.contains('show')) {
+          closeTopDropdown();
+          return;
+        }
+        openTopDropdown(key, button, builder());
+      }
+
       function closeActionModal() {
         if (!actionModal) return;
         actionModal.classList.remove('show');
@@ -4153,6 +4538,7 @@
       }
 
       function openDashboardPage(target, options = {}) {
+        closeTopDropdown();
         setActivePage(target);
         if (contentWrap) {
           contentWrap.scrollTop = 0;
@@ -4208,7 +4594,7 @@
         const primaryTarget = hasActiveService ? 'servicios' : (!driverOnline ? 'cuenta' : 'servicios');
         const primaryLabel = hasActiveService ? 'Abrir servicio' : (!driverOnline ? 'Ir a mi cuenta' : 'Ver servicios');
 
-        openActionModal({
+        toggleTopDropdown('ideas', ideasBtn, () => ({
           title: 'Ideas para este turno',
           subtitle: 'Acciones utiles segun tu estado actual.',
           body: `
@@ -4225,7 +4611,7 @@
             { label: primaryLabel, kind: 'primary', onClick: () => openDashboardPage(primaryTarget) },
             { label: 'Ver balance', kind: 'secondary', onClick: () => openDashboardPage('balance') },
           ],
-        });
+        }));
       }
 
       function openNotificationsPanel() {
@@ -4270,7 +4656,7 @@
           });
         }
 
-        openActionModal({
+        toggleTopDropdown('notifications', notificationsBtn, () => ({
           title: 'Notificaciones',
           subtitle: 'Resumen rapido del estado del conductor.',
           body: `
@@ -4287,11 +4673,11 @@
             { label: hasActiveService ? 'Abrir servicio' : 'Ir a servicios', kind: 'primary', onClick: () => openDashboardPage('servicios') },
             { label: 'Mis viajes', kind: 'secondary', onClick: () => openDashboardPage('viajes') },
           ],
-        });
+        }));
       }
 
       function openLocalePanel() {
-        openActionModal({
+        toggleTopDropdown('locale', localeBtn, () => ({
           title: 'Idioma y region',
           subtitle: 'Ajusta como quieres ver los resumenes rapidos del dashboard.',
           body: `
@@ -4308,21 +4694,20 @@
               `).join('')}
             </div>
           `,
-          actions: [
-            { label: 'Cerrar', kind: 'ghost' },
-          ],
-        });
+          actions: [],
+        }));
 
-        actionModalBody.querySelectorAll('[data-locale-choice]').forEach((button) => {
+        topDropdownBody.querySelectorAll('[data-locale-choice]').forEach((button) => {
           button.addEventListener('click', () => {
             const nextCode = button.getAttribute('data-locale-choice');
             applyDashboardLocale(nextCode, { announce: true });
-            closeActionModal();
+            closeTopDropdown();
           });
         });
       }
 
       function openTariffsPanel() {
+        closeTopDropdown();
         const avgIncome = getAverageIncomePerTrip();
         const liveCount = getLiveAvailableCount();
         const statusLabel = driverOnline ? 'Disponible' : 'Fuera de linea';
@@ -4365,6 +4750,7 @@
       }
 
       function openLastTripPanel() {
+        closeTopDropdown();
         if (!dashboardData.latestTrip) {
           openDashboardPage('servicios', {
             toastMessage: driverOnline ? 'Abriendo servicios disponibles.' : 'Activa el modo disponible para recibir servicios.',
@@ -4413,6 +4799,7 @@
       }
 
       function openVerificationPanel() {
+        closeTopDropdown();
         openActionModal({
           title: 'Perfil operativo',
           subtitle: 'Resumen de la informacion visible en tu cuenta de conductor.',
@@ -4432,6 +4819,237 @@
             { label: 'Mi cuenta', kind: 'primary', onClick: () => openDashboardPage('cuenta') },
             { label: 'Cerrar', kind: 'secondary' },
           ],
+        });
+      }
+
+      function toDateKey(date) {
+        if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function parseLocalTimestamp(value) {
+        if (!value) return null;
+        const date = new Date(String(value).replace(' ', 'T'));
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      function getTripCards() {
+        return Array.from(document.querySelectorAll('[data-trip-card]'));
+      }
+
+      function getTripFilterLabel(count) {
+        if (tripDateFilter?.value) {
+          const picked = parseLocalTimestamp(`${tripDateFilter.value} 12:00:00`);
+          return count
+            ? `Dia elegido: ${formatDateLabel(picked ? toDateKey(picked) + ' 12:00:00' : tripDateFilter.value)}`
+            : 'Sin viajes en la fecha elegida';
+        }
+
+        const labels = {
+          today: count ? 'Solo viajes de hoy' : 'No hay viajes hoy',
+          yesterday: count ? 'Solo viajes de ayer' : 'No hubo viajes ayer',
+          '7d': count ? 'Ultimos 7 dias' : 'Sin viajes en los ultimos 7 dias',
+          month: count ? 'Viajes del mes actual' : 'Sin viajes este mes',
+          all: count ? 'Mostrando todo el historial' : 'Aun no hay historial',
+        };
+        return labels[activeTripRange] || 'Filtro aplicado';
+      }
+
+      function matchesTripFilter(card) {
+        const tripDateKey = card.dataset.tripDate || '';
+        const timestamp = parseLocalTimestamp(card.dataset.tripTimestamp);
+        if (tripDateFilter?.value) {
+          return tripDateKey === tripDateFilter.value;
+        }
+        if (!timestamp) return activeTripRange === 'all';
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const sevenDaysStart = new Date(today);
+        sevenDaysStart.setDate(sevenDaysStart.getDate() - 6);
+
+        if (activeTripRange === 'today') {
+          return tripDateKey === toDateKey(today);
+        }
+        if (activeTripRange === 'yesterday') {
+          return tripDateKey === toDateKey(yesterday);
+        }
+        if (activeTripRange === '7d') {
+          return timestamp >= sevenDaysStart;
+        }
+        if (activeTripRange === 'month') {
+          return timestamp.getFullYear() === now.getFullYear() && timestamp.getMonth() === now.getMonth();
+        }
+        return true;
+      }
+
+      function updateTripFilterButtons() {
+        tripRangeButtons.forEach((button) => {
+          button.classList.toggle('active', !tripDateFilter?.value && button.dataset.tripRange === activeTripRange);
+        });
+      }
+
+      function applyTripFilters() {
+        const cards = getTripCards();
+        const visibleCards = [];
+
+        cards.forEach((card) => {
+          const visible = matchesTripFilter(card);
+          card.classList.toggle('is-hidden', !visible);
+          if (visible) visibleCards.push(card);
+        });
+
+        if (tripClearDateBtn) {
+          tripClearDateBtn.classList.toggle('is-hidden', !tripDateFilter?.value);
+        }
+
+        if (tripsVisibleCount) {
+          tripsVisibleCount.textContent = String(visibleCards.length);
+        }
+        if (tripsFilterLabel) {
+          tripsFilterLabel.textContent = getTripFilterLabel(visibleCards.length);
+        }
+
+        if (visibleCards.length) {
+          const firstVisible = visibleCards[0];
+          if (tripsLastVisible) {
+            tripsLastVisible.textContent = firstVisible.dataset.tripHora || '--';
+          }
+          if (tripsLastVisibleLabel) {
+            tripsLastVisibleLabel.textContent = firstVisible.dataset.tripOrigen || 'Viaje visible';
+          }
+        } else {
+          if (tripsLastVisible) {
+            tripsLastVisible.textContent = '--';
+          }
+          if (tripsLastVisibleLabel) {
+            tripsLastVisibleLabel.textContent = 'No hay viajes para ese filtro';
+          }
+        }
+
+        tripEmptyState?.classList.toggle('is-hidden', visibleCards.length > 0);
+        updateTripFilterButtons();
+      }
+
+      function openDetailModalForTrip(trip) {
+        if (!detailModal || !detailContent) return;
+        const origen = trip.origen || '-';
+        const cliente = trip.cliente || '-';
+        const telefono = trip.telefono || '-';
+        const hora = trip.hora || '-';
+        const timestamp = trip.timestamp || '';
+        const lat = parseCoord(trip.lat);
+        const lng = parseCoord(trip.lng);
+
+        detailContent.innerHTML = `
+          <div><strong>Origen:</strong> ${escapeHtml(origen)}</div>
+          <div><strong>Cliente:</strong> ${escapeHtml(cliente)}</div>
+          <div><strong>Telefono:</strong> ${escapeHtml(telefono)}</div>
+          <div><strong>Hora:</strong> ${escapeHtml(hora)}</div>
+          ${timestamp ? `<div><strong>Fecha:</strong> ${escapeHtml(formatDateLabel(timestamp))}</div>` : ''}
+        `;
+        detailModal.classList.add('show');
+        detailModal.setAttribute('aria-hidden', 'false');
+        if (detailDistance) detailDistance.textContent = '-- km';
+
+        const coordFromText = parseCoordsFromText(origen);
+        const clientLat = lat ?? coordFromText?.lat;
+        const clientLng = lng ?? coordFromText?.lng;
+        if (clientLat == null || clientLng == null) {
+          if (detailDistance) detailDistance.textContent = 'Sin coordenadas';
+          return;
+        }
+
+        initDetailMap(clientLat, clientLng);
+        setTimeout(() => {
+          detailMap?.invalidateSize();
+        }, 150);
+      }
+
+      function buildTripDataFromNode(node) {
+        if (!node) return null;
+        return {
+          id: node.dataset.tripId || '',
+          estado: node.dataset.tripEstado || 'Completado',
+          origen: node.dataset.tripOrigen || '',
+          cliente: node.dataset.tripCliente || 'Cliente',
+          telefono: node.dataset.tripTelefono || '',
+          hora: node.dataset.tripHora || '',
+          timestamp: node.dataset.tripTimestamp || '',
+          lat: node.dataset.tripLat || '',
+          lng: node.dataset.tripLng || '',
+        };
+      }
+
+      function openTripDetailPanel(node) {
+        const trip = buildTripDataFromNode(node);
+        if (!trip) return;
+        closeTopDropdown();
+
+        const lat = parseCoord(trip.lat);
+        const lng = parseCoord(trip.lng);
+        const links = buildNavigationLinks({
+          lat,
+          lng,
+          address: trip.origen,
+          label: trip.cliente || 'Cliente',
+        });
+
+        openActionModal({
+          title: 'Detalle del viaje',
+          subtitle: `Resumen del servicio ${escapeHtml((trip.estado || 'registrado').toLowerCase())}.`,
+          body: `
+            <div class="modal-metrics">
+              <div class="modal-metric">
+                <span>Estado</span>
+                <strong>${escapeHtml(trip.estado || 'Completado')}</strong>
+              </div>
+              <div class="modal-metric">
+                <span>Cliente</span>
+                <strong>${escapeHtml(trip.cliente || 'Cliente')}</strong>
+              </div>
+              <div class="modal-metric">
+                <span>Telefono</span>
+                <strong>${escapeHtml(trip.telefono || '-')}</strong>
+              </div>
+              <div class="modal-metric">
+                <span>Hora</span>
+                <strong>${escapeHtml(trip.hora || '--')}</strong>
+              </div>
+              <div class="modal-metric">
+                <span>Fecha</span>
+                <strong>${escapeHtml(formatDateLabel(trip.timestamp))}</strong>
+              </div>
+            </div>
+            <div class="modal-list-item">
+              <strong>Origen del cliente</strong>
+              <p>${escapeHtml(trip.origen || 'Sin direccion registrada')}</p>
+            </div>
+            <div class="modal-note">
+              ${lat != null && lng != null
+                ? 'Este viaje conserva una ubicacion valida para revisar el punto del cliente en el mapa.'
+                : 'Este viaje no trae coordenadas exactas, pero igual intentaremos ubicar la direccion en el mapa.'}
+            </div>
+          `,
+          actions: [
+            { label: 'Ver ubicacion', kind: 'primary', onClick: () => openDetailModalForTrip(trip) },
+            { label: 'Google Maps', kind: 'secondary', onClick: () => window.open(links.googleUrl, '_blank', 'noopener') },
+          ],
+        });
+      }
+
+      function attachTripActionHandlers(scope = document) {
+        scope.querySelectorAll('.js-trip-detail').forEach((button) => {
+          if (button.dataset.bound === '1') return;
+          button.dataset.bound = '1';
+          button.addEventListener('click', () => {
+            openTripDetailPanel(button);
+          });
         });
       }
 
@@ -4550,6 +5168,10 @@
         });
       });
 
+      topDropdownClose?.addEventListener('click', () => {
+        closeTopDropdown();
+      });
+
       [actionModalClose, ...document.querySelectorAll('[data-action-close]')].forEach((element) => {
         element?.addEventListener('click', () => {
           closeActionModal();
@@ -4566,6 +5188,48 @@
 
       localeBtn?.addEventListener('click', () => {
         openLocalePanel();
+      });
+
+      tripRangeButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          activeTripRange = button.dataset.tripRange || 'today';
+          if (tripDateFilter) {
+            tripDateFilter.value = '';
+          }
+          applyTripFilters();
+        });
+      });
+
+      tripDateFilter?.addEventListener('change', () => {
+        applyTripFilters();
+      });
+
+      tripClearDateBtn?.addEventListener('click', () => {
+        if (tripDateFilter) {
+          tripDateFilter.value = '';
+        }
+        applyTripFilters();
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!topDropdown?.classList.contains('show')) return;
+        const target = event.target;
+        if (
+          topDropdown.contains(target) ||
+          ideasBtn?.contains(target) ||
+          notificationsBtn?.contains(target) ||
+          localeBtn?.contains(target)
+        ) {
+          return;
+        }
+        closeTopDropdown();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeTopDropdown();
+          closeActionModal();
+        }
       });
 
       lastTripActionBtn?.addEventListener('click', () => {
@@ -4585,18 +5249,21 @@
 
       navItems.forEach((btn) => {
         btn.addEventListener('click', () => {
+          closeTopDropdown();
           setActivePage(btn.dataset.target);
         });
       });
 
       if (servicesFab) {
         servicesFab.addEventListener('click', () => {
+          closeTopDropdown();
           setActivePage('servicios');
         });
       }
 
       if (backToServiceBtn) {
         backToServiceBtn.addEventListener('click', () => {
+          closeTopDropdown();
           setActivePage('servicios');
         });
       }
@@ -4926,29 +5593,15 @@
           if (btn.dataset.bound === '1') return;
           btn.dataset.bound = '1';
           btn.addEventListener('click', () => {
-            if (!detailModal || !detailContent) return;
-            const origen = btn.dataset.origen || '-';
-            const cliente = btn.dataset.cliente || '-';
-            const telefono = btn.dataset.telefono || '-';
-            const hora = btn.dataset.hora || '-';
-            const lat = parseCoord(btn.dataset.lat);
-            const lng = parseCoord(btn.dataset.lng);
-            detailContent.innerHTML = `
-              <div><strong>Origen:</strong> ${origen}</div>
-              <div><strong>Cliente:</strong> ${cliente}</div>
-              <div><strong>Telefono:</strong> ${telefono}</div>
-              <div><strong>Hora:</strong> ${hora}</div>
-            `;
-            detailModal.classList.add('show');
-            detailModal.setAttribute('aria-hidden', 'false');
-            if (detailDistance) detailDistance.textContent = '-- km';
-            const coordFromText = parseCoordsFromText(origen);
-            const clientLat = lat ?? coordFromText?.lat ?? 4.711;
-            const clientLng = lng ?? coordFromText?.lng ?? -74.0721;
-            initDetailMap(clientLat, clientLng);
-            setTimeout(() => {
-              detailMap?.invalidateSize();
-            }, 150);
+            openDetailModalForTrip({
+              origen: btn.dataset.origen || '-',
+              cliente: btn.dataset.cliente || '-',
+              telefono: btn.dataset.telefono || '-',
+              hora: btn.dataset.hora || '-',
+              timestamp: btn.dataset.timestamp || '',
+              lat: btn.dataset.lat || '',
+              lng: btn.dataset.lng || '',
+            });
           });
         });
       }
@@ -6211,6 +6864,7 @@
 
       attachSwipeHandlers(document);
       attachDetailHandlers(document);
+      attachTripActionHandlers(document);
       attachServiceSelectionHandlers(document);
       applyAvailabilityState(driverOnline);
       if (hasActiveService) {
@@ -6239,6 +6893,7 @@
 
       applyDashboardLocale(getStoredLocale());
       updateNotificationDot();
+      applyTripFilters();
       if (dashboardData.flashMessages?.length) {
         setTimeout(() => {
           showToast(dashboardData.flashMessages[dashboardData.flashMessages.length - 1], 2600);
