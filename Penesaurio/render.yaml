@@ -11,6 +11,14 @@ services:
         sync: false
       - key: TWILIO_WHATSAPP_FROM
         sync: false
+      - key: TWILIO_CONTENT_SID_SAVE_LOCATION_CONFIRM
+        sync: false
+      - key: TWILIO_CONTENT_SID_LOCATION_HELP_OFFER
+        sync: false
+      - key: TWILIO_CONTENT_SID_LOCATION_REQUIRED
+        sync: false
+      - key: TWILIO_CONTENT_SID_LOCATION_MANAGE_ACTION
+        sync: false
       - key: FLASK_SECRET_KEY
         generateValue: true
       - key: PENESAURIO_DEBUG

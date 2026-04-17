@@ -1,5 +1,6 @@
 ﻿import base64
 import hashlib
+import json
 import os
 import re
 import sqlite3
@@ -61,6 +62,12 @@ FOLLOW_UP_STEPS = [
     ),
 ]
 SHORT_CANCEL_HINT = "Si deseas cancelar, escribe CANCELAR."
+WHATSAPP_BUTTON_TEMPLATE_ENVS = {
+    "save_location_confirm": "TWILIO_CONTENT_SID_SAVE_LOCATION_CONFIRM",
+    "location_help_offer": "TWILIO_CONTENT_SID_LOCATION_HELP_OFFER",
+    "location_required": "TWILIO_CONTENT_SID_LOCATION_REQUIRED",
+    "location_manage_action": "TWILIO_CONTENT_SID_LOCATION_MANAGE_ACTION",
+}
 
 TEST_COORDS = [
     (6.036734, -75.419024),
@@ -712,7 +719,46 @@ def send_twilio_message_via_http(account_sid, auth_token, from_number, to_number
         return False, payload
 
 
-def send_whatsapp_message(phone, body):
+def get_button_template_sid(template_key):
+    env_name = WHATSAPP_BUTTON_TEMPLATE_ENVS.get(template_key, "")
+    if not env_name:
+        return ""
+    value = os.environ.get(env_name, "").strip()
+    if value:
+        return value
+    if local_settings:
+        return str(getattr(local_settings, env_name, "") or "").strip()
+    return ""
+
+
+def record_outbound_message(phone, body, source="whatsapp"):
+    try:
+        conn = get_conn()
+        conn.execute(
+            """
+            INSERT INTO outbound_messages (telefono, body, source, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                ensure_whatsapp_prefix(phone),
+                body,
+                source,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as log_exc:
+        print(f"No se pudo registrar mensaje saliente: {log_exc}")
+
+
+def send_twilio_message_request(
+    *,
+    phone,
+    body="",
+    content_sid="",
+    content_variables=None,
+):
     if not is_twilio_enabled():
         print("Twilio desactivado: mensaje omitido.")
         log_system_event(
@@ -734,23 +780,47 @@ def send_whatsapp_message(phone, body):
     for attempt in range(1, TWILIO_SEND_RETRIES + 1):
         try:
             client, _, _, client_error = get_twilio_client()
+            create_kwargs = {
+                "from_": from_number,
+                "to": to_number,
+            }
+            if content_sid:
+                create_kwargs["content_sid"] = content_sid
+                if content_variables:
+                    create_kwargs["content_variables"] = json.dumps(
+                        content_variables, ensure_ascii=True
+                    )
+            else:
+                create_kwargs["body"] = body
             if client:
                 try:
-                    client.messages.create(
-                        from_=from_number,
-                        to=to_number,
-                        body=body,
-                    )
+                    client.messages.create(**create_kwargs)
                 except Exception as sdk_exc:
                     print(
                         f"SDK Twilio fallo en intento {attempt}, usando HTTP directo: {sdk_exc}"
                     )
+                    form_data = {
+                        "From": from_number,
+                        "To": to_number,
+                    }
+                    if content_sid:
+                        form_data["ContentSid"] = content_sid
+                        if content_variables:
+                            form_data["ContentVariables"] = json.dumps(
+                                content_variables, ensure_ascii=True
+                            )
+                    else:
+                        form_data["Body"] = body
                     ok_http, http_response = send_twilio_message_via_http(
                         account_sid,
                         auth_token,
                         from_number,
                         to_number,
                         body,
+                    ) if not content_sid else send_twilio_message_via_http_content(
+                        account_sid,
+                        auth_token,
+                        form_data,
                     )
                     if not ok_http:
                         raise RuntimeError(http_response or str(sdk_exc))
@@ -758,48 +828,52 @@ def send_whatsapp_message(phone, body):
                         "info",
                         "twilio",
                         "Envio WhatsApp exitoso por HTTP fallback",
-                        f"to={to_number} intento={attempt} body={body[:180]}",
+                        f"to={to_number} intento={attempt} body={body[:180]} content_sid={content_sid or '-'}",
                     )
             else:
-                ok_http, http_response = send_twilio_message_via_http(
-                    account_sid,
-                    auth_token,
-                    from_number,
-                    to_number,
-                    body,
-                )
+                if content_sid:
+                    form_data = {
+                        "From": from_number,
+                        "To": to_number,
+                        "ContentSid": content_sid,
+                    }
+                    if content_variables:
+                        form_data["ContentVariables"] = json.dumps(
+                            content_variables, ensure_ascii=True
+                        )
+                    ok_http, http_response = send_twilio_message_via_http_content(
+                        account_sid,
+                        auth_token,
+                        form_data,
+                    )
+                else:
+                    ok_http, http_response = send_twilio_message_via_http(
+                        account_sid,
+                        auth_token,
+                        from_number,
+                        to_number,
+                        body,
+                    )
                 if not ok_http:
                     raise RuntimeError(client_error or http_response)
                 log_system_event(
                     "info",
                     "twilio",
                     "Envio WhatsApp exitoso por HTTP directo",
-                    f"to={to_number} intento={attempt} body={body[:180]}",
+                    f"to={to_number} intento={attempt} body={body[:180]} content_sid={content_sid or '-'}",
                 )
             if client:
                 log_system_event(
                     "info",
                     "twilio",
                     "Envio WhatsApp exitoso por SDK",
-                    f"to={to_number} intento={attempt} body={body[:180]}",
+                    f"to={to_number} intento={attempt} body={body[:180]} content_sid={content_sid or '-'}",
                 )
-            try:
-                conn = get_conn()
-                conn.execute(
-                    """
-                    INSERT INTO outbound_messages (telefono, body, source, created_at)
-                    VALUES (?, ?, 'whatsapp', ?)
-                    """,
-                    (
-                        to_number,
-                        body,
-                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    ),
-                )
-                conn.commit()
-                conn.close()
-            except Exception as log_exc:
-                print(f"No se pudo registrar mensaje saliente: {log_exc}")
+            record_outbound_message(
+                to_number,
+                body or f"[template:{content_sid}]",
+                source="whatsapp-template" if content_sid else "whatsapp",
+            )
             return True, ""
         except Exception as exc:
             last_error = str(exc)
@@ -816,6 +890,42 @@ def send_whatsapp_message(phone, body):
             if attempt < TWILIO_SEND_RETRIES:
                 time.sleep(1)
     return False, last_error or "No se pudo enviar el mensaje."
+
+
+def send_twilio_message_via_http_content(account_sid, auth_token, form_data):
+    encoded = urllib.parse.urlencode(form_data).encode("utf-8")
+    request = urllib.request.Request(
+        f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json",
+        data=encoded,
+        method="POST",
+    )
+    credentials = base64.b64encode(
+        f"{account_sid}:{auth_token}".encode("utf-8")
+    ).decode("ascii")
+    request.add_header("Authorization", f"Basic {credentials}")
+    request.add_header("Content-Type", "application/x-www-form-urlencoded")
+    with urllib.request.urlopen(request, timeout=15) as response:
+        payload = response.read().decode("utf-8", errors="ignore")
+        status_code = getattr(response, "status", 200)
+        if 200 <= status_code < 300:
+            return True, payload
+        return False, payload
+
+
+def send_whatsapp_message(phone, body):
+    return send_twilio_message_request(phone=phone, body=body)
+
+
+def send_whatsapp_reply(phone, body, buttons_key="", buttons_variables=None):
+    content_sid = get_button_template_sid(buttons_key)
+    if not content_sid:
+        return send_whatsapp_message(phone, body)
+    return send_twilio_message_request(
+        phone=phone,
+        body=body,
+        content_sid=content_sid,
+        content_variables=buttons_variables or {},
+    )
 
 
 def verificar_expiracion_servicios():
@@ -1239,6 +1349,7 @@ def webhook():
         format_saved_address=format_saved_address,
         is_reserved_direccion=is_reserved_direccion,
         parse_coords_from_text=parse_coords_from_text,
+        reply_sender=send_whatsapp_reply,
     )
 
 

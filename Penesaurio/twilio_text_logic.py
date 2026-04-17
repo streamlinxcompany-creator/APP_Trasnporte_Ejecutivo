@@ -938,7 +938,25 @@ def build_customer_request_payload(
     return " | ".join(partes)
 
 
-def respond_client(phone, text):
+def respond_client(
+    phone,
+    text,
+    reply_sender=None,
+    buttons_key="",
+    buttons_variables=None,
+):
+    if reply_sender and buttons_key:
+        reply_sender(
+            phone,
+            text,
+            buttons_key=buttons_key,
+            buttons_variables=buttons_variables or {},
+        )
+        resp = MessagingResponse()
+        xml = str(resp)
+        print(f"TwiML -> {xml}")
+        return xml, 200, {"Content-Type": "text/xml; charset=utf-8"}
+
     resp = MessagingResponse()
     if text:
         resp.message(text)
@@ -1801,6 +1819,7 @@ def handle_twilio_webhook(
     format_saved_address,
     is_reserved_direccion,
     parse_coords_from_text,
+    reply_sender=None,
     debug_hook=None,
 ):
     telefono = values.get("From", "")
@@ -1978,7 +1997,12 @@ def handle_twilio_webhook(
                     )
                     conn.commit()
                     conn.close()
-                    return respond_client(telefono, build_save_location_question())
+                    return respond_client(
+                        telefono,
+                        build_save_location_question(),
+                        reply_sender=reply_sender,
+                        buttons_key="save_location_confirm",
+                    )
                 respuesta = start_new_user_flow(
                     cur,
                     telefono,
@@ -2153,6 +2177,8 @@ def handle_twilio_webhook(
             return respond_client(
                 telefono,
                 build_location_manage_actions(selected_row, choice, format_saved_address),
+                reply_sender=reply_sender,
+                buttons_key="location_manage_action",
             )
 
         if paso == "editar_ubicacion_accion":
@@ -2212,6 +2238,8 @@ def handle_twilio_webhook(
             return respond_client(
                 telefono,
                 build_location_manage_actions(selected_row, selected_index, format_saved_address),
+                reply_sender=reply_sender,
+                buttons_key="location_manage_action",
             )
 
         if paso == "editar_ubicacion_nombre":
@@ -2277,7 +2305,12 @@ def handle_twilio_webhook(
                     and not is_shared_location_payload(location_payload)
                 ):
                     conn.close()
-                    return respond_client(telefono, build_map_only_rejection_message())
+                    return respond_client(
+                        telefono,
+                        build_map_only_rejection_message(),
+                        reply_sender=reply_sender,
+                        buttons_key="location_help_offer",
+                    )
 
                 nombre_detectado = analysis["customer_name"] or nombre
                 direccion_row = resolve_saved_address_row(
@@ -2313,7 +2346,12 @@ def handle_twilio_webhook(
                         )
                         conn.commit()
                         conn.close()
-                        return respond_client(telefono, build_save_location_question())
+                        return respond_client(
+                            telefono,
+                            build_save_location_question(),
+                            reply_sender=reply_sender,
+                            buttons_key="save_location_confirm",
+                        )
 
                     if direccion_row:
                         saved_payload = build_saved_location_payload(direccion_row)
@@ -2339,7 +2377,12 @@ def handle_twilio_webhook(
                         )
 
                     conn.close()
-                    return respond_client(telefono, build_map_only_rejection_message())
+                    return respond_client(
+                        telefono,
+                        build_map_only_rejection_message(),
+                        reply_sender=reply_sender,
+                        buttons_key="location_help_offer",
+                    )
 
                 if nombre_detectado:
                     if usuario is None:
@@ -2479,7 +2522,12 @@ def handle_twilio_webhook(
                 )
                 conn.commit()
                 conn.close()
-                return respond_client(telefono, build_save_location_question())
+                return respond_client(
+                    telefono,
+                    build_save_location_question(),
+                    reply_sender=reply_sender,
+                    buttons_key="save_location_confirm",
+                )
 
             cur.execute(
                 """
@@ -2555,13 +2603,20 @@ def handle_twilio_webhook(
                 )
                 conn.commit()
                 conn.close()
-                return respond_client(telefono, build_save_location_question())
+                return respond_client(
+                    telefono,
+                    build_save_location_question(),
+                    reply_sender=reply_sender,
+                    buttons_key="save_location_confirm",
+                )
 
             if not mensaje_limpio:
                 conn.close()
                 return respond_client(
                     telefono,
                     build_location_required_message(nombre),
+                    reply_sender=reply_sender,
+                    buttons_key="location_required",
                 )
 
             if is_reserved_direccion(mensaje_limpio):
@@ -2644,12 +2699,16 @@ def handle_twilio_webhook(
                 return respond_client(
                     telefono,
                     build_map_only_rejection_message(),
+                    reply_sender=reply_sender,
+                    buttons_key="location_help_offer",
                 )
 
             conn.close()
             return respond_client(
                 telefono,
                 build_location_required_message(nombre),
+                reply_sender=reply_sender,
+                buttons_key="location_required",
             )
 
         cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
