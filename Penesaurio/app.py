@@ -13,7 +13,6 @@ from secrets import token_urlsafe
 
 from flask import Flask, request, render_template, redirect, url_for, session, flash, jsonify, Response
 from werkzeug.security import generate_password_hash, check_password_hash
-from twilio.twiml.messaging_response import MessagingResponse
 
 try:
     from twilio.rest import Client
@@ -31,24 +30,35 @@ try:
 except Exception:
     local_settings = None
 
+from twilio_text_logic import handle_twilio_webhook
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "servicios.db")
-EXPIRATION_MINUTES = 10
-FOLLOW_UP_INTERVAL_MINUTES = 2
+EXPIRATION_MINUTES = 12
 EXPIRATION_CHECK_SECONDS = 30
 TWILIO_SEND_RETRIES = 3
 EXPIRATION_MESSAGE = (
-    "No logramos asignarte conductor en 10 minutos. "
+    "No logramos asignarte conductor en este momento. "
     "Cancelamos la solicitud para no hacerte esperar. "
     "Si deseas intentarlo de nuevo, escribe NUEVO."
 )
-FOLLOW_UP_MESSAGES = [
-    "Seguimos buscando tu conductor.",
-    "Aun estamos haciendo lo posible para encontrar un conductor.",
-    "Seguimos en la busqueda.",
-    "Seguimos pendientes de tu servicio.",
+FOLLOW_UP_STEPS = [
+    (
+        2,
+        "Seguimos buscando tu vehiculo. Apenas tengamos un conductor disponible te avisaremos.",
+    ),
+    (
+        5,
+        "Seguimos pendientes de tu solicitud y estamos haciendo todo lo posible para conseguirte un conductor pronto.",
+    ),
+    (
+        9,
+        "Hemos tratado de conseguirte un conductor, pero en este momento todos parecen estar ocupados. "
+        "Cerraremos esta solicitud por ahora para no hacerte esperar mas. "
+        "Si deseas intentarlo nuevamente en unos minutos, escribe NUEVO.",
+    ),
 ]
 SHORT_CANCEL_HINT = "Si deseas cancelar, escribe CANCELAR."
 
@@ -258,11 +268,26 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             usuario_id INTEGER NOT NULL,
             direccion TEXT NOT NULL,
+            etiqueta TEXT,
+            latitude TEXT,
+            longitude TEXT,
+            updated_at TEXT,
             created_at TEXT,
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
         )
         """
     )
+
+    cur.execute("PRAGMA table_info(direcciones)")
+    direcciones_cols = [row[1] for row in cur.fetchall()]
+    if "etiqueta" not in direcciones_cols:
+        cur.execute("ALTER TABLE direcciones ADD COLUMN etiqueta TEXT")
+    if "latitude" not in direcciones_cols:
+        cur.execute("ALTER TABLE direcciones ADD COLUMN latitude TEXT")
+    if "longitude" not in direcciones_cols:
+        cur.execute("ALTER TABLE direcciones ADD COLUMN longitude TEXT")
+    if "updated_at" not in direcciones_cols:
+        cur.execute("ALTER TABLE direcciones ADD COLUMN updated_at TEXT")
 
     cur.execute(
         """
@@ -301,10 +326,16 @@ def init_db():
             servicio TEXT,
             nombre TEXT,
             direccion TEXT,
+            meta TEXT,
             updated_at TEXT
         )
         """
     )
+
+    cur.execute("PRAGMA table_info(conversaciones)")
+    conversaciones_cols = [row[1] for row in cur.fetchall()]
+    if "meta" not in conversaciones_cols:
+        cur.execute("ALTER TABLE conversaciones ADD COLUMN meta TEXT")
 
     cur.execute(
         """
@@ -327,6 +358,18 @@ def init_db():
             message TEXT NOT NULL,
             timestamp TEXT,
             FOREIGN KEY (pedido_id) REFERENCES pedidos(id)
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS outbound_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telefono TEXT NOT NULL,
+            body TEXT NOT NULL,
+            source TEXT DEFAULT 'whatsapp',
+            created_at TEXT
         )
         """
     )
@@ -494,82 +537,6 @@ def normalize_phone_for_wa(phone):
     return phone.replace("+", "").replace(" ", "")
 
 
-def get_usuario_by_telefono(cur, telefono):
-    return cur.execute(
-        "SELECT * FROM usuarios WHERE telefono = ?", (telefono,)
-    ).fetchone()
-
-
-def upsert_usuario(cur, telefono, nombre, timestamp):
-    usuario = get_usuario_by_telefono(cur, telefono)
-    if usuario:
-        cur.execute(
-            "UPDATE usuarios SET nombre = ?, updated_at = ? WHERE id = ?",
-            (nombre, timestamp, usuario["id"]),
-        )
-        return usuario["id"]
-    cur.execute(
-        """
-        INSERT INTO usuarios (telefono, nombre, created_at, updated_at)
-        VALUES (?, ?, ?, ?)
-        """,
-        (telefono, nombre, timestamp, timestamp),
-    )
-    return cur.lastrowid
-
-
-def get_direcciones(cur, usuario_id):
-    if not usuario_id:
-        return []
-    rows = cur.execute(
-        """
-        SELECT id, direccion
-        FROM direcciones
-        WHERE usuario_id = ?
-        ORDER BY id ASC
-        """,
-        (usuario_id,),
-    ).fetchall()
-    if not rows:
-        return []
-    clean_rows = []
-    to_delete = []
-    for row in rows:
-        direccion = row["direccion"] or ""
-        if is_reserved_direccion(direccion):
-            to_delete.append((row["id"],))
-        else:
-            clean_rows.append(row)
-    if to_delete:
-        cur.executemany("DELETE FROM direcciones WHERE id = ?", to_delete)
-    return clean_rows
-
-
-def build_direcciones_prompt(direcciones):
-    if not direcciones:
-        return ""
-    lineas = ["Selecciona una de tus ubicaciones guardadas o escribe una nueva:"]
-    for idx, row in enumerate(direcciones, start=1):
-        direccion = format_saved_address(row["direccion"])
-        lineas.append(f"{idx}. [{direccion}]")
-    lineas.append("Escribe NUEVA para agregar otra direcciÃ³n.")
-    return "\n".join(lineas)
-
-
-def direccion_existe(cur, usuario_id, direccion):
-    if not usuario_id or not direccion:
-        return False
-    row = cur.execute(
-        """
-        SELECT 1
-        FROM direcciones
-        WHERE usuario_id = ? AND lower(direccion) = lower(?)
-        """,
-        (usuario_id, direccion),
-    ).fetchone()
-    return row is not None
-
-
 def normalize_text(value):
     if not value:
         return ""
@@ -624,89 +591,22 @@ def is_reserved_direccion(value):
     }
 
 
-def get_location_payload(values):
-    lat = (values.get("Latitude") or "").strip()
-    lon = (values.get("Longitude") or "").strip()
-    addr = (values.get("Address") or "").strip()
-    label = (values.get("Label") or "").strip()
-    coords = f"{lat},{lon}" if lat and lon else ""
-    direccion = addr or label or coords
-    return {
-        "direccion": direccion,
-        "latitude": lat,
-        "longitude": lon,
-        "coords": coords,
-    }
-
-
 def build_request_message(nombre):
     if nombre:
         return f"Listo, {nombre}. Estamos buscando conductor. {SHORT_CANCEL_HINT}"
     return f"Listo. Estamos buscando conductor. {SHORT_CANCEL_HINT}"
 
 
+def is_final_follow_up_step(step):
+    return max(1, int(step or 0)) >= len(FOLLOW_UP_STEPS)
+
+
 def build_follow_up_message(step):
-    idx = max(1, min(step, len(FOLLOW_UP_MESSAGES))) - 1
-    return f"{FOLLOW_UP_MESSAGES[idx]} {SHORT_CANCEL_HINT}"
-
-
-def build_welcome_back_message(nombre):
-    return f"Hola {nombre}. Donde te recogemos hoy?"
-
-
-def build_new_customer_message():
-    return "Bienvenido a Transporte Ejecutivo. Como te llamas?"
-
-
-def build_name_ack_message(nombre):
-    return f"Gracias, {nombre}. Donde te recogemos?"
-
-
-def build_open_service_status_message():
-    return f"Seguimos buscando tu conductor. {SHORT_CANCEL_HINT}"
-
-
-def get_latest_search_service(cur, telefono):
-    return cur.execute(
-        """
-        SELECT *
-        FROM pedidos
-        WHERE cliente_telefono = ?
-          AND lower(estado) IN ('disponible', 'pendiente')
-        ORDER BY id DESC
-        LIMIT 1
-        """,
-        (telefono,),
-    ).fetchone()
-
-
-def get_latest_taken_service(cur, telefono):
-    return cur.execute(
-        """
-        SELECT *
-        FROM pedidos
-        WHERE cliente_telefono = ?
-          AND estado = 'Tomado'
-        ORDER BY id DESC
-        LIMIT 1
-        """,
-        (telefono,),
-    ).fetchone()
-
-
-def build_customer_request_payload(nombre, direccion, location_payload):
-    partes = [f"Nombre: {nombre}", f"Direccion: {direccion}"]
-    latitude = location_payload.get("latitude")
-    longitude = location_payload.get("longitude")
-    if (not latitude or not longitude) and direccion:
-        parsed_lat, parsed_lng = parse_coords_from_text(direccion)
-        if parsed_lat is not None and parsed_lng is not None:
-            latitude = str(parsed_lat)
-            longitude = str(parsed_lng)
-    if latitude and longitude:
-        partes.append(f"Latitude: {latitude}")
-        partes.append(f"Longitude: {longitude}")
-    return " | ".join(partes)
+    idx = max(1, min(step, len(FOLLOW_UP_STEPS))) - 1
+    message = FOLLOW_UP_STEPS[idx][1]
+    if is_final_follow_up_step(step):
+        return message
+    return f"{message} {SHORT_CANCEL_HINT}"
 
 
 def parse_db_datetime(value):
@@ -883,6 +783,23 @@ def send_whatsapp_message(phone, body):
                     "Envio WhatsApp exitoso por SDK",
                     f"to={to_number} intento={attempt} body={body[:180]}",
                 )
+            try:
+                conn = get_conn()
+                conn.execute(
+                    """
+                    INSERT INTO outbound_messages (telefono, body, source, created_at)
+                    VALUES (?, ?, 'whatsapp', ?)
+                    """,
+                    (
+                        to_number,
+                        body,
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    ),
+                )
+                conn.commit()
+                conn.close()
+            except Exception as log_exc:
+                print(f"No se pudo registrar mensaje saliente: {log_exc}")
             return True, ""
         except Exception as exc:
             last_error = str(exc)
@@ -940,10 +857,10 @@ def verificar_expiracion_servicios():
                 continue
 
             reminder_count = row["reminder_count"] or 0
-            target_step = min(
-                elapsed_total // (FOLLOW_UP_INTERVAL_MINUTES * 60),
-                len(FOLLOW_UP_MESSAGES),
-            )
+            target_step = 0
+            for minute_mark, _message in FOLLOW_UP_STEPS:
+                if elapsed_total >= minute_mark * 60:
+                    target_step += 1
             if target_step > reminder_count:
                 next_step = reminder_count + 1
                 follow_ups.append(
@@ -992,16 +909,34 @@ def verificar_expiracion_servicios():
         if ok:
             try:
                 conn = get_conn()
-                conn.execute(
-                    "UPDATE pedidos SET reminder_count = ? WHERE id = ?",
-                    (next_step, pedido_id),
-                )
+                if is_final_follow_up_step(next_step):
+                    conn.execute(
+                        """
+                        UPDATE pedidos
+                        SET reminder_count = ?, estado = 'expirado'
+                        WHERE id = ?
+                        """,
+                        (next_step, pedido_id),
+                    )
+                    conn.execute(
+                        "DELETE FROM conversaciones WHERE telefono = ?",
+                        (phone,),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE pedidos SET reminder_count = ? WHERE id = ?",
+                        (next_step, pedido_id),
+                    )
                 conn.commit()
                 conn.close()
                 log_system_event(
                     "info",
                     "reminder",
-                    f"Recordatorio enviado #{next_step}",
+                    (
+                        "Solicitud cerrada tras ultimo recordatorio"
+                        if is_final_follow_up_step(next_step)
+                        else f"Recordatorio enviado #{next_step}"
+                    ),
                     f"pedido={pedido_id} telefono={phone}",
                 )
             except Exception as exc:
@@ -1120,7 +1055,10 @@ def retry_assignment_notifications():
 
 
 def send_assignment_message(phone, conductor_nombre, conductor_placa):
-    body = f"Listo. {conductor_nombre} ({conductor_placa}) va en camino."
+    body = (
+        f"Listo, tu servicio fue tomado por {conductor_nombre} "
+        f"con placas {conductor_placa}. Ya va en camino."
+    )
     return send_whatsapp_message(phone, body)
 
 
@@ -1187,7 +1125,10 @@ def queue_service_completion_notification(pedido_id, phone):
         return
 
     def run():
-        ok, err = send_whatsapp_message(phone, "Conductor fuera de linea.")
+        ok, err = send_whatsapp_message(
+            phone,
+            "Conductor fuera de linea. Gracias por preferirnos. Si necesitas otro viaje, solo avisame.",
+        )
         if not ok:
             detalle = err or "No se pudo notificar al cliente."
             log_system_event(
@@ -1267,20 +1208,6 @@ def elapsed_seconds(ts_value):
     if total < 0:
         total = 0
     return total
-
-
-def respond_client(phone, text):
-    """
-    Respuesta directa por TwiML (evita depender de la salida a internet).
-    """
-    resp = MessagingResponse()
-    if text:
-        resp.message(text)
-    xml = str(resp)
-    print(f"TwiML -> {xml}")
-    return xml, 200, {"Content-Type": "text/xml; charset=utf-8"}
-
-
 @app.before_request
 def ensure_background_runtime():
     ensure_runtime_workers(reason=request.path or "request")
@@ -1306,286 +1233,13 @@ def pedido_to_dict(row):
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    telefono = request.values.get("From", "")
-    mensaje = request.values.get("Body", "")
-    fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"Webhook recibido de {telefono}: {mensaje}")
-
-    try:
-        conn = get_conn()
-        cur = conn.cursor()
-
-        mensaje_limpio = (mensaje or "").strip()
-        location_payload = get_location_payload(request.values)
-        mensaje_lower = mensaje_limpio.lower()
-        open_service = get_latest_search_service(cur, telefono)
-        taken_service = get_latest_taken_service(cur, telefono)
-
-        if mensaje_lower in {
-            "hola",
-            "buenas",
-            "buenos dias",
-            "buenas tardes",
-            "buenas noches",
-            "nuevo",
-            "nuevo servicio",
-            "solicitud",
-            "solicitar",
-            "servicio",
-            "pedido",
-            "pedir",
-        }:
-            if open_service:
-                conn.close()
-                return respond_client(telefono, build_open_service_status_message())
-
-            cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
-            usuario = get_usuario_by_telefono(cur, telefono)
-            if usuario:
-                cur.execute(
-                    """
-                    INSERT INTO conversaciones (telefono, paso, nombre, updated_at)
-                    VALUES (?, 'direccion', ?, ?)
-                    """,
-                    (telefono, usuario["nombre"], fecha_actual),
-                )
-                conn.commit()
-                direcciones = get_direcciones(cur, usuario["id"])
-                lista = build_direcciones_prompt(direcciones)
-                respuesta = build_welcome_back_message(usuario["nombre"])
-                if lista:
-                    respuesta = f"{respuesta}\n{lista}"
-                conn.close()
-                return respond_client(telefono, respuesta)
-
-            cur.execute(
-                """
-                INSERT INTO conversaciones (telefono, paso, updated_at)
-                VALUES (?, 'nombre', ?)
-                """,
-                (telefono, fecha_actual),
-            )
-            conn.commit()
-            conn.close()
-            return respond_client(telefono, build_new_customer_message())
-
-        if mensaje_lower == "cancelar":
-            if open_service:
-                cur.execute(
-                    """
-                    UPDATE pedidos
-                    SET estado = 'Cancelado'
-                    WHERE cliente_telefono = ?
-                      AND lower(estado) IN ('disponible', 'pendiente')
-                    """,
-                    (telefono,),
-                )
-                cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
-                conn.commit()
-                conn.close()
-                return respond_client(telefono, "Listo. Cancelamos tu solicitud.")
-
-            if taken_service:
-                conn.close()
-                return respond_client(
-                    telefono,
-                    "Tu servicio ya fue asignado. Escribenos por este chat y te ayudamos.",
-                )
-
-            conversation_row = cur.execute(
-                "SELECT 1 FROM conversaciones WHERE telefono = ?",
-                (telefono,),
-            ).fetchone()
-            if conversation_row:
-                cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
-                conn.commit()
-                conn.close()
-                return respond_client(telefono, "Listo. Cancelamos este proceso.")
-
-            cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
-            conn.commit()
-            conn.close()
-            return respond_client(telefono, "No tienes una solicitud activa.")
-
-        if mensaje_lower in {"salir", "reset"}:
-            cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
-            conn.commit()
-            conn.close()
-            return respond_client(telefono, "Listo. Reiniciamos la conversacion.")
-
-        row = cur.execute(
-            "SELECT * FROM conversaciones WHERE telefono = ?", (telefono,)
-        ).fetchone()
-
-        if row is None:
-            if taken_service:
-                if mensaje_limpio:
-                    cur.execute(
-                        """
-                        INSERT INTO chat_mensajes (pedido_id, sender, message, timestamp)
-                        VALUES (?, 'cliente', ?, ?)
-                        """,
-                        (taken_service["id"], mensaje_limpio, fecha_actual),
-                    )
-                    conn.commit()
-                conn.close()
-                return respond_client(
-                    telefono,
-                    "Mensaje recibido. Tu conductor te respondera pronto.",
-                )
-
-            if open_service:
-                conn.close()
-                return respond_client(telefono, build_open_service_status_message())
-
-            cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
-            usuario = get_usuario_by_telefono(cur, telefono)
-            if usuario:
-                cur.execute(
-                    """
-                    INSERT INTO conversaciones (telefono, paso, nombre, updated_at)
-                    VALUES (?, 'direccion', ?, ?)
-                    """,
-                    (telefono, usuario["nombre"], fecha_actual),
-                )
-                conn.commit()
-                direcciones = get_direcciones(cur, usuario["id"])
-                lista = build_direcciones_prompt(direcciones)
-                respuesta = build_welcome_back_message(usuario["nombre"])
-                if lista:
-                    respuesta = f"{respuesta}\n{lista}"
-                conn.close()
-                return respond_client(telefono, respuesta)
-
-            cur.execute(
-                """
-                INSERT INTO conversaciones (telefono, paso, updated_at)
-                VALUES (?, 'nombre', ?)
-                """,
-                (telefono, fecha_actual),
-            )
-            conn.commit()
-            conn.close()
-            return respond_client(telefono, build_new_customer_message())
-
-        paso = row["paso"]
-
-        if paso == "nombre":
-            if not mensaje_limpio:
-                respuesta_texto = "Dime tu nombre para continuar."
-            else:
-                usuario_id = upsert_usuario(cur, telefono, mensaje_limpio, fecha_actual)
-                cur.execute(
-                    """
-                    UPDATE conversaciones
-                    SET nombre = ?, paso = 'direccion', updated_at = ?
-                    WHERE telefono = ?
-                    """,
-                    (mensaje_limpio, fecha_actual, telefono),
-                )
-                conn.commit()
-                direcciones = get_direcciones(cur, usuario_id)
-                lista = build_direcciones_prompt(direcciones)
-                respuesta_texto = build_name_ack_message(mensaje_limpio)
-                if lista:
-                    respuesta_texto = f"{respuesta_texto}\n{lista}"
-            conn.close()
-        elif paso == "direccion":
-            if not mensaje_limpio and location_payload.get("direccion"):
-                mensaje_limpio = location_payload["direccion"]
-
-            if not mensaje_limpio:
-                conn.close()
-                return respond_client(
-                    telefono, "Escribe la direccion o comparte tu ubicacion."
-                )
-            if is_reserved_direccion(mensaje_limpio):
-                conn.close()
-                return respond_client(
-                    telefono,
-                    "Listo. Escribe la nueva direccion o comparte tu ubicacion.",
-                )
-
-            usuario = get_usuario_by_telefono(cur, telefono)
-            if usuario is None and row["nombre"]:
-                usuario_id = upsert_usuario(cur, telefono, row["nombre"], fecha_actual)
-                usuario = get_usuario_by_telefono(cur, telefono)
-            else:
-                usuario_id = usuario["id"] if usuario else None
-
-            nombre = ""
-            if usuario and usuario["nombre"]:
-                nombre = usuario["nombre"]
-            elif row["nombre"]:
-                nombre = row["nombre"]
-
-            direcciones = get_direcciones(cur, usuario_id)
-            direccion = None
-            direccion_nueva = False
-
-            if direcciones and mensaje_limpio.isdigit():
-                idx = int(mensaje_limpio)
-                if 1 <= idx <= len(direcciones):
-                    direccion = direcciones[idx - 1]["direccion"]
-                    direccion_nueva = False
-                else:
-                    lista = build_direcciones_prompt(direcciones)
-                    respuesta_texto = "No veo esa opcion."
-                    if lista:
-                        respuesta_texto = f"{respuesta_texto}\n{lista}"
-                    else:
-                        respuesta_texto = f"{respuesta_texto} Escribe la direccion completa."
-                    conn.close()
-                    return respond_client(telefono, respuesta_texto)
-            else:
-                direccion = mensaje_limpio
-                if is_reserved_direccion(direccion):
-                    conn.close()
-                    return respond_client(
-                        telefono,
-                        "Listo. Escribe la nueva direccion o comparte tu ubicacion.",
-                    )
-                direccion_nueva = True
-                if direccion_existe(cur, usuario_id, direccion):
-                    direccion_nueva = False
-
-            if usuario_id and direccion_nueva:
-                cur.execute(
-                    """
-                    INSERT INTO direcciones (usuario_id, direccion, created_at)
-                    VALUES (?, ?, ?)
-                    """,
-                    (usuario_id, direccion, fecha_actual),
-                )
-
-            mensaje_cliente = build_customer_request_payload(
-                nombre,
-                direccion,
-                location_payload,
-            )
-
-            cur.execute(
-                """
-                INSERT INTO pedidos (cliente_telefono, mensaje_cliente, estado, timestamp)
-                VALUES (?, ?, 'Pendiente', ?)
-                """,
-                (telefono, mensaje_cliente, fecha_actual),
-            )
-            cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
-            conn.commit()
-            conn.close()
-
-            respuesta_texto = build_request_message(nombre)
-        else:
-            cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
-            conn.commit()
-            conn.close()
-            respuesta_texto = "Vamos de nuevo. Que servicio deseas?"
-    except Exception as exc:
-        print(f"Error BD: {exc}")
-        respuesta_texto = "Tuvimos un problema procesando tu mensaje. Intenta de nuevo."
-
-    return respond_client(telefono, respuesta_texto)
+    return handle_twilio_webhook(
+        request.values,
+        get_conn=get_conn,
+        format_saved_address=format_saved_address,
+        is_reserved_direccion=is_reserved_direccion,
+        parse_coords_from_text=parse_coords_from_text,
+    )
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -2552,7 +2206,7 @@ def finalizar_servicio():
             """,
             (
                 active_id,
-                "Conductor fuera de linea.",
+                "Conductor fuera de linea. Gracias por preferirnos. Si necesitas otro viaje, solo avisame.",
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             ),
         )
@@ -2587,7 +2241,7 @@ def finalizar_servicio():
     if pedido_row:
         ok, err = send_whatsapp_message(
             pedido_row["cliente_telefono"],
-            "Conductor fuera de linea.",
+            "Conductor fuera de linea. Gracias por preferirnos. Si necesitas otro viaje, solo avisame.",
         )
         if not ok:
             warning = err or "No se pudo notificar al cliente."
@@ -2985,7 +2639,8 @@ print(get_twilio_source_summary())
 log_system_event("info", "startup", "Aplicacion iniciada", get_twilio_source_summary())
 
 if __name__ == "__main__":
-    debug_mode = True
+    debug_flag = os.environ.get("PENESAURIO_DEBUG", "1").strip().lower()
+    debug_mode = debug_flag not in {"0", "false", "no", "off"}
     ensure_expiration_worker(debug_mode=debug_mode)
     app.run(host="0.0.0.0", port=5000, debug=debug_mode)
 else:
