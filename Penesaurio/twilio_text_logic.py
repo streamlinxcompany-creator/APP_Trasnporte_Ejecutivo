@@ -634,6 +634,18 @@ def build_request_message(nombre):
     return f"Listo. Estamos buscando conductor. {SHORT_CANCEL_HINT}"
 
 
+def build_request_message_for_saved_location(nombre, label):
+    if nombre:
+        return (
+            f"Listo, {nombre}. Ya estamos consiguiendo carro para la ubicacion guardada como {label}. "
+            f"{SHORT_CANCEL_HINT}"
+        )
+    return (
+        f"Listo. Ya estamos consiguiendo carro para la ubicacion guardada como {label}. "
+        f"{SHORT_CANCEL_HINT}"
+    )
+
+
 def build_welcome_back_message(nombre, original_text=""):
     return (
         f"Hola {nombre}.\n\n"
@@ -1877,14 +1889,16 @@ def handle_twilio_webhook(
             conn.close()
             return respond_client(telefono, "Listo. Reiniciamos la conversacion.")
 
-        if wants_location_help(mensaje_limpio):
-            conn.close()
-            return respond_client(telefono, build_map_only_help_message())
-
         row = cur.execute(
             "SELECT * FROM conversaciones WHERE telefono = ?",
             (telefono,),
         ).fetchone()
+
+        if wants_location_help(mensaje_limpio) and not (
+            row and row["paso"] in {"guardar_ubicacion_confirm", "guardar_ubicacion_nombre"}
+        ):
+            conn.close()
+            return respond_client(telefono, build_map_only_help_message())
 
         if row is None:
             if taken_service:
@@ -2016,10 +2030,6 @@ def handle_twilio_webhook(
         assistant = get_twilio_groq_assistant()
 
         if paso == "guardar_ubicacion_confirm":
-            if wants_location_help(mensaje_limpio):
-                conn.close()
-                return respond_client(telefono, build_map_only_help_message())
-
             if normalize_user_text(mensaje_limpio) in {"si", "guardar"}:
                 cur.execute(
                     """
@@ -2111,7 +2121,7 @@ def handle_twilio_webhook(
             conn.close()
             return respond_client(
                 telefono,
-                f"{build_location_saved_message(etiqueta)}\n\n{build_request_message(row['nombre'] or (usuario['nombre'] if usuario else ''))}",
+                f"{build_location_saved_message(etiqueta)}\n\n{build_request_message_for_saved_location(row['nombre'] or (usuario['nombre'] if usuario else ''), etiqueta)}",
             )
 
         if paso == "editar_ubicaciones":
