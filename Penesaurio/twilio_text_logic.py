@@ -882,31 +882,35 @@ def build_open_service_eta_message(service_row):
 
 
 def get_latest_search_service(cur, telefono):
-    return cur.execute(
+    row = cur.execute(
         """
         SELECT *
         FROM pedidos
         WHERE cliente_telefono = ?
-          AND lower(estado) IN ('disponible', 'pendiente')
         ORDER BY id DESC
         LIMIT 1
         """,
         (telefono,),
     ).fetchone()
+    if row and (row["estado"] or "").strip().lower() in {"disponible", "pendiente"}:
+        return row
+    return None
 
 
 def get_latest_taken_service(cur, telefono):
-    return cur.execute(
+    row = cur.execute(
         """
         SELECT *
         FROM pedidos
         WHERE cliente_telefono = ?
-          AND estado = 'Tomado'
         ORDER BY id DESC
         LIMIT 1
         """,
         (telefono,),
     ).fetchone()
+    if row and (row["estado"] or "").strip() == "Tomado":
+        return row
+    return None
 
 
 def build_customer_request_payload(
