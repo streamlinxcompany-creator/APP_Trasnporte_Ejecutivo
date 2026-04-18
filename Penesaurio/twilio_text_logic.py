@@ -40,6 +40,8 @@ MAP_HELP_KEYWORDS = {
     "s",
     "ayudame",
     "ayuda",
+    "instrucciones",
+    "ver instrucciones",
     "no se",
     "nose",
     "explicame",
