@@ -22,16 +22,17 @@ MAP_ONLY_REJECTION_MESSAGE = (
     "Si quieres, puedo explicarte como enviar tu ubicacion."
 )
 MAP_ONLY_HELP_MESSAGE = (
-    "Claro que si. Es muy sencillo.\n\n"
-    "Si tienes Android:\n"
-    "1. Toca el icono del clip junto al cuadro de mensaje.\n"
-    "2. Selecciona Ubicacion.\n"
-    "3. Toca en Ubicacion actual.\n\n"
-    "Si tienes iPhone:\n"
-    "1. Toca el icono de mas a la izquierda del chat.\n"
-    "2. Selecciona Ubicacion.\n"
-    "3. Toca en Enviar mi ubicacion actual.\n\n"
-    "Asegurate de tener el GPS encendido. Quedo pendiente de tu mapa."
+    "No te preocupes, te explico como hacerlo.\n\n"
+    "*En Android:*\n"
+    "1. Toca el icono del clip al lado de donde escribes.\n"
+    "2. Elige la opcion *Ubicacion*.\n"
+    "3. Toca en *Ubicacion actual*.\n\n"
+    "*En iPhone:*\n"
+    "1. Toca el simbolo *+* a la izquierda del chat.\n"
+    "2. Elige la opcion *Ubicacion*.\n"
+    "3. Toca en *Enviar mi ubicacion actual*.\n\n"
+    "Asegurate de tener el GPS encendido.\n"
+    "En cuanto me compartas esa ubicacion actual desde WhatsApp, continuo con tu solicitud."
 )
 MAP_HELP_KEYWORDS = {
     "si",
