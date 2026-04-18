@@ -557,6 +557,15 @@ def build_location_required_message(nombre=""):
     )
 
 
+def build_new_location_prompt_message():
+    return (
+        "*Para agregar una nueva ubicacion necesito que me compartas tu ubicacion actual "
+        "directamente desde la opcion de ubicacion de WhatsApp.*\n"
+        "Si no sabes como enviarla, toca el boton *INSTRUCCIONES*.\n"
+        "Cuando quieras, mandame tu ubicacion actual y continuamos."
+    )
+
+
 def parse_meta_json(raw_value):
     text = (raw_value or "").strip()
     if not text:
@@ -2244,15 +2253,12 @@ def handle_twilio_webhook(
                 )
                 conn.commit()
                 conn.close()
-                nueva_texto = (
-                    "Perfecto.\n\n"
-                    "*Comparteme tu nueva ubicacion actual desde WhatsApp para continuar.*"
-                )
+                nueva_texto = build_new_location_prompt_message()
                 return respond_client(
                     telefono,
                     nueva_texto,
                     reply_sender=reply_sender,
-                    buttons_key="location_required",
+                    buttons_key="location_new_prompt",
                     buttons_variables={"1": nueva_texto},
                 )
             choice = extract_saved_address_choice(mensaje_limpio)
@@ -2715,15 +2721,12 @@ def handle_twilio_webhook(
 
             if wants_new_location(mensaje_limpio):
                 conn.close()
-                nueva_texto = (
-                    "Perfecto.\n\n"
-                    "*Comparteme tu nueva ubicacion actual desde WhatsApp para continuar.*"
-                )
+                nueva_texto = build_new_location_prompt_message()
                 return respond_client(
                     telefono,
                     nueva_texto,
                     reply_sender=reply_sender,
-                    buttons_key="location_required",
+                    buttons_key="location_new_prompt",
                     buttons_variables={"1": nueva_texto},
                 )
 
