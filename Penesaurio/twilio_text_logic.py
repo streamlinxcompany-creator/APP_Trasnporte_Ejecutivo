@@ -68,6 +68,11 @@ LOCATION_LIST_KEYWORDS = {
     "mis ubicaciones",
     "volver ubicaciones",
 }
+LOCATION_NEW_KEYWORDS = {
+    "nueva",
+    "nueva ubicacion",
+    "nueva ubicación",
+}
 
 BUTTON_PAYLOAD_ALIASES = {
     "save_yes": "si",
@@ -418,6 +423,13 @@ def wants_saved_locations_list(text):
     return normalized in LOCATION_LIST_KEYWORDS
 
 
+def wants_new_location(text):
+    normalized = normalize_user_text(text)
+    if not normalized:
+        return False
+    return normalized in LOCATION_NEW_KEYWORDS
+
+
 def get_incoming_message_text(values):
     button_payload = normalize_user_text(values.get("ButtonPayload", ""))
     button_text = (values.get("ButtonText") or "").strip()
@@ -426,6 +438,18 @@ def get_incoming_message_text(values):
         return BUTTON_PAYLOAD_ALIASES[button_payload]
     if button_text:
         return button_text
+    if body:
+        lines = [line.strip() for line in body.splitlines() if line.strip()]
+        if lines:
+            last_line = normalize_user_text(lines[-1])
+            if (
+                last_line in BUTTON_PAYLOAD_ALIASES
+                or last_line in LOCATION_LIST_KEYWORDS
+                or last_line in LOCATION_EDIT_KEYWORDS
+                or last_line in LOCATION_NEW_KEYWORDS
+                or last_line in {"si", "no", "renombrar", "eliminar", "ver instrucciones"}
+            ):
+                return lines[-1]
     return body
 
 
@@ -2209,6 +2233,28 @@ def handle_twilio_webhook(
             usuario = get_usuario_by_telefono(cur, telefono)
             usuario_id = usuario["id"] if usuario else None
             direcciones = get_direcciones(cur, usuario_id, is_reserved_direccion)
+            if wants_new_location(mensaje_limpio):
+                cur.execute(
+                    """
+                    UPDATE conversaciones
+                    SET paso = 'direccion', updated_at = ?
+                    WHERE telefono = ?
+                    """,
+                    (fecha_actual, telefono),
+                )
+                conn.commit()
+                conn.close()
+                nueva_texto = (
+                    "Perfecto.\n\n"
+                    "*Comparteme tu nueva ubicacion actual desde WhatsApp para continuar.*"
+                )
+                return respond_client(
+                    telefono,
+                    nueva_texto,
+                    reply_sender=reply_sender,
+                    buttons_key="location_required",
+                    buttons_variables={"1": nueva_texto},
+                )
             choice = extract_saved_address_choice(mensaje_limpio)
             selected_row = resolve_saved_address_row(direcciones, choice)
             if not selected_row:
@@ -2665,6 +2711,20 @@ def handle_twilio_webhook(
                     reply_sender=reply_sender,
                     buttons_key="location_saved_list",
                     buttons_variables={"1": respuesta},
+                )
+
+            if wants_new_location(mensaje_limpio):
+                conn.close()
+                nueva_texto = (
+                    "Perfecto.\n\n"
+                    "*Comparteme tu nueva ubicacion actual desde WhatsApp para continuar.*"
+                )
+                return respond_client(
+                    telefono,
+                    nueva_texto,
+                    reply_sender=reply_sender,
+                    buttons_key="location_required",
+                    buttons_variables={"1": nueva_texto},
                 )
 
             if wants_saved_locations_list(mensaje_limpio):
