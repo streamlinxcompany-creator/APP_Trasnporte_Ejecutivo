@@ -65,7 +65,9 @@ SHORT_CANCEL_HINT = "Si deseas cancelar, escribe CANCELAR."
 WHATSAPP_BUTTON_TEMPLATE_ENVS = {
     "save_location_confirm": "TWILIO_CONTENT_SID_SAVE_LOCATION_CONFIRM",
     "location_help_offer": "TWILIO_CONTENT_SID_LOCATION_HELP_OFFER",
+    "location_help_steps": "TWILIO_CONTENT_SID_LOCATION_HELP_STEPS",
     "location_required": "TWILIO_CONTENT_SID_LOCATION_REQUIRED",
+    "location_saved_list": "TWILIO_CONTENT_SID_LOCATION_SAVED_LIST",
     "location_manage_action": "TWILIO_CONTENT_SID_LOCATION_MANAGE_ACTION",
 }
 

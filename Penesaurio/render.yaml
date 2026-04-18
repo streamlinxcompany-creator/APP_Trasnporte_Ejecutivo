@@ -15,7 +15,11 @@ services:
         sync: false
       - key: TWILIO_CONTENT_SID_LOCATION_HELP_OFFER
         sync: false
+      - key: TWILIO_CONTENT_SID_LOCATION_HELP_STEPS
+        sync: false
       - key: TWILIO_CONTENT_SID_LOCATION_REQUIRED
+        sync: false
+      - key: TWILIO_CONTENT_SID_LOCATION_SAVED_LIST
         sync: false
       - key: TWILIO_CONTENT_SID_LOCATION_MANAGE_ACTION
         sync: false
