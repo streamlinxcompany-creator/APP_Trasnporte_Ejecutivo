@@ -1806,6 +1806,67 @@
       .te-bottom-sheet.active-service.is-collapsed .te-chat-card {
         opacity: 0.98;
       }
+      .te-stage.ui-mode-executive.has-active-service .te-map-shell {
+        top: auto;
+        bottom: 0;
+        height: 41%;
+        border-radius: 30px 30px 0 0;
+        z-index: 820;
+      }
+      .te-stage.ui-mode-executive.has-active-service .te-bottom-sheet.active-service {
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: auto;
+        height: 64%;
+        max-height: none;
+        border-radius: 0 0 30px 30px;
+        transform: none !important;
+        transition: opacity 0.22s ease, box-shadow 0.22s ease;
+        z-index: 860;
+      }
+      .te-stage.ui-mode-executive.has-active-service .te-sheet-dragger {
+        display: none;
+      }
+      .te-stage.ui-mode-executive.has-active-service .te-active-scroll {
+        padding: 18px 16px calc(env(safe-area-inset-bottom) + 18px);
+      }
+      .te-stage.ui-mode-executive.has-active-service .te-active-overview,
+      .te-stage.ui-mode-executive.has-active-service .te-chat-panel {
+        min-height: 100%;
+        align-content: start;
+      }
+      .te-stage.ui-mode-executive.has-active-service .te-chat-panel-card {
+        min-height: 100%;
+        max-height: none;
+      }
+      .te-stage.ui-mode-executive.has-active-service .chat-messages {
+        max-height: 100%;
+      }
+      .te-stage.ui-mode-executive.has-active-service .te-map-gradient {
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 18%, rgba(10, 14, 22, 0) 56%, rgba(10, 14, 22, 0.34) 100%),
+          linear-gradient(0deg, rgba(7, 12, 22, 0.14), rgba(7, 12, 22, 0.14));
+      }
+      .te-chat-direct-note {
+        display: none;
+        padding: 10px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(37, 99, 235, 0.14);
+        background: rgba(239, 246, 255, 0.92);
+        color: #1e3a8a;
+        font-size: 0.84rem;
+        line-height: 1.4;
+      }
+      .te-chat-direct-note.is-visible {
+        display: block;
+      }
+      .panel-mode-copy {
+        margin-top: 6px;
+        color: #64748b;
+        font-size: 0.82rem;
+        line-height: 1.45;
+      }
       @media (min-width: 900px) {
         .te-active-grid {
           grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -2172,6 +2233,16 @@
           border-radius: 26px 26px 0 0;
           height: var(--active-sheet-height, 82%);
           max-height: calc(100% - 10px);
+        }
+        .te-stage.ui-mode-executive.has-active-service .te-map-shell {
+          height: 39%;
+        }
+        .te-stage.ui-mode-executive.has-active-service .te-bottom-sheet.active-service {
+          height: 66%;
+          border-radius: 0 0 26px 26px;
+        }
+        .te-stage.ui-mode-executive.has-active-service .te-active-scroll {
+          padding: 16px 12px calc(env(safe-area-inset-bottom) + 16px);
         }
         .te-active-scroll {
           padding: 0 12px calc(var(--nav-height) + env(safe-area-inset-bottom) + 38px);
@@ -3566,7 +3637,7 @@
             {% set active_lat = active_pedido.detalles.get('Latitude', active_pedido.detalles.get('Latitud', '')) if active_pedido else '' %}
             {% set active_lng = active_pedido.detalles.get('Longitude', active_pedido.detalles.get('Longitud', '')) if active_pedido else '' %}
             <div class="servicios-panel te-panel-shell">
-              <div class="te-stage{% if active_pedido %} has-active-service{% endif %}" id="teStage">
+              <div class="te-stage{% if active_pedido %} has-active-service{% endif %}{% if ui_mode == 'executive' %} ui-mode-executive{% endif %}" id="teStage">
                 <div class="route-map-wrap te-map-shell" id="serviceMapWrap"
                   data-client-lat="{{ active_lat }}"
                   data-client-lng="{{ active_lng }}">
@@ -3816,6 +3887,9 @@
                         </div>
                         <div class="te-chat-panel-card">
                           <div class="te-chat-card-copy">Escribe cuando lo necesites. Dejamos mas aire dentro del chat para que la conversacion respire mejor.</div>
+                          <div class="te-chat-direct-note{% if active_pedido and active_pedido.chat_iniciado %} is-visible{% endif %}" id="chatDirectNotice">
+                            A partir de este momento, todos tus mensajes se enviaran directamente al conductor.
+                          </div>
                           <div class="chat-messages" id="chatMessages" data-last-id="{% if chat_messages %}{{ chat_messages[-1].id }}{% else %}0{% endif %}">
                             {% for msg in chat_messages %}
                               <div class="chat-bubble {{ msg.sender }}">
@@ -4037,6 +4111,23 @@
                 <div class="panel-plate" id="accountAvailabilityNote" style="margin-top:6px;">{% if driver_online %}Recibiendo servicios en tiempo real.{% else %}Estas fuera de linea por ahora.{% endif %}</div>
               </div>
               <div class="panel-card">
+                <div class="panel-card-title">Configuracion visual</div>
+                <div class="panel-switch-row">
+                  <span>Modo ejecutivo</span>
+                  <label class="switch">
+                    <input type="checkbox" id="uiModeToggle" {% if ui_mode == 'executive' %}checked{% endif %} />
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <div class="panel-mode-copy" id="uiModeNote">
+                  {% if ui_mode == 'executive' %}
+                    Pantalla completa al tomar un servicio, con mapa integrado en la parte inferior.
+                  {% else %}
+                    Panel deslizable clasico para revisar y gestionar el servicio.
+                  {% endif %}
+                </div>
+              </div>
+              <div class="panel-card">
                 <div class="panel-card-title">Servicio activo</div>
                 {% if active_pedido %}
                   <div>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</div>
@@ -4152,6 +4243,7 @@
       const defaultPage = "{{ default_page or 'inicio' }}";
       const hasActiveService = {{ "true" if active_pedido else "false" }};
       let driverOnline = {{ "true" if driver_online else "false" }};
+      let uiMode = {{ (ui_mode or 'classic')|tojson }};
       const servicesList = document.getElementById('servicesList');
       const servicesStatus = document.getElementById('servicesStatus');
       const servicesFooter = document.getElementById('servicesFooter');
@@ -4219,6 +4311,8 @@
       const accountAvailabilityText = document.getElementById('accountAvailabilityText');
       const accountAvailabilityPill = document.getElementById('accountAvailabilityPill');
       const accountAvailabilityNote = document.getElementById('accountAvailabilityNote');
+      const uiModeToggle = document.getElementById('uiModeToggle');
+      const uiModeNote = document.getElementById('uiModeNote');
       const priorityOverlay = document.getElementById('priorityOverlay');
       const priorityOrigen = document.getElementById('priorityOrigen');
       const priorityCliente = document.getElementById('priorityCliente');
@@ -4260,6 +4354,7 @@
       const actionModalSubtitle = document.getElementById('actionModalSubtitle');
       const actionModalBody = document.getElementById('actionModalBody');
       const actionModalFooter = document.getElementById('actionModalFooter');
+      const chatDirectNotice = document.getElementById('chatDirectNotice');
       const actionModalClose = document.getElementById('actionModalClose');
       let detailMap = null;
       let detailMarkers = [];
@@ -4311,7 +4406,9 @@
         recentTrips: {{ pedidos_mios[:4]|tojson }},
         activeService: {{ active_pedido|tojson }},
         flashMessages: {{ get_flashed_messages()|tojson }},
+        uiMode: {{ (ui_mode or 'classic')|tojson }},
       };
+      const usesExecutiveServiceLayout = hasActiveService && dashboardData.uiMode === 'executive';
 
       function setActivePage(target) {
         if (target !== 'inicio') {
@@ -4358,6 +4455,78 @@
         showToast.timer = setTimeout(() => {
           toast.classList.remove('show');
         }, duration);
+      }
+
+      function applyUiModeState(mode, options = {}) {
+        uiMode = mode === 'executive' ? 'executive' : 'classic';
+        dashboardData.uiMode = uiMode;
+        teStage?.classList.toggle('ui-mode-executive', uiMode === 'executive');
+        if (uiModeToggle) {
+          uiModeToggle.checked = uiMode === 'executive';
+        }
+        if (uiModeNote) {
+          uiModeNote.textContent = uiMode === 'executive'
+            ? 'Pantalla completa al tomar un servicio, con mapa integrado en la parte inferior.'
+            : 'Panel deslizable clasico para revisar y gestionar el servicio.';
+        }
+        if (options.announce) {
+          showToast(
+            uiMode === 'executive' ? 'Modo ejecutivo activado.' : 'Modo clasico activado.',
+            1800
+          );
+        }
+      }
+
+      async function persistUiMode(mode) {
+        const res = await fetch('/api/conductor/ui-mode', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ui_mode: mode }),
+        });
+        return res.json();
+      }
+
+      async function handleUiModeToggleChange(enabled) {
+        const previous = uiMode;
+        const nextMode = enabled ? 'executive' : 'classic';
+        if (uiModeToggle) uiModeToggle.disabled = true;
+        applyUiModeState(nextMode);
+        try {
+          const data = await persistUiMode(nextMode);
+          if (!data.ok) {
+            throw new Error(data.error || 'No se pudo guardar el modo visual.');
+          }
+          applyUiModeState(data.ui_mode, { announce: true });
+        } catch (error) {
+          applyUiModeState(previous);
+          showToast(error.message || 'No se pudo guardar el modo visual.', 2200);
+        } finally {
+          if (uiModeToggle) uiModeToggle.disabled = false;
+        }
+      }
+
+      function showChatDirectNotice() {
+        chatDirectNotice?.classList.add('is-visible');
+      }
+
+      async function checkActiveService(options = {}) {
+        if (hasActiveService) return;
+        try {
+          const res = await fetch('/api/conductor/active-service');
+          const data = await res.json();
+          if (!data.ok || !data.has_active_service || !data.pedido?.id) return;
+          const targetUrl = `/dashboard?active_service_id=${encodeURIComponent(String(data.pedido.id))}`;
+          if (options.silent) {
+            window.location.replace(targetUrl);
+            return;
+          }
+          showToast('Recuperando tu servicio activo...', 1400);
+          setTimeout(() => window.location.replace(targetUrl), 120);
+        } catch (error) {
+          // no-op
+        }
       }
 
       function getStoredLocale() {
@@ -5167,6 +5336,9 @@
           handleAvailabilityToggleChange(input.checked);
         });
       });
+      uiModeToggle?.addEventListener('change', () => {
+        handleUiModeToggleChange(uiModeToggle.checked);
+      });
 
       topDropdownClose?.addEventListener('click', () => {
         closeTopDropdown();
@@ -5421,6 +5593,14 @@
             ? 'Desliza para ajustar el chat sobre el mapa'
             : 'Desliza para ver mapa, acciones y chat';
         }
+        if (usesExecutiveServiceLayout) {
+          if (open && chatMessages) {
+            requestAnimationFrame(() => {
+              chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+          }
+          return;
+        }
         if (open) {
           setActiveServiceSheetState('expanded');
           if (chatMessages) {
@@ -5492,6 +5672,17 @@
 
       function initActiveServiceSheet() {
         if (!hasActiveService || !activeServiceGrabber || !serviceBottomSheet) return;
+        if (usesExecutiveServiceLayout) {
+          serviceBottomSheet.classList.remove('is-dragging', 'is-collapsed');
+          serviceBottomSheet.classList.add('is-expanded');
+          serviceBottomSheet.style.removeProperty('--active-sheet-height');
+          serviceBottomSheet.style.removeProperty('--active-sheet-offset');
+          requestAnimationFrame(() => {
+            serviceMap?.invalidateSize(false);
+            scheduleServiceMapRefresh(true);
+          });
+          return;
+        }
 
         const defaultState = window.innerWidth <= 480 ? 'mid' : 'collapsed';
         setActiveServiceSheetState(defaultState, { animate: false });
@@ -5644,6 +5835,9 @@
             if (data && data.messages && chatMessages) {
               appendChatMessages(data.messages, { forceScroll: true });
             }
+            if (data?.chat_started) {
+              showChatDirectNotice();
+            }
             if (data?.warning && toast) {
               toast.textContent = data.warning;
               toast.classList.add('show');
@@ -5746,7 +5940,21 @@
                 toast.classList.add('show');
                 setTimeout(() => toast.classList.remove('show'), 2200);
               }
-              window.location.href = '/dashboard';
+              if (action === '/tomar' && data?.active_pedido_id) {
+                try {
+                  sessionStorage.setItem(
+                    'driver-pending-active-service',
+                    JSON.stringify({
+                      pedidoId: data.active_pedido_id,
+                      uiMode: data.ui_mode || uiMode,
+                      acceptedAt: Date.now(),
+                    })
+                  );
+                } catch (error) {
+                  // no-op
+                }
+              }
+              window.location.href = data?.redirect_url || '/dashboard';
             } catch (error) {
               resetTrack();
               track.style.pointerEvents = '';
@@ -6870,6 +7078,9 @@
       if (hasActiveService) {
         configureActiveServiceActions();
         initActiveServiceSheet();
+        if (dashboardData.activeService?.chat_iniciado) {
+          showChatDirectNotice();
+        }
         if (chatMessages) {
           chatMessages.scrollTop = chatMessages.scrollHeight;
           const latestBubbleText = chatMessages.querySelector('.chat-bubble:last-child .chat-bubble-text')?.textContent;
@@ -6881,6 +7092,7 @@
         chatPollTimer = setInterval(pollChatMessages, 4000);
       }
       if (!hasActiveService) {
+        checkActiveService({ silent: true });
         hydrateServicesFromDom();
         startSearchingDots();
       }
@@ -6889,9 +7101,11 @@
         setInterval(refreshServicesList, 8000);
         checkPriority();
         setInterval(checkPriority, 5000);
+        setInterval(() => checkActiveService({ silent: true }), 6000);
       }
 
       applyDashboardLocale(getStoredLocale());
+      applyUiModeState(uiMode);
       updateNotificationDot();
       applyTripFilters();
       if (dashboardData.flashMessages?.length) {
@@ -6899,6 +7113,11 @@
           showToast(dashboardData.flashMessages[dashboardData.flashMessages.length - 1], 2600);
         }, 160);
       }
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && !hasActiveService) {
+          checkActiveService({ silent: true });
+        }
+      });
       setActivePage(defaultPage);
     </script>
   </body>

@@ -12,7 +12,7 @@ import urllib.request
 from datetime import datetime, timedelta
 from secrets import token_urlsafe
 
-from flask import Flask, request, render_template, redirect, url_for, session, flash, jsonify, Response
+from flask import Flask, request, render_template, redirect, url_for, session, flash, jsonify, Response, g
 from werkzeug.security import generate_password_hash, check_password_hash
 
 try:
@@ -40,6 +40,9 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "servicios.db")
 EXPIRATION_MINUTES = 12
 EXPIRATION_CHECK_SECONDS = 30
 TWILIO_SEND_RETRIES = 3
+DEFAULT_MEMBERSHIP_DAYS = 30
+PAYMENT_WHATSAPP_NUMBER = "573106269788"
+PAYMENT_PENDING_COPY = "Recuerda pagar tu mensualidad para volver a ver el mapa y tomar viajes."
 EXPIRATION_MESSAGE = (
     "No logramos asignarte conductor en este momento. "
     "Cancelamos la solicitud para no hacerte esperar. "
@@ -82,11 +85,154 @@ TEST_COORDS = [
     (6.034995, -75.433154),
 ]
 
+CONDUCTOR_SUBSCRIPTION_PROTECTED_ENDPOINTS = {
+    "inicio",
+    "dashboard",
+    "tomar",
+    "vaciar_tomados",
+    "finalizar_servicio",
+    "servicio_detalle",
+    "servicio_detalle_api",
+    "servicios_status_api",
+    "servicios_list_api",
+    "conductor_availability_api",
+    "chat_api",
+    "chat_send_api",
+    "reenviar_asignacion",
+}
+
 
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def db_now():
+    return datetime.now()
+
+
+def format_db_datetime(value):
+    if not value:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    return str(value)
+
+
+def parse_db_datetime(value):
+    text = (value or "").strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def compute_subscription_state(status_suscripto, fin_suscripcion, reference_dt=None):
+    now = reference_dt or db_now()
+    fin_dt = parse_db_datetime(fin_suscripcion)
+    normalized_status = (status_suscripto or "inactivo").strip().lower()
+    expired = bool(fin_dt and now > fin_dt)
+    active = normalized_status == "activo" and fin_dt is not None and not expired
+    if expired and normalized_status != "inactivo":
+        normalized_status = "inactivo"
+    return {
+        "status": normalized_status,
+        "fin_dt": fin_dt,
+        "active": active,
+        "expired": expired,
+    }
+
+
+def sync_expired_subscriptions(conn):
+    rows = conn.execute(
+        """
+        SELECT id, status_suscripto, fin_suscripcion
+        FROM conductores
+        WHERE fin_suscripcion IS NOT NULL
+        """
+    ).fetchall()
+    now = db_now()
+    expired_ids = []
+    for row in rows:
+        state = compute_subscription_state(
+            row["status_suscripto"],
+            row["fin_suscripcion"],
+            reference_dt=now,
+        )
+        if state["expired"]:
+            expired_ids.append(row["id"])
+    if expired_ids:
+        conn.executemany(
+            "UPDATE conductores SET status_suscripto = 'inactivo' WHERE id = ?",
+            [(driver_id,) for driver_id in expired_ids],
+        )
+        conn.commit()
+    return expired_ids
+
+
+def build_whatsapp_payment_link():
+    text = urllib.parse.quote(
+        "Hola, quiero ponerme al dia con mi mensualidad para reactivar la app."
+    )
+    return f"https://wa.me/{PAYMENT_WHATSAPP_NUMBER}?text={text}"
+
+
+def get_conductor_subscription_snapshot(row, reference_dt=None):
+    now = reference_dt or db_now()
+    state = compute_subscription_state(
+        row["status_suscripto"] if row and "status_suscripto" in row.keys() else "inactivo",
+        row["fin_suscripcion"] if row and "fin_suscripcion" in row.keys() else "",
+        reference_dt=now,
+    )
+    fin_dt = state["fin_dt"]
+    days_left = 0
+    if fin_dt and state["active"]:
+        delta = fin_dt - now
+        days_left = max(0, delta.days + (1 if delta.seconds > 0 else 0))
+    return {
+        "status_suscripto": state["status"],
+        "suscripcion_activa": state["active"],
+        "fin_suscripcion": format_db_datetime(fin_dt) if fin_dt else "",
+        "fin_suscripcion_short": fin_dt.strftime("%d/%m/%Y %H:%M") if fin_dt else "Sin fecha",
+        "dias_restantes": days_left,
+        "mensualidades_pagadas": row["mensualidades_pagadas"] if row and "mensualidades_pagadas" in row.keys() and row["mensualidades_pagadas"] is not None else 0,
+        "dias_mensualidad": row["dias_mensualidad"] if row and "dias_mensualidad" in row.keys() and row["dias_mensualidad"] else DEFAULT_MEMBERSHIP_DAYS,
+        "ultima_mensualidad_at": row["ultima_mensualidad_at"] if row and "ultima_mensualidad_at" in row.keys() else "",
+    }
+
+
+def get_conductor_row(conductor_id, conn=None, sync=True):
+    own_conn = conn is None
+    conn = conn or get_conn()
+    if sync:
+        sync_expired_subscriptions(conn)
+    row = conn.execute(
+        "SELECT * FROM conductores WHERE id = ?",
+        (conductor_id,),
+    ).fetchone()
+    if own_conn:
+        conn.close()
+    return row
+
+
+def conductor_has_active_subscription(conductor_id, conn=None):
+    row = get_conductor_row(conductor_id, conn=conn, sync=True)
+    if row is None:
+        return False, None
+    return get_conductor_subscription_snapshot(row)["suscripcion_activa"], row
+
+
+def is_json_like_request():
+    return (
+        request.path.startswith("/api/")
+        or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or request.accept_mimetypes.accept_json
+    )
 
 
 def get_config_value(key, default=None):
@@ -104,6 +250,7 @@ def set_config_value(key, value):
         "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
         (key, str(value)),
     )
+    sync_expired_subscriptions(conn)
     conn.commit()
     conn.close()
 
@@ -151,6 +298,76 @@ def normalize_fernet_key(raw_key):
             return raw_key
     except Exception:
         pass
+
+
+def normalize_ui_mode(value):
+    return "executive" if str(value or "").strip().lower() == "executive" else "classic"
+
+
+def get_ui_mode():
+    return normalize_ui_mode(get_config_value("ui_mode", "classic"))
+
+
+def get_driver_active_service(conn, conductor_id, conductor_nombre, conductor_placa):
+    if not conductor_id:
+        return None
+
+    active_row = conn.execute(
+        "SELECT active_pedido_id, is_online FROM conductores WHERE id = ?",
+        (conductor_id,),
+    ).fetchone()
+    active_pedido_id = active_row["active_pedido_id"] if active_row else None
+    driver_online = (
+        bool(active_row["is_online"])
+        if active_row and active_row["is_online"] is not None
+        else True
+    )
+
+    pedido_row = None
+    if active_pedido_id:
+        pedido_row = conn.execute(
+            """
+            SELECT *
+            FROM pedidos
+            WHERE id = ?
+              AND estado = 'Tomado'
+              AND conductor_nombre = ?
+              AND conductor_placa = ?
+            """,
+            (active_pedido_id, conductor_nombre, conductor_placa),
+        ).fetchone()
+
+    if pedido_row is None and conductor_nombre and conductor_placa:
+        pedido_row = conn.execute(
+            """
+            SELECT *
+            FROM pedidos
+            WHERE estado = 'Tomado'
+              AND conductor_nombre = ?
+              AND conductor_placa = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (conductor_nombre, conductor_placa),
+        ).fetchone()
+        recovered_id = pedido_row["id"] if pedido_row else None
+        if recovered_id != active_pedido_id:
+            conn.execute(
+                "UPDATE conductores SET active_pedido_id = ? WHERE id = ?",
+                (recovered_id, conductor_id),
+            )
+
+    if pedido_row is None and active_pedido_id:
+        conn.execute(
+            "UPDATE conductores SET active_pedido_id = NULL WHERE id = ?",
+            (conductor_id,),
+        )
+
+    return {
+        "pedido_row": pedido_row,
+        "active_pedido_id": pedido_row["id"] if pedido_row else None,
+        "driver_online": driver_online,
+    }
     digest = hashlib.sha256(raw_key.encode("utf-8")).digest()
     return base64.urlsafe_b64encode(digest).decode("utf-8")
 
@@ -204,6 +421,7 @@ def decrypt_password(enc_text):
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
     cur.execute(
@@ -231,6 +449,28 @@ def init_db():
     if "is_online" not in conductor_cols:
         cur.execute("ALTER TABLE conductores ADD COLUMN is_online INTEGER DEFAULT 1")
         cur.execute("UPDATE conductores SET is_online = 1 WHERE is_online IS NULL")
+    if "status_suscripto" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN status_suscripto TEXT DEFAULT 'inactivo'")
+        cur.execute(
+            "UPDATE conductores SET status_suscripto = 'inactivo' WHERE status_suscripto IS NULL OR trim(status_suscripto) = ''"
+        )
+    if "fin_suscripcion" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN fin_suscripcion TEXT")
+    if "mensualidades_pagadas" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN mensualidades_pagadas INTEGER DEFAULT 0")
+        cur.execute(
+            "UPDATE conductores SET mensualidades_pagadas = 0 WHERE mensualidades_pagadas IS NULL"
+        )
+    if "dias_mensualidad" not in conductor_cols:
+        cur.execute(
+            f"ALTER TABLE conductores ADD COLUMN dias_mensualidad INTEGER DEFAULT {DEFAULT_MEMBERSHIP_DAYS}"
+        )
+        cur.execute(
+            "UPDATE conductores SET dias_mensualidad = ? WHERE dias_mensualidad IS NULL",
+            (DEFAULT_MEMBERSHIP_DAYS,),
+        )
+    if "ultima_mensualidad_at" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN ultima_mensualidad_at TEXT")
 
     cur.execute(
         """
@@ -1176,16 +1416,10 @@ def send_assignment_message(phone, conductor_nombre, conductor_placa):
 
 
 def send_chat_messages(phone, conductor_placa, conductor_message, include_system):
-    system_body = f"Tu conductor ({conductor_placa}) entro al chat."
-    ok_system = True
-    err_system = ""
-    if include_system:
-        ok_system, err_system = send_whatsapp_message(phone, system_body)
-
     ok_msg, err_msg = send_whatsapp_message(phone, conductor_message)
-    if ok_system and ok_msg:
+    if ok_msg:
         return True, ""
-    return False, err_msg or err_system
+    return False, err_msg
 
 
 def queue_assignment_notification(pedido_id, phone, conductor_nombre, conductor_placa):
@@ -1326,6 +1560,63 @@ def ensure_background_runtime():
     ensure_runtime_workers(reason=request.path or "request")
 
 
+@app.before_request
+def enforce_conductor_subscription():
+    endpoint = request.endpoint or ""
+    if not session.get("conductor_id"):
+        return None
+    if endpoint == "static" or endpoint.startswith("admin"):
+        return None
+    if endpoint in {
+        "login",
+        "logout",
+        "webhook",
+        "perfil",
+        "payment_pending",
+        "index_root",
+    }:
+        return None
+    if endpoint not in CONDUCTOR_SUBSCRIPTION_PROTECTED_ENDPOINTS:
+        return None
+
+    conn = get_conn()
+    sync_expired_subscriptions(conn)
+    row = conn.execute(
+        """
+        SELECT *
+        FROM conductores
+        WHERE id = ?
+        """,
+        (session.get("conductor_id"),),
+    ).fetchone()
+    conn.close()
+
+    if row is None:
+        session.clear()
+        if is_json_like_request():
+            return jsonify({"ok": False, "error": "Sesion invalida.", "redirect": url_for("login")}), 401
+        return redirect(url_for("login"))
+
+    g.subscription_info = get_conductor_subscription_snapshot(row)
+    if g.subscription_info["suscripcion_activa"]:
+        return None
+
+    if is_json_like_request():
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": PAYMENT_PENDING_COPY,
+                    "payment_pending": True,
+                    "redirect": url_for("payment_pending"),
+                }
+            ),
+            402,
+        )
+    flash(PAYMENT_PENDING_COPY)
+    return redirect(url_for("payment_pending"))
+
+
 def admin_session_active():
     return bool(session.get("admin_id"))
 
@@ -1340,6 +1631,7 @@ def pedido_to_dict(row):
         "conductor_placa": row["conductor_placa"] if "conductor_placa" in row.keys() else None,
         "timestamp": row["timestamp"],
         "hora": format_time(row["timestamp"]),
+        "chat_iniciado": row["chat_iniciado"] if "chat_iniciado" in row.keys() else 0,
         "detalles": parse_detalles(row["mensaje_cliente"]),
     }
 
@@ -1433,6 +1725,9 @@ def login():
         session["conductor_vehiculo"] = row["vehiculo"] if "vehiculo" in row.keys() else None
         session["conductor_modelo"] = row["modelo"] if "modelo" in row.keys() else None
 
+        if not get_conductor_subscription_snapshot(row)["suscripcion_activa"]:
+            return redirect(url_for("payment_pending"))
+
         if not row["nombre_real"] or not row["placa"] or not row["vehiculo"] or not row["modelo"]:
             return redirect(url_for("perfil"))
         return redirect(url_for("inicio"))
@@ -1445,6 +1740,9 @@ def index_root():
     if session.get("admin_id"):
         return redirect(url_for("admin_dashboard"))
     if session.get("conductor_id"):
+        row = get_conductor_row(session.get("conductor_id"))
+        if row is not None and not get_conductor_subscription_snapshot(row)["suscripcion_activa"]:
+            return redirect(url_for("payment_pending"))
         if (
             not session.get("conductor_nombre")
             or not session.get("conductor_placa")
@@ -1454,6 +1752,44 @@ def index_root():
             return redirect(url_for("perfil"))
         return redirect(url_for("inicio"))
     return redirect(url_for("login"))
+
+
+@app.route("/suscripcion/pago-pendiente")
+def payment_pending():
+    if not session.get("conductor_id"):
+        return redirect(url_for("login"))
+
+    conn = get_conn()
+    sync_expired_subscriptions(conn)
+    row = conn.execute(
+        "SELECT * FROM conductores WHERE id = ?",
+        (session.get("conductor_id"),),
+    ).fetchone()
+    conn.close()
+
+    if row is None:
+        session.clear()
+        return redirect(url_for("login"))
+
+    subscription = get_conductor_subscription_snapshot(row)
+    if subscription["suscripcion_activa"]:
+        if (
+            not session.get("conductor_nombre")
+            or not session.get("conductor_placa")
+            or not session.get("conductor_vehiculo")
+            or not session.get("conductor_modelo")
+        ):
+            return redirect(url_for("perfil"))
+        return redirect(url_for("inicio"))
+    return render_template(
+        "payment_pending.html",
+        conductor_usuario=row["usuario"],
+        conductor_nombre=row["nombre_real"] or row["usuario"],
+        subscription=subscription,
+        payment_pending_copy=PAYMENT_PENDING_COPY,
+        payment_whatsapp_link=build_whatsapp_payment_link(),
+        payment_whatsapp_number="+57 3106269788",
+    )
 
 
 @app.route("/perfil", methods=["GET", "POST"])
@@ -1516,6 +1852,7 @@ def admin_overview_api():
 
     try:
         conn = get_conn()
+        sync_expired_subscriptions(conn)
         services_row = conn.execute(
             """
             SELECT COUNT(*) AS total
@@ -1525,6 +1862,20 @@ def admin_overview_api():
         ).fetchone()
         drivers_total_row = conn.execute(
             "SELECT COUNT(*) AS total FROM conductores"
+        ).fetchone()
+        subs_active_row = conn.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM conductores
+            WHERE lower(COALESCE(status_suscripto, 'inactivo')) = 'activo'
+            """
+        ).fetchone()
+        subs_inactive_row = conn.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM conductores
+            WHERE lower(COALESCE(status_suscripto, 'inactivo')) != 'activo'
+            """
         ).fetchone()
         earnings_row = conn.execute(
             "SELECT COALESCE(SUM(monto), 0) AS total FROM ganancias"
@@ -1542,6 +1893,8 @@ def admin_overview_api():
     except Exception:
         services_row = {"total": 0}
         drivers_total_row = {"total": 0}
+        subs_active_row = {"total": 0}
+        subs_inactive_row = {"total": 0}
         earnings_row = {"total": 0}
         active_rows = []
         db_ok = False
@@ -1565,6 +1918,8 @@ def admin_overview_api():
             "active_drivers_count": len(active_drivers),
             "active_drivers": active_drivers,
             "drivers_total": int(drivers_total_row["total"]) if drivers_total_row else 0,
+            "subscription_active_count": int(subs_active_row["total"]) if subs_active_row else 0,
+            "subscription_inactive_count": int(subs_inactive_row["total"]) if subs_inactive_row else 0,
             "earnings_total": int(earnings_row["total"]) if earnings_row else 0,
         }
     )
@@ -1769,6 +2124,7 @@ def admin_drivers_api():
 
     try:
         conn = get_conn()
+        sync_expired_subscriptions(conn)
         rows = conn.execute(
             """
             SELECT
@@ -1779,6 +2135,11 @@ def admin_drivers_api():
                 c.vehiculo,
                 c.modelo,
                 c.active_pedido_id,
+                c.status_suscripto,
+                c.fin_suscripcion,
+                c.mensualidades_pagadas,
+                c.dias_mensualidad,
+                c.ultima_mensualidad_at,
                 (
                     SELECT COUNT(*)
                     FROM pedidos p
@@ -1816,6 +2177,7 @@ def admin_drivers_api():
 
     conductores = []
     for row in rows:
+        subscription = get_conductor_subscription_snapshot(row)
         conductores.append(
             {
                 "id": row["id"],
@@ -1828,10 +2190,124 @@ def admin_drivers_api():
                 "servicios": row["servicios"] if row["servicios"] is not None else 0,
                 "ultimo": format_ts_short(row["ultimo_servicio"]),
                 "ganancias": format_cop(row["ganancias"]),
+                "status_suscripto": subscription["status_suscripto"],
+                "suscripcion_activa": subscription["suscripcion_activa"],
+                "fin_suscripcion": subscription["fin_suscripcion_short"],
+                "dias_restantes": subscription["dias_restantes"],
+                "mensualidades_pagadas": subscription["mensualidades_pagadas"],
+                "dias_mensualidad": subscription["dias_mensualidad"],
+                "ultima_mensualidad_at": format_ts_short(subscription["ultima_mensualidad_at"]),
             }
         )
 
     return jsonify({"ok": True, "conductores": conductores})
+
+
+@app.route("/admin/api/driver/subscription", methods=["POST"])
+def admin_driver_subscription_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    payload = request.get_json(silent=True) or {}
+    conductor_id = payload.get("id") or request.form.get("id", "")
+    action = (payload.get("action") or request.form.get("action", "")).strip().lower()
+    days_value = payload.get("days")
+    if days_value is None:
+        days_value = request.form.get("days", "")
+
+    try:
+        conductor_id = int(conductor_id)
+    except Exception:
+        return jsonify({"ok": False, "error": "ID invalido."}), 400
+
+    try:
+        extra_days = int(days_value) if str(days_value).strip() else 0
+    except Exception:
+        return jsonify({"ok": False, "error": "Dias invalidos."}), 400
+
+    conn = get_conn()
+    sync_expired_subscriptions(conn)
+    row = conn.execute(
+        "SELECT * FROM conductores WHERE id = ?",
+        (conductor_id,),
+    ).fetchone()
+    if row is None:
+        conn.close()
+        return jsonify({"ok": False, "error": "Conductor no encontrado."}), 404
+
+    now = db_now()
+    base_fin = parse_db_datetime(row["fin_suscripcion"])
+    if base_fin is None or base_fin < now:
+        base_fin = now
+
+    if action == "set_plan_days":
+        if extra_days <= 0:
+            conn.close()
+            return jsonify({"ok": False, "error": "Define una cantidad valida de dias."}), 400
+        conn.execute(
+            "UPDATE conductores SET dias_mensualidad = ? WHERE id = ?",
+            (extra_days, conductor_id),
+        )
+        message = f"Dias del plan actualizados a {extra_days}."
+    elif action == "renew":
+        plan_days = row["dias_mensualidad"] or DEFAULT_MEMBERSHIP_DAYS
+        new_end = base_fin + timedelta(days=plan_days)
+        conn.execute(
+            """
+            UPDATE conductores
+            SET status_suscripto = 'activo',
+                fin_suscripcion = ?,
+                mensualidades_pagadas = COALESCE(mensualidades_pagadas, 0) + 1,
+                ultima_mensualidad_at = ?
+            WHERE id = ?
+            """,
+            (format_db_datetime(new_end), format_db_datetime(now), conductor_id),
+        )
+        message = f"Mensualidad aplicada por {plan_days} dias."
+    elif action == "add_days":
+        if extra_days <= 0:
+            conn.close()
+            return jsonify({"ok": False, "error": "Escribe cuantos dias extra quieres sumar."}), 400
+        new_end = base_fin + timedelta(days=extra_days)
+        conn.execute(
+            """
+            UPDATE conductores
+            SET status_suscripto = 'activo',
+                fin_suscripcion = ?
+            WHERE id = ?
+            """,
+            (format_db_datetime(new_end), conductor_id),
+        )
+        message = f"Se agregaron {extra_days} dias extra."
+    elif action == "deactivate":
+        conn.execute(
+            """
+            UPDATE conductores
+            SET status_suscripto = 'inactivo'
+            WHERE id = ?
+            """,
+            (conductor_id,),
+        )
+        message = "Suscripcion desactivada."
+    else:
+        conn.close()
+        return jsonify({"ok": False, "error": "Accion invalida."}), 400
+
+    conn.commit()
+    updated = conn.execute(
+        "SELECT * FROM conductores WHERE id = ?",
+        (conductor_id,),
+    ).fetchone()
+    conn.close()
+
+    snapshot = get_conductor_subscription_snapshot(updated)
+    log_system_event(
+        "info",
+        "membership",
+        "Cambio de suscripcion desde admin",
+        f"conductor_id={conductor_id} action={action} status={snapshot['status_suscripto']} fin={snapshot['fin_suscripcion']}",
+    )
+    return jsonify({"ok": True, "message": message, "subscription": snapshot})
 
 
 @app.route("/admin/api/driver/credentials")
@@ -1982,19 +2458,19 @@ def admin_logs_clear_api():
 
 def build_panel_context():
     conn = get_conn()
-    active_row = conn.execute(
-        "SELECT active_pedido_id, is_online FROM conductores WHERE id = ?",
-        (session.get("conductor_id"),),
-    ).fetchone()
-    active_pedido_id = active_row["active_pedido_id"] if active_row else None
-    driver_online = bool(active_row["is_online"]) if active_row and active_row["is_online"] is not None else True
+    active_state = get_driver_active_service(
+        conn,
+        session.get("conductor_id"),
+        session.get("conductor_nombre"),
+        session.get("conductor_placa"),
+    )
+    active_pedido_id = active_state["active_pedido_id"] if active_state else None
+    driver_online = active_state["driver_online"] if active_state else True
 
     active_pedido = None
     chat_messages = []
     if active_pedido_id:
-        pedido_row = conn.execute(
-            "SELECT * FROM pedidos WHERE id = ?", (active_pedido_id,)
-        ).fetchone()
+        pedido_row = active_state["pedido_row"] if active_state else None
         if pedido_row and pedido_row["estado"] == "Tomado":
             active_pedido = pedido_to_dict(pedido_row)
             chat_rows = conn.execute(
@@ -2016,11 +2492,6 @@ def build_panel_context():
                 for row in chat_rows
             ]
         else:
-            conn.execute(
-                "UPDATE conductores SET active_pedido_id = NULL WHERE id = ?",
-                (session.get("conductor_id"),),
-            )
-            conn.commit()
             active_pedido_id = None
 
     rows = []
@@ -2049,6 +2520,7 @@ def build_panel_context():
         "SELECT COALESCE(SUM(monto), 0) as total FROM ganancias WHERE conductor_id = ?",
         (session.get("conductor_id"),),
     ).fetchone()
+    conn.commit()
     conn.close()
 
     pedidos = []
@@ -2091,6 +2563,7 @@ def build_panel_context():
         "active_pedido": active_pedido,
         "chat_messages": chat_messages,
         "driver_online": driver_online,
+        "ui_mode": get_ui_mode(),
     }
 
 
@@ -2161,54 +2634,74 @@ def tomar():
         return redirect(url_for("dashboard"))
 
     conn = get_conn()
-    availability_row = conn.execute(
-        "SELECT is_online FROM conductores WHERE id = ?",
-        (session.get("conductor_id"),),
-    ).fetchone()
-    is_online = bool(availability_row["is_online"]) if availability_row and availability_row["is_online"] is not None else True
-    if not is_online:
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        availability_row = conn.execute(
+            "SELECT is_online FROM conductores WHERE id = ?",
+            (session.get("conductor_id"),),
+        ).fetchone()
+        is_online = (
+            bool(availability_row["is_online"])
+            if availability_row and availability_row["is_online"] is not None
+            else True
+        )
+        if not is_online:
+            conn.rollback()
+            conn.close()
+            if is_xhr:
+                return jsonify({"ok": False, "error": "Activa el modo disponible para tomar servicios."}), 409
+            flash("Activa el modo disponible para tomar servicios.")
+            return redirect(url_for("dashboard"))
+
+        active_state = get_driver_active_service(
+            conn,
+            session.get("conductor_id"),
+            session.get("conductor_nombre"),
+            session.get("conductor_placa"),
+        )
+        if active_state and active_state["active_pedido_id"]:
+            conn.rollback()
+            conn.close()
+            if is_xhr:
+                return jsonify({"ok": False, "error": "Ya tienes un viaje activo."}), 409
+            flash("Ya tienes un viaje activo.")
+            return redirect(url_for("dashboard"))
+
+        cur = conn.execute(
+            """
+            UPDATE pedidos
+            SET estado = 'Tomado', conductor_nombre = ?, conductor_placa = ?, assignment_notified = 0
+            WHERE id = ? AND lower(estado) IN ('disponible', 'pendiente')
+            """,
+            (session["conductor_nombre"], session["conductor_placa"], pedido_id),
+        )
+        if cur.rowcount == 0:
+            conn.rollback()
+            conn.close()
+            if is_xhr:
+                return jsonify({"ok": False, "error": "Este servicio ya fue tomado."}), 409
+            flash("Este servicio ya fue tomado por otro conductor.")
+            return redirect(url_for("dashboard"))
+
+        row = conn.execute(
+            "SELECT * FROM pedidos WHERE id = ?",
+            (pedido_id,),
+        ).fetchone()
+        conn.execute(
+            "UPDATE conductores SET active_pedido_id = ? WHERE id = ?",
+            (pedido_id, session.get("conductor_id")),
+        )
+        conn.commit()
+    except Exception as exc:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         conn.close()
         if is_xhr:
-            return jsonify({"ok": False, "error": "Activa el modo disponible para tomar servicios."}), 409
-        flash("Activa el modo disponible para tomar servicios.")
+            return jsonify({"ok": False, "error": f"No se pudo tomar el servicio. {exc}"}), 500
+        flash("No se pudo tomar el servicio en este momento.")
         return redirect(url_for("dashboard"))
-
-    active_row = conn.execute(
-        "SELECT active_pedido_id FROM conductores WHERE id = ?",
-        (session.get("conductor_id"),),
-    ).fetchone()
-    if active_row and active_row["active_pedido_id"]:
-        conn.close()
-        if is_xhr:
-            return jsonify({"ok": False, "error": "Ya tienes un viaje activo."}), 409
-        flash("Ya tienes un viaje activo.")
-        return redirect(url_for("dashboard"))
-    cur = conn.execute(
-        """
-        UPDATE pedidos
-        SET estado = 'Tomado', conductor_nombre = ?, conductor_placa = ?, assignment_notified = 0
-        WHERE id = ? AND lower(estado) IN ('disponible', 'pendiente')
-        """,
-        (session["conductor_nombre"], session["conductor_placa"], pedido_id),
-    )
-    conn.commit()
-
-    if cur.rowcount == 0:
-        conn.close()
-        if is_xhr:
-            return jsonify({"ok": False, "error": "Este servicio ya fue tomado."}), 409
-        flash("Este servicio ya fue tomado por otro conductor.")
-        return redirect(url_for("dashboard"))
-
-    row = conn.execute(
-        "SELECT * FROM pedidos WHERE id = ?", (pedido_id,)
-    ).fetchone()
-
-    conn.execute(
-        "UPDATE conductores SET active_pedido_id = ? WHERE id = ?",
-        (pedido_id, session.get("conductor_id")),
-    )
-    conn.commit()
     conn.close()
 
     cliente_telefono = row["cliente_telefono"] if row else ""
@@ -2224,7 +2717,10 @@ def tomar():
             {
                 "ok": True,
                 "pedido": pedido_to_dict(row),
+                "active_pedido_id": row["id"] if row else None,
                 "notification_queued": bool(cliente_telefono),
+                "redirect_url": url_for("dashboard"),
+                "ui_mode": get_ui_mode(),
             }
         )
 
@@ -2541,6 +3037,68 @@ def conductor_availability_api():
     return jsonify({"ok": True, "online": enabled})
 
 
+@app.route("/api/conductor/ui-mode", methods=["GET", "POST"])
+def conductor_ui_mode_api():
+    if not session.get("conductor_id"):
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    if request.method == "GET":
+        return jsonify({"ok": True, "ui_mode": get_ui_mode()})
+
+    data = request.get_json(silent=True) or {}
+    ui_mode = normalize_ui_mode(data.get("ui_mode") or request.form.get("ui_mode"))
+    set_config_value("ui_mode", ui_mode)
+    return jsonify({"ok": True, "ui_mode": ui_mode})
+
+
+@app.route("/api/conductor/active-service")
+def conductor_active_service_api():
+    if not session.get("conductor_id"):
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    conn = get_conn()
+    state = get_driver_active_service(
+        conn,
+        session.get("conductor_id"),
+        session.get("conductor_nombre"),
+        session.get("conductor_placa"),
+    )
+
+    pedido_row = state["pedido_row"] if state else None
+    messages = []
+    if pedido_row:
+        chat_rows = conn.execute(
+            """
+            SELECT id, sender, message, timestamp
+            FROM chat_mensajes
+            WHERE pedido_id = ?
+            ORDER BY id ASC
+            """,
+            (pedido_row["id"],),
+        ).fetchall()
+        messages = [
+            {
+                "id": row["id"],
+                "sender": row["sender"],
+                "message": row["message"],
+                "timestamp": row["timestamp"],
+            }
+            for row in chat_rows
+        ]
+    conn.commit()
+    conn.close()
+
+    return jsonify(
+        {
+            "ok": True,
+            "has_active_service": bool(pedido_row),
+            "pedido": pedido_to_dict(pedido_row) if pedido_row else None,
+            "chat_messages": messages,
+            "ui_mode": get_ui_mode(),
+        }
+    )
+
+
 @app.route("/api/chat/<int:pedido_id>")
 def chat_api(pedido_id):
     if not session.get("conductor_id"):
@@ -2629,25 +3187,6 @@ def chat_send_api():
     sent_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if include_system:
         cur.execute(
-            """
-            INSERT INTO chat_mensajes (pedido_id, sender, message, timestamp)
-            VALUES (?, 'sistema', ?, ?)
-            """,
-            (
-                pedido_id,
-                f"Tu conductor ({session.get('conductor_placa')}) entro al chat.",
-                sent_at,
-            ),
-        )
-        inserted.append(
-            {
-                "id": cur.lastrowid,
-                "sender": "sistema",
-                "message": f"Tu conductor ({session.get('conductor_placa')}) entro al chat.",
-                "timestamp": sent_at,
-            }
-        )
-        cur.execute(
             "UPDATE pedidos SET chat_iniciado = 1 WHERE id = ?",
             (pedido_id,),
         )
@@ -2684,10 +3223,11 @@ def chat_send_api():
                 "ok": True,
                 "warning": razon or "No se pudo enviar a WhatsApp.",
                 "messages": inserted,
+                "chat_started": True,
             }
         )
 
-    return jsonify({"ok": True, "messages": inserted})
+    return jsonify({"ok": True, "messages": inserted, "chat_started": True})
 
 
 @app.route("/servicio/<int:pedido_id>/reenviar", methods=["POST"])

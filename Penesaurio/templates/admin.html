@@ -541,24 +541,192 @@
         box-shadow: var(--shadow);
       }
 
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
+      .drivers-list {
+        display: grid;
+        gap: 14px;
       }
 
-      th, td {
-        padding: 10px 8px;
-        text-align: left;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      }
-
-      th {
+      .drivers-legend {
+        margin: 0 0 18px 0;
         color: var(--muted);
-        font-weight: 600;
+        font-size: 13px;
+      }
+
+      .driver-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto;
+        gap: 16px;
+        padding: 18px;
+        border-radius: 18px;
+        border: 1px solid var(--stroke);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(10, 13, 18, 0.72));
+      }
+
+      .driver-main {
+        min-width: 0;
+      }
+
+      .driver-name {
+        margin: 0;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 22px;
+        line-height: 1.05;
+      }
+
+      .driver-subline {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .driver-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .driver-stat {
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .driver-stat-label {
+        font-size: 10px;
+        letter-spacing: 1.2px;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .driver-stat-value {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .driver-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .driver-chip-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+
+      .driver-chip {
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--stroke);
+        background: rgba(255, 255, 255, 0.03);
+        font-size: 12px;
+        color: var(--text);
+      }
+
+      .modal-card.driver-detail-card {
+        max-width: 860px;
+        max-height: calc(100vh - 40px);
+        overflow: auto;
+      }
+
+      .driver-detail-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .driver-detail-top h3 {
+        margin-bottom: 8px;
+      }
+
+      .driver-detail-sub {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 0;
+      }
+
+      .detail-close {
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+      }
+
+      .driver-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .detail-block {
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--stroke);
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .detail-block.full {
+        grid-column: 1 / -1;
+      }
+
+      .detail-block-title {
+        margin: 0 0 14px 0;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1.6px;
+        color: var(--muted);
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .detail-item {
+        min-width: 0;
+      }
+
+      .detail-item span {
+        display: block;
         font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .detail-item strong {
+        display: block;
+        font-size: 15px;
+        line-height: 1.35;
+        word-break: break-word;
+      }
+
+      .detail-actions {
+        display: grid;
+        gap: 12px;
+      }
+
+      .detail-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
       }
 
       .status-pill {
@@ -591,6 +759,40 @@
       .cred-button:hover {
         border-color: var(--accent);
         color: var(--accent);
+      }
+
+      .cred-button.danger {
+        border-color: rgba(255, 107, 107, 0.55);
+        color: var(--danger);
+      }
+
+      .sub-stack {
+        display: grid;
+        gap: 8px;
+        min-width: 220px;
+      }
+
+      .sub-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .sub-input {
+        width: 88px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--stroke);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        font-size: 12px;
+      }
+
+      .sub-meta {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.4;
       }
 
       .modal {
@@ -685,6 +887,15 @@
         .active-panel {
           grid-column: span 12;
         }
+        .driver-card {
+          grid-template-columns: 1fr;
+        }
+        .driver-actions {
+          justify-content: flex-start;
+        }
+        .driver-detail-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       @media (max-width: 720px) {
@@ -697,6 +908,19 @@
         .service-list {
           grid-template-columns: 1fr;
           max-height: 480px;
+        }
+        .driver-meta,
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
+        .modal-card {
+          padding: 16px;
+        }
+        .driver-name {
+          font-size: 19px;
+        }
+        .driver-detail-top {
+          align-items: center;
         }
       }
       /* Clean minimal theme overrides */
@@ -879,30 +1103,64 @@
         <div class="panel-header">
           <div>
             <h3 class="panel-title">Conductores registrados</h3>
-            <p class="panel-sub">Metricas en tiempo real y credenciales</p>
+            <p class="panel-sub">Resumen limpio arriba, detalle completo aparte</p>
           </div>
           <button class="button" id="refreshDriversBtn">Recargar</button>
         </div>
-        <div style="overflow-x: auto;">
-          <table>
-            <thead>
-              <tr>
-                <th>Usuario</th>
-                <th>Nombre</th>
-                <th>Placa</th>
-                <th>Vehiculo</th>
-                <th>Modelo</th>
-                <th>Estado</th>
-                <th>Servicios</th>
-                <th>Ultimo</th>
-                <th>Ganancias</th>
-                <th>Credenciales</th>
-              </tr>
-            </thead>
-            <tbody id="driversTableBody"></tbody>
-          </table>
+        <p class="drivers-legend">Mostramos primero lo importante: nombre, estado y un acceso claro para entrar al detalle de cada conductor.</p>
+        <div class="drivers-list" id="driversList">
+          <div class="empty-state">Cargando conductores...</div>
         </div>
       </section>
+    </div>
+
+    <div class="modal" id="driverDetailModal">
+      <div class="modal-card driver-detail-card">
+        <div class="driver-detail-top">
+          <div>
+            <h3 id="driverDetailName">Conductor</h3>
+            <p class="driver-detail-sub" id="driverDetailSub">Resumen completo del conductor seleccionado.</p>
+            <div class="driver-chip-row" id="driverDetailChips"></div>
+          </div>
+          <button class="button detail-close" id="closeDriverDetailBtn" aria-label="Cerrar detalle">X</button>
+        </div>
+
+        <div class="driver-detail-grid">
+          <section class="detail-block">
+            <h4 class="detail-block-title">Identidad y vehiculo</h4>
+            <div class="detail-grid" id="driverIdentityGrid"></div>
+          </section>
+
+          <section class="detail-block">
+            <h4 class="detail-block-title">Actividad</h4>
+            <div class="detail-grid" id="driverActivityGrid"></div>
+          </section>
+
+          <section class="detail-block full">
+            <h4 class="detail-block-title">Suscripcion</h4>
+            <div class="detail-grid" id="driverSubscriptionGrid"></div>
+          </section>
+
+          <section class="detail-block full">
+            <h4 class="detail-block-title">Gestion</h4>
+            <div class="detail-actions">
+              <div class="detail-row">
+                <button class="button" id="driverPasswordBtn">Ver clave</button>
+                <button class="button primary" id="driverRenewBtn">Cobrar plan</button>
+                <button class="button danger" id="driverDeactivateBtn">Desactivar suscripcion</button>
+              </div>
+              <div class="detail-row">
+                <input class="sub-input" type="number" min="1" id="driverPlanDaysInput" />
+                <button class="button" id="driverPlanSaveBtn">Guardar dias del plan</button>
+              </div>
+              <div class="detail-row">
+                <input class="sub-input" type="number" min="1" placeholder="Dias extra" id="driverExtraDaysInput" />
+                <button class="button" id="driverExtraDaysBtn">Agregar dias</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
 
     <div class="modal" id="credModal">
@@ -941,7 +1199,7 @@
       const twilioLabel = document.getElementById("twilioLabel");
       const servicesList = document.getElementById("servicesList");
       const activeDriversList = document.getElementById("activeDriversList");
-      const driversTableBody = document.getElementById("driversTableBody");
+      const driversList = document.getElementById("driversList");
       const refreshServicesBtn = document.getElementById("refreshServicesBtn");
       const refreshDriversBtn = document.getElementById("refreshDriversBtn");
       const refreshLogsBtn = document.getElementById("refreshLogsBtn");
@@ -955,6 +1213,22 @@
       const logsList = document.getElementById("logsList");
       const logsSource = document.getElementById("logsSource");
 
+      const driverDetailModal = document.getElementById("driverDetailModal");
+      const driverDetailName = document.getElementById("driverDetailName");
+      const driverDetailSub = document.getElementById("driverDetailSub");
+      const driverDetailChips = document.getElementById("driverDetailChips");
+      const driverIdentityGrid = document.getElementById("driverIdentityGrid");
+      const driverActivityGrid = document.getElementById("driverActivityGrid");
+      const driverSubscriptionGrid = document.getElementById("driverSubscriptionGrid");
+      const closeDriverDetailBtn = document.getElementById("closeDriverDetailBtn");
+      const driverPasswordBtn = document.getElementById("driverPasswordBtn");
+      const driverRenewBtn = document.getElementById("driverRenewBtn");
+      const driverDeactivateBtn = document.getElementById("driverDeactivateBtn");
+      const driverPlanDaysInput = document.getElementById("driverPlanDaysInput");
+      const driverPlanSaveBtn = document.getElementById("driverPlanSaveBtn");
+      const driverExtraDaysInput = document.getElementById("driverExtraDaysInput");
+      const driverExtraDaysBtn = document.getElementById("driverExtraDaysBtn");
+
       const credModal = document.getElementById("credModal");
       const credUser = document.getElementById("credUser");
       const credPassword = document.getElementById("credPassword");
@@ -965,6 +1239,8 @@
 
       let currentPassword = "";
       let currentDriverId = null;
+      let currentDriverDetailId = null;
+      let driversCache = [];
 
       const fmtCop = new Intl.NumberFormat("es-CO", {
         style: "currency",
@@ -1008,7 +1284,7 @@
         statActiveValue.textContent = data.active_drivers_count;
         statActiveSub.textContent = data.active_drivers_count ? "Conductores en ruta" : "Sin conexion";
         statEarningsValue.textContent = fmtCop.format(data.earnings_total || 0);
-        statDriversSub.textContent = `${data.drivers_total} conductores registrados`;
+        statDriversSub.textContent = `${data.drivers_total} conductores | ${data.subscription_active_count || 0} activos | ${data.subscription_inactive_count || 0} pendientes`;
 
         dbStatus.textContent = data.db_ok ? "DB OK" : "DB ERROR";
         dbStatus.className = `pill ${data.db_ok ? "ok" : "bad"}`;
@@ -1078,24 +1354,153 @@
         const data = await fetchJson("/admin/api/drivers");
         if (!data.ok) return;
         const conductores = data.conductores || [];
-        driversTableBody.innerHTML = "";
+        driversCache = conductores;
+        driversList.innerHTML = "";
+
+        if (!conductores.length) {
+          closeDriverDetail();
+          driversList.innerHTML = '<div class="empty-state">Aun no hay conductores registrados.</div>';
+          return;
+        }
 
         conductores.forEach(conductor => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${conductor.usuario}</td>
-            <td>${conductor.nombre}</td>
-            <td>${conductor.placa}</td>
-            <td>${conductor.vehiculo}</td>
-            <td>${conductor.modelo}</td>
-            <td><span class="status-pill ${conductor.estado === "Ocupado" ? "busy" : "free"}">${conductor.estado}</span></td>
-            <td>${conductor.servicios}</td>
-            <td>${conductor.ultimo}</td>
-            <td>${conductor.ganancias}</td>
-            <td><button class="cred-button" data-cred="${conductor.id}">Ver</button></td>
+          const subscriptionClass = conductor.suscripcion_activa ? "free" : "busy";
+          const subscriptionLabel = conductor.suscripcion_activa
+            ? `Activa · ${conductor.dias_restantes} dia(s)`
+            : "Pago pendiente";
+          const card = document.createElement("article");
+          card.className = "driver-card";
+          card.innerHTML = `
+            <div class="driver-main">
+              <h4 class="driver-name">${conductor.nombre}</h4>
+              <div class="driver-subline">
+                <span>@${conductor.usuario}</span>
+                <span>Placa ${conductor.placa}</span>
+                <span>${conductor.vehiculo} ${conductor.modelo}</span>
+              </div>
+              <div class="driver-chip-row">
+                <span class="status-pill ${conductor.estado === "Ocupado" ? "busy" : "free"}">${conductor.estado}</span>
+                <span class="status-pill ${subscriptionClass}">${subscriptionLabel}</span>
+              </div>
+            </div>
+            <div class="driver-meta">
+              <div class="driver-stat">
+                <div class="driver-stat-label">Servicios</div>
+                <div class="driver-stat-value">${conductor.servicios}</div>
+              </div>
+              <div class="driver-stat">
+                <div class="driver-stat-label">Ganancias</div>
+                <div class="driver-stat-value">${conductor.ganancias}</div>
+              </div>
+              <div class="driver-stat">
+                <div class="driver-stat-label">Vence</div>
+                <div class="driver-stat-value">${conductor.fin_suscripcion}</div>
+              </div>
+              <div class="driver-stat">
+                <div class="driver-stat-label">Ultimo servicio</div>
+                <div class="driver-stat-value">${conductor.ultimo}</div>
+              </div>
+            </div>
+            <div class="driver-actions">
+              <button class="button primary" data-driver-detail="${conductor.id}">Ver detalles</button>
+              <button class="button" data-cred="${conductor.id}">Clave</button>
+            </div>
           `;
-          driversTableBody.appendChild(row);
+          driversList.appendChild(card);
         });
+
+        if (currentDriverDetailId) {
+          const refreshedDriver = driversCache.find(driver => String(driver.id) === String(currentDriverDetailId));
+          if (refreshedDriver) {
+            renderDriverDetail(refreshedDriver, { preserveDraft: true });
+          } else {
+            closeDriverDetail();
+          }
+        }
+      }
+
+      async function updateSubscription(id, action) {
+        const payload = { id, action };
+        if (action === "set_plan_days") {
+          payload.days = Number(driverPlanDaysInput?.value || 0);
+        }
+        if (action === "add_days") {
+          payload.days = Number(driverExtraDaysInput?.value || 0);
+        }
+        const data = await fetchJson("/admin/api/driver/subscription", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        if (data.ok) {
+          showToast(data.message || "Suscripcion actualizada");
+          loadDrivers();
+          loadOverview();
+        } else {
+          showToast(data.error || "No se pudo actualizar la suscripcion");
+        }
+      }
+
+      function renderDetailItems(container, items) {
+        container.innerHTML = items
+          .map(item => `
+            <div class="detail-item">
+              <span>${item.label}</span>
+              <strong>${item.value}</strong>
+            </div>
+          `)
+          .join("");
+      }
+
+      function renderDriverDetail(conductor, options = {}) {
+        const preserveDraft = Boolean(options.preserveDraft);
+        currentDriverDetailId = conductor.id;
+        const subscriptionClass = conductor.suscripcion_activa ? "free" : "busy";
+        const subscriptionLabel = conductor.suscripcion_activa
+          ? `Activa · ${conductor.dias_restantes} dia(s)`
+          : "Pago pendiente";
+        const existingPlanValue = driverPlanDaysInput.value;
+        const existingExtraValue = driverExtraDaysInput.value;
+
+        driverDetailName.textContent = conductor.nombre;
+        driverDetailSub.textContent = `@${conductor.usuario} · ${conductor.vehiculo} ${conductor.modelo} · placa ${conductor.placa}`;
+        driverDetailChips.innerHTML = `
+          <span class="status-pill ${conductor.estado === "Ocupado" ? "busy" : "free"}">${conductor.estado}</span>
+          <span class="status-pill ${subscriptionClass}">${subscriptionLabel}</span>
+        `;
+
+        renderDetailItems(driverIdentityGrid, [
+          { label: "Usuario", value: conductor.usuario },
+          { label: "Placa", value: conductor.placa },
+          { label: "Vehiculo", value: conductor.vehiculo },
+          { label: "Modelo", value: conductor.modelo }
+        ]);
+
+        renderDetailItems(driverActivityGrid, [
+          { label: "Servicios realizados", value: conductor.servicios },
+          { label: "Ultimo servicio", value: conductor.ultimo },
+          { label: "Ganancias", value: conductor.ganancias },
+          { label: "Operacion", value: conductor.estado }
+        ]);
+
+        renderDetailItems(driverSubscriptionGrid, [
+          { label: "Estado", value: subscriptionLabel },
+          { label: "Vence", value: conductor.fin_suscripcion },
+          { label: "Mensualidades pagadas", value: conductor.mensualidades_pagadas },
+          { label: "Duracion del plan", value: `${conductor.dias_mensualidad} dias` },
+          { label: "Ultimo pago", value: conductor.ultima_mensualidad_at || "-" },
+          { label: "Suscripcion base", value: conductor.status_suscripto || "-" }
+        ]);
+
+        driverPlanDaysInput.value = preserveDraft && existingPlanValue
+          ? existingPlanValue
+          : (conductor.dias_mensualidad || 30);
+        driverExtraDaysInput.value = preserveDraft ? existingExtraValue : "";
+        driverDetailModal.classList.add("active");
+      }
+
+      function closeDriverDetail() {
+        currentDriverDetailId = null;
+        driverDetailModal.classList.remove("active");
       }
 
       async function loadLogs() {
@@ -1278,11 +1683,40 @@
           }
         });
 
-        driversTableBody.addEventListener("click", event => {
+        driversList.addEventListener("click", event => {
+          const detailId = event.target.getAttribute("data-driver-detail");
+          if (detailId) {
+            const conductor = driversCache.find(driver => String(driver.id) === String(detailId));
+            if (conductor) {
+              renderDriverDetail(conductor);
+            }
+            return;
+          }
           const id = event.target.getAttribute("data-cred");
           if (id) {
             openCredentials(id);
+            return;
           }
+        });
+
+        closeDriverDetailBtn.addEventListener("click", closeDriverDetail);
+        driverDetailModal.addEventListener("click", event => {
+          if (event.target === driverDetailModal) closeDriverDetail();
+        });
+        driverPasswordBtn.addEventListener("click", () => {
+          if (currentDriverDetailId) openCredentials(currentDriverDetailId);
+        });
+        driverRenewBtn.addEventListener("click", () => {
+          if (currentDriverDetailId) updateSubscription(currentDriverDetailId, "renew");
+        });
+        driverDeactivateBtn.addEventListener("click", () => {
+          if (currentDriverDetailId) updateSubscription(currentDriverDetailId, "deactivate");
+        });
+        driverPlanSaveBtn.addEventListener("click", () => {
+          if (currentDriverDetailId) updateSubscription(currentDriverDetailId, "set_plan_days");
+        });
+        driverExtraDaysBtn.addEventListener("click", () => {
+          if (currentDriverDetailId) updateSubscription(currentDriverDetailId, "add_days");
         });
 
         togglePasswordBtn.addEventListener("click", togglePassword);

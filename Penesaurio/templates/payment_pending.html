@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Pago pendiente | Despacho Ejecutivo</title>
+    <style>
+      :root {
+        --bg: #060608;
+        --panel: rgba(12, 14, 18, 0.94);
+        --stroke: rgba(255, 255, 255, 0.08);
+        --gold: #f2c744;
+        --gold-soft: rgba(242, 199, 68, 0.15);
+        --text: #f4f5f7;
+        --muted: #9ba5b2;
+        --danger: #ff8a65;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Sora", system-ui, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top, rgba(242, 199, 68, 0.14), transparent 38%),
+          radial-gradient(circle at 80% 20%, rgba(255, 138, 101, 0.12), transparent 34%),
+          #050608;
+        display: grid;
+        place-items: center;
+        padding: 28px;
+      }
+
+      .card {
+        width: min(720px, 100%);
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 28px;
+        padding: 32px;
+        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.45);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(135deg, rgba(242, 199, 68, 0.12), transparent 55%);
+        pointer-events: none;
+      }
+
+      .kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: var(--gold-soft);
+        color: var(--gold);
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 12px;
+      }
+
+      h1 {
+        margin: 18px 0 10px;
+        font-size: clamp(30px, 5vw, 44px);
+        line-height: 1.06;
+        font-family: "Space Grotesk", "Sora", sans-serif;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
+        font-size: 15px;
+      }
+
+      .highlight {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .status-boxes {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin: 26px 0;
+      }
+
+      .status-box {
+        border: 1px solid var(--stroke);
+        border-radius: 18px;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .status-box small {
+        display: block;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-bottom: 8px;
+      }
+
+      .status-box strong {
+        font-size: 18px;
+      }
+
+      .alert {
+        margin: 0 0 24px;
+        padding: 18px 20px;
+        border-radius: 18px;
+        background: rgba(255, 138, 101, 0.1);
+        border: 1px solid rgba(255, 138, 101, 0.2);
+        color: #ffd9cc;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 52px;
+        padding: 0 22px;
+        border-radius: 16px;
+        border: 1px solid var(--stroke);
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .button.primary {
+        background: var(--gold);
+        color: #171205;
+        border-color: transparent;
+      }
+
+      .button.secondary {
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .footer {
+        margin-top: 22px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 720px) {
+        .card {
+          padding: 24px;
+          border-radius: 22px;
+        }
+
+        .status-boxes {
+          grid-template-columns: 1fr;
+        }
+
+        .actions {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="kicker">Pago pendiente</div>
+      <h1>Recuerda pagar tu mensualidad</h1>
+      <div class="alert">
+        {{ payment_pending_copy }}
+      </div>
+      <p>
+        {{ conductor_nombre }}, tu cuenta de conductor esta en estado
+        <span class="highlight">{{ subscription.status_suscripto|upper }}</span>.
+        Apenas confirmemos el pago, te reactivamos para volver a ver el mapa, entrar al panel y tomar viajes.
+      </p>
+
+      <section class="status-boxes">
+        <div class="status-box">
+          <small>Usuario</small>
+          <strong>{{ conductor_usuario }}</strong>
+        </div>
+        <div class="status-box">
+          <small>Vencimiento</small>
+          <strong>{{ subscription.fin_suscripcion_short }}</strong>
+        </div>
+        <div class="status-box">
+          <small>Mensualidades</small>
+          <strong>{{ subscription.mensualidades_pagadas }}</strong>
+        </div>
+      </section>
+
+      <div class="actions">
+        <a class="button primary" href="{{ payment_whatsapp_link }}" target="_blank" rel="noopener noreferrer">
+          Ir a WhatsApp
+        </a>
+        <a class="button secondary" href="{{ url_for('logout') }}">Cerrar sesion</a>
+      </div>
+
+      <div class="footer">
+        Si ya pagaste, escribenos al {{ payment_whatsapp_number }} para reactivarte de inmediato.
+      </div>
+    </main>
+  </body>
+</html>
