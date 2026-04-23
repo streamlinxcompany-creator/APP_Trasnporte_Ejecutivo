@@ -1411,7 +1411,8 @@ def send_assignment_message(phone, conductor_nombre, conductor_placa):
     body = (
         f"Listo, tu servicio fue tomado por {conductor_nombre} "
         f"con placas {conductor_placa}. Ya va en camino.\n\n"
-        "A partir de este momento tienes un chat directo con tu conductor por si necesitas algo."
+        "A partir de este momento tienes un chat directo con tu conductor por si necesitas algo.\n\n"
+        "*Conductor en linea*"
     )
     return send_whatsapp_message(phone, body)
 

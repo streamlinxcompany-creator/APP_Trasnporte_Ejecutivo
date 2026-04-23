@@ -1863,6 +1863,23 @@ def handle_twilio_webhook(
         open_service = get_latest_search_service(cur, telefono)
         taken_service = get_latest_taken_service(cur, telefono)
 
+        if taken_service and not open_service:
+            cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
+            if mensaje_limpio:
+                cur.execute(
+                    """
+                    INSERT INTO chat_mensajes (pedido_id, sender, message, timestamp)
+                    VALUES (?, 'cliente', ?, ?)
+                    """,
+                    (taken_service["id"], mensaje_limpio, fecha_actual),
+                )
+            conn.commit()
+            conn.close()
+            return respond_client(
+                telefono,
+                "*Mensaje enviado.* Ya puedes hablar directo con tu conductor por aqui.",
+            )
+
         if mensaje_lower in GREETING_KEYWORDS:
             if open_service:
                 conn.close()
@@ -1915,13 +1932,6 @@ def handle_twilio_webhook(
                 conn.close()
                 return respond_client(telefono, "*Listo.* Cancelamos tu solicitud.")
 
-            if taken_service:
-                conn.close()
-                return respond_client(
-                    telefono,
-                    "*Tu servicio ya fue asignado.* Escribenos por aqui y te ayudamos.",
-                )
-
             conversation_row = cur.execute(
                 "SELECT 1 FROM conversaciones WHERE telefono = ?",
                 (telefono,),
@@ -1962,22 +1972,6 @@ def handle_twilio_webhook(
             )
 
         if row is None:
-            if taken_service:
-                if mensaje_limpio:
-                    cur.execute(
-                        """
-                        INSERT INTO chat_mensajes (pedido_id, sender, message, timestamp)
-                        VALUES (?, 'cliente', ?, ?)
-                        """,
-                        (taken_service["id"], mensaje_limpio, fecha_actual),
-                    )
-                    conn.commit()
-                conn.close()
-                return respond_client(
-                    telefono,
-                    "*Mensaje recibido.* Tu conductor te responde por aqui.",
-                )
-
             if open_service:
                 if has_open_service_status_question(mensaje_limpio):
                     conn.close()
