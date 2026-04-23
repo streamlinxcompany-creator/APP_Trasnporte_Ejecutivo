@@ -2800,10 +2800,30 @@ def finalizar_servicio():
     active_id = active_row["active_pedido_id"] if active_row else None
 
     if not active_id:
+        recovered_state = get_driver_active_service(
+            conn,
+            session.get("conductor_id"),
+            session.get("conductor_nombre"),
+            session.get("conductor_placa"),
+        )
+        active_id = recovered_state["active_pedido_id"] if recovered_state else None
+
+    if not active_id:
+        conn.execute(
+            "UPDATE conductores SET active_pedido_id = NULL WHERE id = ?",
+            (session.get("conductor_id"),),
+        )
+        conn.commit()
         conn.close()
         if is_xhr:
-            return jsonify({"ok": False, "error": "No tienes viaje activo."}), 400
-        flash("No tienes viaje activo.")
+            return jsonify(
+                {
+                    "ok": True,
+                    "already_clear": True,
+                    "notification_queued": False,
+                }
+            )
+        flash("Panel limpiado.")
         return redirect(url_for("dashboard"))
 
     pedido_row = conn.execute(
