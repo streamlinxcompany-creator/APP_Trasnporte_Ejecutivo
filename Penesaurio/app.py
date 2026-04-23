@@ -12,7 +12,7 @@ import urllib.request
 from datetime import datetime, timedelta
 from secrets import token_urlsafe
 
-from flask import Flask, request, render_template, redirect, url_for, session, flash, jsonify, Response, g
+from flask import Flask, request, render_template, redirect, url_for, session, flash, jsonify, Response, g, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 
 try:
@@ -37,6 +37,9 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "servicios.db")
+NOTIFICATION_SOUND_PATH = os.path.join(
+    os.path.dirname(__file__), "Sonido_Notificacion.wav"
+)
 EXPIRATION_MINUTES = 12
 EXPIRATION_CHECK_SECONDS = 30
 TWILIO_SEND_RETRIES = 3
@@ -2619,6 +2622,18 @@ def dashboard():
     return render_template("index.html", **context)
 
 
+@app.route("/notification-sound", methods=["GET"])
+def notification_sound():
+    if not os.path.exists(NOTIFICATION_SOUND_PATH):
+        return ("Archivo de notificacion no encontrado.", 404)
+    return send_file(
+        NOTIFICATION_SOUND_PATH,
+        mimetype="audio/wav",
+        conditional=True,
+        max_age=3600,
+    )
+
+
 @app.route("/tomar", methods=["POST"])
 def tomar():
     if not session.get("conductor_id"):
@@ -3026,6 +3041,7 @@ def servicios_list_api():
                 "hora": format_time(row["timestamp"]),
                 "direccion": format_saved_address(direccion),
                 "nombre": detalles.get("Nombre", "Cliente"),
+                "tipo": detalles.get("Tipo", ""),
                 "lat": lat,
                 "lng": lng,
             }

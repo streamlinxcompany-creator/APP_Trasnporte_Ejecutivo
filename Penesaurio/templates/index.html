@@ -1189,6 +1189,13 @@
         gap: 8px;
         margin-bottom: 4px;
       }
+      .servicios-card-meta {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
       .te-drawer .servicios-index {
         width: 24px;
         height: 24px;
@@ -1207,6 +1214,24 @@
       .te-drawer .servicios-time {
         margin-bottom: 0;
         font-size: 0.72rem;
+      }
+      .service-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 22px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .service-badge.intermunicipal {
+        color: #dbeafe;
+        background: linear-gradient(135deg, #1d4ed8, #2563eb);
+        box-shadow: 0 10px 18px rgba(37, 99, 235, 0.22);
       }
       .te-drawer .servicios-row {
         grid-template-columns: 58px minmax(0, 1fr);
@@ -3820,11 +3845,17 @@
                           data-cliente="{{ pedido.detalles.get('Nombre', 'Cliente') }}"
                           data-telefono="{{ pedido.cliente_telefono }}"
                           data-hora="{{ pedido.hora }}"
+                          data-tipo="{{ pedido.detalles.get('Tipo', '') }}"
                           data-lat="{{ pedido.detalles.get('Latitude', pedido.detalles.get('Latitud', '')) }}"
                           data-lng="{{ pedido.detalles.get('Longitude', pedido.detalles.get('Longitud', '')) }}">
                           <div class="servicios-card-head">
                             <div class="servicios-index">{{ loop.index }}</div>
-                            <div class="servicios-time">{{ pedido.hora }}</div>
+                            <div class="servicios-card-meta">
+                              {% if pedido.detalles.get('Tipo') == 'Intermunicipal' %}
+                                <span class="service-badge intermunicipal">Intermunicipal</span>
+                              {% endif %}
+                              <div class="servicios-time">{{ pedido.hora }}</div>
+                            </div>
                           </div>
                           <div class="servicios-row">
                             <span>Origen</span>
@@ -4423,8 +4454,12 @@
       const priorityId = document.getElementById('priorityId');
       const priorityDetailBtn = document.getElementById('priorityDetailBtn');
       const priorityProgress = document.getElementById('priorityProgress');
+      const notificationSoundUrl = {{ url_for('notification_sound')|tojson }};
       let lastMaxId = null;
       let priorityTimer = null;
+      let notificationAudio = null;
+      let notificationAudioUnlocked = false;
+      let notificationPermissionRequested = false;
       const initialMaxId = {{ pedidos[0].id if pedidos else 0 }};
       const detailModal = document.getElementById('detailModal');
       const detailContent = document.getElementById('detailContent');
@@ -4559,6 +4594,73 @@
         showToast.timer = setTimeout(() => {
           toast.classList.remove('show');
         }, duration);
+      }
+
+      function getNotificationAudio() {
+        if (notificationAudio || !notificationSoundUrl) return notificationAudio;
+        notificationAudio = new Audio(notificationSoundUrl);
+        notificationAudio.preload = 'auto';
+        notificationAudio.playsInline = true;
+        return notificationAudio;
+      }
+
+      async function unlockNotificationAudio() {
+        const audio = getNotificationAudio();
+        if (!audio || notificationAudioUnlocked) return notificationAudioUnlocked;
+        try {
+          audio.muted = true;
+          audio.currentTime = 0;
+          await audio.play();
+          audio.pause();
+          audio.currentTime = 0;
+          audio.muted = false;
+          notificationAudioUnlocked = true;
+        } catch (err) {
+          audio.muted = false;
+        }
+        return notificationAudioUnlocked;
+      }
+
+      async function playIncomingServiceAlert(service) {
+        const audio = getNotificationAudio();
+        if (navigator.vibrate) {
+          navigator.vibrate([180, 120, 220, 120, 220]);
+        }
+        if (typeof Notification !== 'undefined') {
+          if (Notification.permission === 'granted') {
+            const bodyParts = [];
+            if (service?.nombre) bodyParts.push(service.nombre);
+            if (service?.direccion) bodyParts.push(service.direccion);
+            try {
+              new Notification('Nuevo servicio disponible', {
+                body: bodyParts.join(' - ') || 'Revisa el panel para tomarlo.',
+                tag: `servicio-${service?.id || 'nuevo'}`,
+                renotify: true,
+              });
+            } catch (err) {
+              // ignore
+            }
+          } else if (
+            Notification.permission === 'default'
+            && !notificationPermissionRequested
+            && !document.hidden
+          ) {
+            notificationPermissionRequested = true;
+            Notification.requestPermission().catch(() => {});
+          }
+        }
+        if (!audio) return;
+        try {
+          if (!notificationAudioUnlocked) {
+            await unlockNotificationAudio();
+          }
+          audio.pause();
+          audio.currentTime = 0;
+          audio.muted = false;
+          await audio.play();
+        } catch (err) {
+          // Algunos navegadores moviles bloquean autoplay hasta una interaccion real.
+        }
       }
 
       function hideIncomingChatToast() {
@@ -6218,9 +6320,15 @@
           telefono: service.telefono || '',
           direccion,
           hora: service.hora || '',
+          tipo: service.tipo || '',
           lat: parseCoord(service.lat) ?? parsedCoords?.lat ?? null,
           lng: parseCoord(service.lng) ?? parsedCoords?.lng ?? null,
         };
+      }
+
+      function renderServiceBadge(tipo) {
+        if (String(tipo || '').toLowerCase() !== 'intermunicipal') return '';
+        return '<span class="service-badge intermunicipal">Intermunicipal</span>';
       }
 
       function sortServicesByArrival(services) {
@@ -6238,6 +6346,7 @@
           telefono: node.dataset.telefono,
           direccion: node.dataset.origen,
           hora: node.dataset.hora,
+          tipo: node.dataset.tipo,
           lat: node.dataset.lat,
           lng: node.dataset.lng,
         });
@@ -6717,6 +6826,7 @@
             ${showCloseButton ? '<button type="button" class="te-preview-close" data-close-selected-service aria-label="Cerrar ficha">&times;</button>' : ''}
             <div class="te-compact-route">${escapeHtml(service.direccion || '')}</div>
             <div class="te-compact-meta">
+              ${renderServiceBadge(service.tipo)}
               <span class="te-compact-chip">${escapeHtml(service.nombre || 'Cliente')}</span>
               <span class="te-compact-chip">${escapeHtml(service.telefono || '')}</span>
             </div>
@@ -7077,12 +7187,16 @@
             card.dataset.cliente = servicio.nombre || 'Cliente';
             card.dataset.telefono = servicio.telefono || '';
             card.dataset.hora = servicio.hora || '';
+            card.dataset.tipo = servicio.tipo || '';
             card.dataset.lat = servicio.lat ?? '';
             card.dataset.lng = servicio.lng ?? '';
             card.innerHTML = `
               <div class="servicios-card-head">
                 <div class="servicios-index">${index + 1}</div>
-                <div class="servicios-time">${servicio.hora || ''}</div>
+                <div class="servicios-card-meta">
+                  ${renderServiceBadge(servicio.tipo)}
+                  <div class="servicios-time">${servicio.hora || ''}</div>
+                </div>
               </div>
               <div class="servicios-row">
                 <span>Origen</span>
@@ -7176,9 +7290,7 @@
           updateServiceCounters(latestServices.length);
           showServiceBottomSheet(7000);
         }
-        if (navigator.vibrate) {
-          navigator.vibrate([120, 80, 120]);
-        }
+        playIncomingServiceAlert(service);
         if (priorityDetailBtn) {
           priorityDetailBtn.dataset.origen = service.direccion || '';
           priorityDetailBtn.dataset.cliente = service.nombre || 'Cliente';
@@ -7265,8 +7377,15 @@
           showToast(dashboardData.flashMessages[dashboardData.flashMessages.length - 1], 2600);
         }, 160);
       }
+      const notificationUnlockEvents = ['click', 'touchstart', 'pointerdown', 'keydown'];
+      notificationUnlockEvents.forEach((eventName) => {
+        document.addEventListener(eventName, () => {
+          unlockNotificationAudio();
+        }, { passive: true });
+      });
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && !hasActiveService) {
+          unlockNotificationAudio();
           checkActiveService({ silent: true });
         }
       });

@@ -89,6 +89,42 @@ BUTTON_PAYLOAD_ALIASES = {
     "manage_delete": "eliminar",
     "manage_back": "volver ubicaciones",
 }
+OUT_OF_ZONE_ACCEPT_KEYWORDS = {
+    "si",
+    "sí",
+    "dale",
+    "ok",
+    "okay",
+    "listo",
+    "de una",
+    "hagale",
+    "hágale",
+    "mandalo",
+    "mandalo pues",
+    "mandamelo",
+    "envialo",
+    "envialo pues",
+    "enviamelo",
+    "continuar",
+}
+OUT_OF_ZONE_DECLINE_KEYWORDS = {
+    "no",
+    "cancelar",
+    "mejor no",
+    "no gracias",
+    "dejalo asi",
+    "dejarlo asi",
+}
+INTERMUNICIPAL_LABEL = "Intermunicipal"
+LA_CEJA_URBAN_ZONE_POLYGON = [
+    (6.0705, -75.4860),
+    (6.0805, -75.4410),
+    (6.0710, -75.3880),
+    (6.0410, -75.3650),
+    (5.9960, -75.3780),
+    (5.9820, -75.4250),
+    (5.9920, -75.4740),
+]
 
 GREETING_KEYWORDS = {
     "hola",
@@ -557,6 +593,59 @@ def build_new_location_prompt_message():
     )
 
 
+def parse_float_or_none(value):
+    try:
+        return float(str(value).strip())
+    except Exception:
+        return None
+
+
+def is_point_inside_polygon(lat, lng, polygon):
+    if lat is None or lng is None or not polygon:
+        return False
+    inside = False
+    j = len(polygon) - 1
+    for i in range(len(polygon)):
+        lat_i, lng_i = polygon[i]
+        lat_j, lng_j = polygon[j]
+        intersects = ((lng_i > lng) != (lng_j > lng)) and (
+            lat
+            < (lat_j - lat_i) * (lng - lng_i) / ((lng_j - lng_i) or 1e-12) + lat_i
+        )
+        if intersects:
+            inside = not inside
+        j = i
+    return inside
+
+
+def get_request_coordinates(raw_direccion, location_payload, parse_coords_from_text):
+    latitude = parse_float_or_none((location_payload or {}).get("latitude"))
+    longitude = parse_float_or_none((location_payload or {}).get("longitude"))
+    if latitude is not None and longitude is not None:
+        return latitude, longitude
+    parsed = parse_coords_from_text(raw_direccion or "")
+    if not parsed:
+        return None, None
+    return parsed[0], parsed[1]
+
+
+def is_intermunicipal_request(raw_direccion, location_payload, parse_coords_from_text):
+    lat, lng = get_request_coordinates(
+        raw_direccion, location_payload, parse_coords_from_text
+    )
+    if lat is None or lng is None:
+        return False
+    return not is_point_inside_polygon(lat, lng, LA_CEJA_URBAN_ZONE_POLYGON)
+
+
+def build_out_of_zone_confirmation_message():
+    return (
+        "*Tu recogida esta fuera de La Ceja.*\n"
+        "Podemos enviar el carro desde La Ceja, pero el valor y el tiempo incluyen ese desplazamiento.\n"
+        "Responde *SI* para enviarlo o *NO* para cambiar la ubicacion."
+    )
+
+
 def parse_meta_json(raw_value):
     text = (raw_value or "").strip()
     if not text:
@@ -570,6 +659,36 @@ def parse_meta_json(raw_value):
 
 def dump_meta_json(data):
     return json.dumps(data or {}, ensure_ascii=True)
+
+
+def enrich_request_payload_for_dispatch(
+    direccion,
+    location_payload,
+    parse_coords_from_text,
+    display_label="",
+):
+    payload = dict(location_payload or {})
+    payload["direccion"] = payload.get("direccion") or display_label or direccion or ""
+    payload["raw_direccion"] = (
+        payload.get("raw_direccion") or direccion or payload["direccion"]
+    )
+    payload["label"] = payload.get("label") or display_label or payload["direccion"]
+    latitude = payload.get("latitude") or ""
+    longitude = payload.get("longitude") or ""
+    if (not latitude or not longitude) and payload["raw_direccion"]:
+        parsed_lat, parsed_lng = parse_coords_from_text(payload["raw_direccion"])
+        if parsed_lat is not None and parsed_lng is not None:
+            latitude = str(parsed_lat)
+            longitude = str(parsed_lng)
+    if latitude and longitude:
+        payload["latitude"] = latitude
+        payload["longitude"] = longitude
+        payload["coords"] = payload.get("coords") or f"{latitude},{longitude}"
+    if is_intermunicipal_request(
+        payload["raw_direccion"], payload, parse_coords_from_text
+    ):
+        payload["service_type"] = INTERMUNICIPAL_LABEL
+    return payload
 
 
 def get_usuario_by_telefono(cur, telefono):
@@ -951,6 +1070,9 @@ def build_customer_request_payload(
     if latitude and longitude:
         partes.append(f"Latitude: {latitude}")
         partes.append(f"Longitude: {longitude}")
+    service_type = (location_payload.get("service_type") or "").strip()
+    if service_type:
+        partes.append(f"Tipo: {service_type}")
     return " | ".join(partes)
 
 
@@ -1034,6 +1156,61 @@ def create_pending_request(
         (telefono, mensaje_cliente, timestamp),
     )
     cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
+
+
+def queue_pending_request_with_zone_check(
+    cur,
+    telefono,
+    nombre,
+    direccion,
+    location_payload,
+    timestamp,
+    usuario_id,
+    parse_coords_from_text,
+    display_label="",
+):
+    dispatch_payload = enrich_request_payload_for_dispatch(
+        direccion,
+        location_payload,
+        parse_coords_from_text,
+        display_label=display_label,
+    )
+    if (dispatch_payload.get("service_type") or "").strip() == INTERMUNICIPAL_LABEL:
+        set_conversation(
+            cur,
+            telefono,
+            "confirmar_fuera_zona",
+            timestamp,
+            nombre=nombre,
+            direccion=dispatch_payload.get("raw_direccion") or direccion,
+            meta=dump_meta_json(
+                {
+                    "pending_request": {
+                        "direccion": dispatch_payload.get("direccion") or "",
+                        "raw_direccion": dispatch_payload.get("raw_direccion") or "",
+                        "latitude": dispatch_payload.get("latitude") or "",
+                        "longitude": dispatch_payload.get("longitude") or "",
+                        "coords": dispatch_payload.get("coords") or "",
+                        "label": dispatch_payload.get("label") or display_label or "",
+                        "service_type": dispatch_payload.get("service_type") or "",
+                    }
+                }
+            ),
+        )
+        return build_out_of_zone_confirmation_message()
+
+    create_pending_request(
+        cur,
+        telefono,
+        nombre,
+        dispatch_payload.get("raw_direccion") or direccion,
+        dispatch_payload,
+        timestamp,
+        usuario_id,
+        parse_coords_from_text,
+        display_label=display_label or dispatch_payload.get("label") or "",
+    )
+    return ""
 
 
 class TwilioGroqAssistant:
@@ -1316,7 +1493,11 @@ class TwilioGroqAssistant:
         if any(keyword in normalized for keyword in BOOKING_KEYWORDS):
             return {
                 "intent": "new_service",
-                "reply": "*Claro.* Te ayudo con tu servicio.\n*Como te llamas?*",
+                "reply": (
+                    "*Claro.* Te ayudo con tu servicio.\n*Enviame tu ubicacion actual.*"
+                    if known_name
+                    else "*Claro.* Te ayudo con tu servicio.\n*Como te llamas?*"
+                ),
                 "customer_name": name,
                 "pickup_address": "",
                 "saved_address_index": 0,
@@ -1337,7 +1518,11 @@ class TwilioGroqAssistant:
 
         return {
             "intent": "unknown",
-            "reply": "Con gusto te ayudo.\n*Enviame tu ubicacion actual* o cuentame tu nombre.",
+            "reply": (
+                "Con gusto te ayudo.\n*Enviame tu ubicacion actual* o elige una guardada."
+                if known_name
+                else "Con gusto te ayudo.\n*Enviame tu ubicacion actual* o cuentame tu nombre."
+            ),
             "customer_name": "",
             "pickup_address": "",
             "saved_address_index": saved_address_index,
@@ -1664,7 +1849,7 @@ def handle_ai_preconversation(
                     analysis["saved_address_index"],
                     format_saved_address,
                 )
-                create_pending_request(
+                out_of_zone_message = queue_pending_request_with_zone_check(
                     cur,
                     telefono,
                     nombre_detectado,
@@ -1675,6 +1860,8 @@ def handle_ai_preconversation(
                     parse_coords_from_text,
                     display_label=selected_label,
                 )
+                if out_of_zone_message:
+                    return out_of_zone_message
                 return build_request_message_for_saved_location(
                     nombre_detectado, selected_label
                 )
@@ -1771,7 +1958,7 @@ def handle_ai_preconversation(
                     analysis["saved_address_index"],
                     format_saved_address,
                 )
-                create_pending_request(
+                out_of_zone_message = queue_pending_request_with_zone_check(
                     cur,
                     telefono,
                     nombre,
@@ -1782,6 +1969,8 @@ def handle_ai_preconversation(
                     parse_coords_from_text,
                     display_label=selected_label,
                 )
+                if out_of_zone_message:
+                    return out_of_zone_message
                 return build_request_message_for_saved_location(
                     nombre, selected_label
                 )
@@ -1865,6 +2054,15 @@ def handle_twilio_webhook(
 
         if taken_service and not open_service:
             cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
+            previous_client_message = cur.execute(
+                """
+                SELECT 1
+                FROM chat_mensajes
+                WHERE pedido_id = ? AND sender = 'cliente'
+                LIMIT 1
+                """,
+                (taken_service["id"],),
+            ).fetchone()
             if mensaje_limpio:
                 cur.execute(
                     """
@@ -1875,10 +2073,12 @@ def handle_twilio_webhook(
                 )
             conn.commit()
             conn.close()
-            return respond_client(
-                telefono,
-                "*Mensaje enviado.* Ya puedes hablar directo con tu conductor por aqui.",
-            )
+            if previous_client_message is None:
+                return respond_client(
+                    telefono,
+                    "*Mensaje enviado.* Chat directo con tu conductor activo.",
+                )
+            return respond_client(telefono, "")
 
         if mensaje_lower in GREETING_KEYWORDS:
             if open_service:
@@ -1959,7 +2159,7 @@ def handle_twilio_webhook(
         ).fetchone()
 
         if wants_location_help(mensaje_limpio) and not (
-            row and row["paso"] in {"guardar_ubicacion_confirm", "guardar_ubicacion_nombre"}
+            row and row["paso"] in {"guardar_ubicacion_confirm", "guardar_ubicacion_nombre", "confirmar_fuera_zona"}
         ):
             conn.close()
             help_text = build_map_only_help_message()
@@ -2096,6 +2296,74 @@ def handle_twilio_webhook(
         row_meta = parse_meta_json(row["meta"] if "meta" in row.keys() else "")
         assistant = get_twilio_groq_assistant()
 
+        if paso == "confirmar_fuera_zona":
+            normalized_answer = normalize_user_text(mensaje_limpio)
+            usuario = get_usuario_by_telefono(cur, telefono)
+            usuario_id = usuario["id"] if usuario else None
+            pending_request = row_meta.get("pending_request") or {}
+            pending_payload = {
+                "direccion": pending_request.get("direccion") or row["direccion"] or "",
+                "raw_direccion": pending_request.get("raw_direccion") or row["direccion"] or "",
+                "latitude": pending_request.get("latitude") or "",
+                "longitude": pending_request.get("longitude") or "",
+                "coords": pending_request.get("coords") or "",
+                "label": pending_request.get("label") or "",
+                "service_type": pending_request.get("service_type") or INTERMUNICIPAL_LABEL,
+            }
+
+            if normalized_answer in OUT_OF_ZONE_ACCEPT_KEYWORDS:
+                create_pending_request(
+                    cur,
+                    telefono,
+                    row["nombre"] or (usuario["nombre"] if usuario else ""),
+                    pending_payload["raw_direccion"] or pending_payload["direccion"],
+                    pending_payload,
+                    fecha_actual,
+                    usuario_id,
+                    parse_coords_from_text,
+                    display_label=pending_payload["label"] or pending_payload["direccion"] or "Ubicacion compartida",
+                )
+                conn.commit()
+                conn.close()
+                return respond_client(
+                    telefono,
+                    build_request_message(
+                        row["nombre"] or (usuario["nombre"] if usuario else "")
+                    ),
+                )
+
+            if normalized_answer in OUT_OF_ZONE_DECLINE_KEYWORDS:
+                nombre_cliente = row["nombre"] or (usuario["nombre"] if usuario else "")
+                set_conversation(
+                    cur,
+                    telefono,
+                    "direccion",
+                    fecha_actual,
+                    nombre=nombre_cliente,
+                )
+                direcciones = get_direcciones(
+                    cur,
+                    usuario_id,
+                    is_reserved_direccion,
+                )
+                respuesta = build_location_prompt_with_saved_options(
+                    nombre_cliente,
+                    direcciones,
+                    format_saved_address,
+                )
+                conn.commit()
+                conn.close()
+                return respond_client(
+                    telefono,
+                    f"*Listo.* Enviame otra ubicacion.\n{respuesta}",
+                    reply_sender=reply_sender if usuario else None,
+                    buttons_key="location_saved_list" if usuario else "",
+                    buttons_variables={"1": respuesta} if usuario else None,
+                )
+
+            conn.close()
+            return respond_client(telefono, build_out_of_zone_confirmation_message())
+
         if paso == "guardar_ubicacion_confirm":
             if normalize_user_text(mensaje_limpio) in {"si", "guardar"}:
                 cur.execute(
@@ -2121,7 +2389,7 @@ def handle_twilio_webhook(
                 }
                 usuario = get_usuario_by_telefono(cur, telefono)
                 usuario_id = usuario["id"] if usuario else None
-                create_pending_request(
+                out_of_zone_message = queue_pending_request_with_zone_check(
                     cur,
                     telefono,
                     row["nombre"] or (usuario["nombre"] if usuario else ""),
@@ -2134,6 +2402,8 @@ def handle_twilio_webhook(
                 )
                 conn.commit()
                 conn.close()
+                if out_of_zone_message:
+                    return respond_client(telefono, out_of_zone_message)
                 return respond_client(
                     telefono,
                     build_request_message(row["nombre"] or (usuario["nombre"] if usuario else "")),
@@ -2173,7 +2443,7 @@ def handle_twilio_webhook(
                 latitude=pending_payload["latitude"],
                 longitude=pending_payload["longitude"],
             )
-            create_pending_request(
+            out_of_zone_message = queue_pending_request_with_zone_check(
                 cur,
                 telefono,
                 row["nombre"] or (usuario["nombre"] if usuario else ""),
@@ -2186,6 +2456,8 @@ def handle_twilio_webhook(
             )
             conn.commit()
             conn.close()
+            if out_of_zone_message:
+                return respond_client(telefono, out_of_zone_message)
             return respond_client(
                 telefono,
                 f"{build_location_saved_message(etiqueta)}\n{build_request_message_for_saved_location(row['nombre'] or (usuario['nombre'] if usuario else ''), etiqueta)}",
@@ -2422,7 +2694,7 @@ def handle_twilio_webhook(
 
                     if direccion_row:
                         saved_payload = build_saved_location_payload(direccion_row)
-                        create_pending_request(
+                        out_of_zone_message = queue_pending_request_with_zone_check(
                             cur,
                             telefono,
                             nombre_detectado,
@@ -2439,6 +2711,8 @@ def handle_twilio_webhook(
                         )
                         conn.commit()
                         conn.close()
+                        if out_of_zone_message:
+                            return respond_client(telefono, out_of_zone_message)
                         return respond_client(
                             telefono,
                             build_request_message_for_saved_location(
@@ -2537,9 +2811,18 @@ def handle_twilio_webhook(
 
             conn.commit()
             conn.close()
+            fallback_text = (
+                build_location_prompt_with_saved_options(
+                    nombre,
+                    direcciones,
+                    format_saved_address,
+                )
+                if nombre
+                else "Con gusto.\n*Enviame tu ubicacion actual* o cuentame tu nombre."
+            )
             return respond_client(
                 telefono,
-                "Con gusto.\n*Enviame tu ubicacion actual* o cuentame tu nombre.",
+                fallback_text,
             )
 
         if paso == "nombre":
@@ -2783,7 +3066,7 @@ def handle_twilio_webhook(
                 selected_label = get_saved_location_display(
                     direccion_row, choice, format_saved_address
                 )
-                create_pending_request(
+                out_of_zone_message = queue_pending_request_with_zone_check(
                     cur,
                     telefono,
                     nombre,
@@ -2796,6 +3079,8 @@ def handle_twilio_webhook(
                 )
                 conn.commit()
                 conn.close()
+                if out_of_zone_message:
+                    return respond_client(telefono, out_of_zone_message)
                 return respond_client(
                     telefono,
                     build_request_message_for_saved_location(nombre, selected_label),
@@ -2812,7 +3097,7 @@ def handle_twilio_webhook(
                         analysis["saved_address_index"],
                         format_saved_address,
                     )
-                    create_pending_request(
+                    out_of_zone_message = queue_pending_request_with_zone_check(
                         cur,
                         telefono,
                         nombre,
@@ -2825,6 +3110,8 @@ def handle_twilio_webhook(
                     )
                     conn.commit()
                     conn.close()
+                    if out_of_zone_message:
+                        return respond_client(telefono, out_of_zone_message)
                     return respond_client(
                         telefono,
                         build_request_message_for_saved_location(nombre, selected_label),
