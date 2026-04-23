@@ -46,6 +46,9 @@ TWILIO_SEND_RETRIES = 3
 DEFAULT_MEMBERSHIP_DAYS = 30
 PAYMENT_WHATSAPP_NUMBER = "573106269788"
 PAYMENT_PENDING_COPY = "Recuerda pagar tu mensualidad para volver a ver el mapa y tomar viajes."
+DEFAULT_COVERAGE_CENTER_LAT = 6.030589
+DEFAULT_COVERAGE_CENTER_LNG = -75.431704
+DEFAULT_COVERAGE_RADIUS_METERS = 6000
 EXPIRATION_MESSAGE = (
     "No logramos asignarte conductor en este momento. "
     "Cancelamos la solicitud para no hacerte esperar. "
@@ -256,6 +259,48 @@ def set_config_value(key, value):
     sync_expired_subscriptions(conn)
     conn.commit()
     conn.close()
+
+
+def get_service_coverage_config():
+    raw_value = get_config_value("service_coverage_config", "")
+    data = {}
+    if raw_value:
+        try:
+            parsed = json.loads(raw_value)
+            if isinstance(parsed, dict):
+                data = parsed
+        except Exception:
+            data = {}
+
+    try:
+        center_lat = float(data.get("center_lat", DEFAULT_COVERAGE_CENTER_LAT))
+    except Exception:
+        center_lat = DEFAULT_COVERAGE_CENTER_LAT
+    try:
+        center_lng = float(data.get("center_lng", DEFAULT_COVERAGE_CENTER_LNG))
+    except Exception:
+        center_lng = DEFAULT_COVERAGE_CENTER_LNG
+    try:
+        radius_meters = int(round(float(data.get("radius_meters", DEFAULT_COVERAGE_RADIUS_METERS))))
+    except Exception:
+        radius_meters = DEFAULT_COVERAGE_RADIUS_METERS
+    radius_meters = max(500, min(radius_meters, 50000))
+
+    return {
+        "center_lat": center_lat,
+        "center_lng": center_lng,
+        "radius_meters": radius_meters,
+    }
+
+
+def save_service_coverage_config(center_lat, center_lng, radius_meters):
+    payload = {
+        "center_lat": float(center_lat),
+        "center_lng": float(center_lng),
+        "radius_meters": int(radius_meters),
+    }
+    set_config_value("service_coverage_config", json.dumps(payload, ensure_ascii=True))
+    return payload
 
 
 def log_system_event(level, category, message, details=""):
@@ -1928,6 +1973,42 @@ def admin_overview_api():
             "earnings_total": int(earnings_row["total"]) if earnings_row else 0,
         }
     )
+
+
+@app.route("/admin/api/coverage")
+def admin_coverage_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+    coverage = get_service_coverage_config()
+    return jsonify({"ok": True, "coverage": coverage})
+
+
+@app.route("/admin/api/coverage", methods=["POST"])
+def admin_coverage_save_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        center_lat = float(payload.get("center_lat"))
+        center_lng = float(payload.get("center_lng"))
+        radius_meters = int(round(float(payload.get("radius_meters"))))
+    except Exception:
+        return jsonify({"ok": False, "error": "Datos de cobertura invalidos."}), 400
+
+    if not (-90 <= center_lat <= 90 and -180 <= center_lng <= 180):
+        return jsonify({"ok": False, "error": "Centro invalido."}), 400
+    if radius_meters < 500 or radius_meters > 50000:
+        return jsonify({"ok": False, "error": "El radio debe estar entre 500 m y 50 km."}), 400
+
+    coverage = save_service_coverage_config(center_lat, center_lng, radius_meters)
+    log_system_event(
+        "info",
+        "coverage",
+        "Cobertura actualizada desde admin",
+        f"center={coverage['center_lat']},{coverage['center_lng']} radius_meters={coverage['radius_meters']}",
+    )
+    return jsonify({"ok": True, "coverage": coverage})
 
 
 @app.route("/admin/api/services")

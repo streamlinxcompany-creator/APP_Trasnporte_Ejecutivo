@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import re
 from datetime import datetime
@@ -116,15 +117,9 @@ OUT_OF_ZONE_DECLINE_KEYWORDS = {
     "dejarlo asi",
 }
 INTERMUNICIPAL_LABEL = "Intermunicipal"
-LA_CEJA_URBAN_ZONE_POLYGON = [
-    (6.0705, -75.4860),
-    (6.0805, -75.4410),
-    (6.0710, -75.3880),
-    (6.0410, -75.3650),
-    (5.9960, -75.3780),
-    (5.9820, -75.4250),
-    (5.9920, -75.4740),
-]
+DEFAULT_COVERAGE_CENTER_LAT = 6.030589
+DEFAULT_COVERAGE_CENTER_LNG = -75.431704
+DEFAULT_COVERAGE_RADIUS_METERS = 6000
 
 GREETING_KEYWORDS = {
     "hola",
@@ -600,22 +595,57 @@ def parse_float_or_none(value):
         return None
 
 
-def is_point_inside_polygon(lat, lng, polygon):
-    if lat is None or lng is None or not polygon:
-        return False
-    inside = False
-    j = len(polygon) - 1
-    for i in range(len(polygon)):
-        lat_i, lng_i = polygon[i]
-        lat_j, lng_j = polygon[j]
-        intersects = ((lng_i > lng) != (lng_j > lng)) and (
-            lat
-            < (lat_j - lat_i) * (lng - lng_i) / ((lng_j - lng_i) or 1e-12) + lat_i
+def haversine_distance_meters(lat1, lng1, lat2, lng2):
+    if None in {lat1, lng1, lat2, lng2}:
+        return None
+    radius = 6371000.0
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    d_lat = math.radians(lat2 - lat1)
+    d_lng = math.radians(lng2 - lng1)
+    a = (
+        math.sin(d_lat / 2) ** 2
+        + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(d_lng / 2) ** 2
+    )
+    return radius * (2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
+
+
+def get_service_coverage_config(cur):
+    data = {}
+    try:
+        row = cur.execute(
+            "SELECT value FROM config WHERE key = ?",
+            ("service_coverage_config",),
+        ).fetchone()
+        raw_value = row["value"] if row and row["value"] is not None else ""
+        if raw_value:
+            parsed = json.loads(raw_value)
+            if isinstance(parsed, dict):
+                data = parsed
+    except Exception:
+        data = {}
+
+    try:
+        center_lat = float(data.get("center_lat", DEFAULT_COVERAGE_CENTER_LAT))
+    except Exception:
+        center_lat = DEFAULT_COVERAGE_CENTER_LAT
+    try:
+        center_lng = float(data.get("center_lng", DEFAULT_COVERAGE_CENTER_LNG))
+    except Exception:
+        center_lng = DEFAULT_COVERAGE_CENTER_LNG
+    try:
+        radius_meters = int(
+            round(float(data.get("radius_meters", DEFAULT_COVERAGE_RADIUS_METERS)))
         )
-        if intersects:
-            inside = not inside
-        j = i
-    return inside
+    except Exception:
+        radius_meters = DEFAULT_COVERAGE_RADIUS_METERS
+    radius_meters = max(500, min(radius_meters, 50000))
+
+    return {
+        "center_lat": center_lat,
+        "center_lng": center_lng,
+        "radius_meters": radius_meters,
+    }
 
 
 def get_request_coordinates(raw_direccion, location_payload, parse_coords_from_text):
@@ -629,13 +659,27 @@ def get_request_coordinates(raw_direccion, location_payload, parse_coords_from_t
     return parsed[0], parsed[1]
 
 
-def is_intermunicipal_request(raw_direccion, location_payload, parse_coords_from_text):
+def is_intermunicipal_request(
+    cur,
+    raw_direccion,
+    location_payload,
+    parse_coords_from_text,
+):
     lat, lng = get_request_coordinates(
         raw_direccion, location_payload, parse_coords_from_text
     )
     if lat is None or lng is None:
         return False
-    return not is_point_inside_polygon(lat, lng, LA_CEJA_URBAN_ZONE_POLYGON)
+    coverage = get_service_coverage_config(cur)
+    distance_meters = haversine_distance_meters(
+        coverage["center_lat"],
+        coverage["center_lng"],
+        lat,
+        lng,
+    )
+    if distance_meters is None:
+        return False
+    return distance_meters > coverage["radius_meters"]
 
 
 def build_out_of_zone_confirmation_message():
@@ -662,6 +706,7 @@ def dump_meta_json(data):
 
 
 def enrich_request_payload_for_dispatch(
+    cur,
     direccion,
     location_payload,
     parse_coords_from_text,
@@ -685,7 +730,10 @@ def enrich_request_payload_for_dispatch(
         payload["longitude"] = longitude
         payload["coords"] = payload.get("coords") or f"{latitude},{longitude}"
     if is_intermunicipal_request(
-        payload["raw_direccion"], payload, parse_coords_from_text
+        cur,
+        payload["raw_direccion"],
+        payload,
+        parse_coords_from_text,
     ):
         payload["service_type"] = INTERMUNICIPAL_LABEL
     return payload
@@ -1170,6 +1218,7 @@ def queue_pending_request_with_zone_check(
     display_label="",
 ):
     dispatch_payload = enrich_request_payload_for_dispatch(
+        cur,
         direccion,
         location_payload,
         parse_coords_from_text,
