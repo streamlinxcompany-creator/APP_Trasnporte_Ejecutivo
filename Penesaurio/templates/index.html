@@ -3636,7 +3636,7 @@
                 <input type="hidden" name="pedido_id" id="priorityId" value="" />
                 <div class="swipe-track" data-swipe>
                   <div class="swipe-progress"></div>
-                  <span class="swipe-handle">»</span>
+                  <span class="swipe-handle">></span>
                   <span class="swipe-text">Desliza para aceptar servicio</span>
                 </div>
               </form>
@@ -3675,7 +3675,7 @@
                     <div class="detail-title" id="topDropdownTitle">Centro rapido</div>
                     <div class="action-subtitle" id="topDropdownSubtitle"></div>
                   </div>
-                  <button type="button" class="top-dropdown-close" id="topDropdownClose" aria-label="Cerrar menu">×</button>
+                  <button type="button" class="top-dropdown-close" id="topDropdownClose" aria-label="Cerrar menu">x</button>
                 </div>
                 <div class="top-dropdown-body" id="topDropdownBody"></div>
                 <div class="top-dropdown-footer" id="topDropdownFooter"></div>
@@ -3710,10 +3710,10 @@
                   <div class="trip-icon">TR</div>
                   <div>
                     <div class="trip-title">{{ ultimo.detalles.get('Direccion', ultimo.mensaje_cliente) }}</div>
-                    <div class="trip-meta">{{ ultimo.hora }} · {{ ultimo.cliente_telefono }}</div>
+                    <div class="trip-meta">{{ ultimo.hora }}  -  {{ ultimo.cliente_telefono }}</div>
                   </div>
                 </div>
-                <div class="trip-meta">Estandar · Efectivo</div>
+                <div class="trip-meta">Estandar  -  Efectivo</div>
                 <div class="trip-meta">{{ ultimo.timestamp }}</div>
                 <button
                   class="trip-cta"
@@ -3889,7 +3889,7 @@
                               <input type="hidden" name="pedido_id" value="{{ pedido.id }}" />
                               <div class="swipe-track" data-swipe>
                                 <div class="swipe-progress"></div>
-                                <span class="swipe-handle">»</span>
+                                <span class="swipe-handle">></span>
                                 <span class="swipe-text">Desliza para aceptar servicio</span>
                               </div>
                             </form>
@@ -4007,7 +4007,7 @@
                             <form method="post" action="{{ url_for('finalizar_servicio') }}">
                               <div class="swipe-track" data-swipe>
                                 <div class="swipe-progress"></div>
-                                <span class="swipe-handle">»</span>
+                                <span class="swipe-handle">></span>
                                 <span class="swipe-text">Desliza para finalizar servicio</span>
                               </div>
                             </form>
@@ -4023,7 +4023,7 @@
                           </div>
                           <div class="te-chat-panel-actions">
                             <div class="te-chat-status" id="chatStatus">En vivo</div>
-                            <button type="button" class="te-chat-close" id="closeChatPanelBtn" aria-label="Cerrar chat">×</button>
+                            <button type="button" class="te-chat-close" id="closeChatPanelBtn" aria-label="Cerrar chat">x</button>
                           </div>
                         </div>
                         <div class="te-chat-panel-card">
@@ -5244,7 +5244,7 @@
             <div class="modal-list">
               <div class="modal-list-item">
                 <strong>${escapeHtml(dashboardData.conductorNombre || 'Conductor')}</strong>
-                <p>Placa ${escapeHtml(dashboardData.conductorPlaca || '-')} · ${escapeHtml(dashboardData.conductorVehiculo || 'Vehiculo')} ${escapeHtml(dashboardData.conductorModelo || '')}</p>
+                <p>Placa ${escapeHtml(dashboardData.conductorPlaca || '-')}  -  ${escapeHtml(dashboardData.conductorVehiculo || 'Vehiculo')} ${escapeHtml(dashboardData.conductorModelo || '')}</p>
               </div>
             </div>
             <div class="modal-note">
@@ -6891,7 +6891,7 @@
                 <div class="swipe-track" data-swipe>
                   <div class="swipe-expiry"></div>
                   <div class="swipe-progress"></div>
-                  <span class="swipe-handle">»</span>
+                  <span class="swipe-handle">></span>
                   <span class="swipe-text">Desliza para aceptar servicio</span>
                 </div>
               </form>
@@ -7278,7 +7278,7 @@
                   <input type="hidden" name="pedido_id" value="${servicio.id}" />
                   <div class="swipe-track" data-swipe>
                     <div class="swipe-progress"></div>
-                    <span class="swipe-handle">»</span>
+                    <span class="swipe-handle">></span>
                     <span class="swipe-text">Desliza para aceptar servicio</span>
                   </div>
                 </form>

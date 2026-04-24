@@ -1746,7 +1746,7 @@
         if (!monitorStageList) return;
         monitorStageList.innerHTML = stages.map((stage) => {
           const km = (Number(stage.radius_meters || 0) / 1000).toFixed(stage.radius_meters >= 1000 ? 1 : 2);
-          return `<span class="monitor-stage-pill"><strong>${stage.seconds}s</strong> · ${km} km</span>`;
+          return `<span class="monitor-stage-pill"><strong>${stage.seconds}s</strong>  -  ${km} km</span>`;
         }).join("");
       }
 
@@ -1943,7 +1943,7 @@
         filteredDrivers.forEach(conductor => {
           const subscriptionClass = conductor.suscripcion_activa ? "free" : "busy";
           const subscriptionLabel = conductor.suscripcion_activa
-            ? `Activa · ${conductor.dias_restantes} dia(s)`
+            ? `Activa  -  ${conductor.dias_restantes} dia(s)`
             : "Pago pendiente";
           const card = document.createElement("article");
           card.className = "driver-card";
@@ -2033,13 +2033,13 @@
         currentDriverDetailId = conductor.id;
         const subscriptionClass = conductor.suscripcion_activa ? "free" : "busy";
         const subscriptionLabel = conductor.suscripcion_activa
-          ? `Activa · ${conductor.dias_restantes} dia(s)`
+          ? `Activa  -  ${conductor.dias_restantes} dia(s)`
           : "Pago pendiente";
         const existingPlanValue = driverPlanDaysInput.value;
         const existingExtraValue = driverExtraDaysInput.value;
 
         driverDetailName.textContent = conductor.nombre;
-        driverDetailSub.textContent = `@${conductor.usuario} · ${conductor.vehiculo} ${conductor.modelo} · placa ${conductor.placa}`;
+        driverDetailSub.textContent = `@${conductor.usuario}  -  ${conductor.vehiculo} ${conductor.modelo}  -  placa ${conductor.placa}`;
         driverDetailChips.innerHTML = `
           <span class="status-pill ${conductor.estado === "Ocupado" ? "busy" : "free"}">${conductor.estado}</span>
           <span class="status-pill ${subscriptionClass}">${subscriptionLabel}</span>
