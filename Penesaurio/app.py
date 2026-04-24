@@ -1972,7 +1972,60 @@ def admin_dashboard():
 def admin_panel():
     if not admin_session_active():
         return redirect(url_for("login"))
-    return render_template("admin.html", admin_usuario=session.get("admin_usuario"))
+    return render_template(
+        "admin.html",
+        admin_usuario=session.get("admin_usuario"),
+        admin_view="all",
+        admin_page_title="Panel Operativo",
+    )
+
+
+@app.route("/admin/twilio")
+def admin_twilio_page():
+    if not admin_session_active():
+        return redirect(url_for("login"))
+    return render_template(
+        "admin.html",
+        admin_usuario=session.get("admin_usuario"),
+        admin_view="twilio",
+        admin_page_title="Twilio",
+    )
+
+
+@app.route("/admin/tests")
+def admin_tests_page():
+    if not admin_session_active():
+        return redirect(url_for("login"))
+    return render_template(
+        "admin.html",
+        admin_usuario=session.get("admin_usuario"),
+        admin_view="tests",
+        admin_page_title="Pruebas",
+    )
+
+
+@app.route("/admin/drivers")
+def admin_drivers_page():
+    if not admin_session_active():
+        return redirect(url_for("login"))
+    return render_template(
+        "admin.html",
+        admin_usuario=session.get("admin_usuario"),
+        admin_view="drivers",
+        admin_page_title="Conductores",
+    )
+
+
+@app.route("/admin/billing")
+def admin_billing_page():
+    if not admin_session_active():
+        return redirect(url_for("login"))
+    return render_template(
+        "admin.html",
+        admin_usuario=session.get("admin_usuario"),
+        admin_view="billing",
+        admin_page_title="Mensualidades",
+    )
 
 
 @app.route("/admin/monitor")
@@ -2831,6 +2884,17 @@ def build_panel_context():
 
     ganancias_total = ganancias_row["total"] if ganancias_row else 0
     map_url = build_map_url()
+    subscription_info = getattr(g, "subscription_info", None)
+    if not subscription_info:
+        conductor_row = get_conductor_row(session.get("conductor_id"), conn=None, sync=True)
+        if conductor_row is not None:
+            subscription_info = get_conductor_subscription_snapshot(conductor_row)
+        else:
+            subscription_info = {
+                "dias_restantes": 0,
+                "fin_suscripcion_short": "Sin fecha",
+                "suscripcion_activa": False,
+            }
 
     return {
         "pedidos": pedidos,
@@ -2842,6 +2906,7 @@ def build_panel_context():
         "chat_messages": chat_messages,
         "driver_online": driver_online,
         "ui_mode": get_ui_mode(),
+        "subscription_info": subscription_info,
     }
 
 

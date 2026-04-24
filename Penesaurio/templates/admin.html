@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Centro de Control | Admin</title>
+    <title>{{ admin_page_title or "Centro de Control" }} | Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -1153,19 +1153,72 @@
       .button.primary {
         color: #06110c;
       }
+      body[data-admin-view="twilio"] .stats-grid,
+      body[data-admin-view="twilio"] .section-hub,
+      body[data-admin-view="twilio"] .generator-panel,
+      body[data-admin-view="twilio"] .coords-panel,
+      body[data-admin-view="twilio"] .coverage-panel,
+      body[data-admin-view="twilio"] .monitor-panel,
+      body[data-admin-view="twilio"] .active-panel,
+      body[data-admin-view="twilio"] .services-panel,
+      body[data-admin-view="twilio"] #driversSection,
+      body[data-admin-view="twilio"] #billingSection {
+        display: none;
+      }
+      body[data-admin-view="tests"] .stats-grid,
+      body[data-admin-view="tests"] .section-hub,
+      body[data-admin-view="tests"] .twilio-panel,
+      body[data-admin-view="tests"] .monitor-panel,
+      body[data-admin-view="tests"] .active-panel,
+      body[data-admin-view="tests"] .logs-panel,
+      body[data-admin-view="tests"] #driversSection,
+      body[data-admin-view="tests"] #billingSection {
+        display: none;
+      }
+      body[data-admin-view="drivers"] .stats-grid,
+      body[data-admin-view="drivers"] .section-hub,
+      body[data-admin-view="drivers"] .twilio-panel,
+      body[data-admin-view="drivers"] .generator-panel,
+      body[data-admin-view="drivers"] .coords-panel,
+      body[data-admin-view="drivers"] .coverage-panel,
+      body[data-admin-view="drivers"] .monitor-panel,
+      body[data-admin-view="drivers"] .active-panel,
+      body[data-admin-view="drivers"] .services-panel,
+      body[data-admin-view="drivers"] .logs-panel,
+      body[data-admin-view="drivers"] #billingSection {
+        display: none;
+      }
+      body[data-admin-view="billing"] .stats-grid,
+      body[data-admin-view="billing"] .section-hub,
+      body[data-admin-view="billing"] .twilio-panel,
+      body[data-admin-view="billing"] .generator-panel,
+      body[data-admin-view="billing"] .coords-panel,
+      body[data-admin-view="billing"] .coverage-panel,
+      body[data-admin-view="billing"] .monitor-panel,
+      body[data-admin-view="billing"] .active-panel,
+      body[data-admin-view="billing"] .services-panel,
+      body[data-admin-view="billing"] .logs-panel {
+        display: none;
+      }
+      body[data-admin-view="billing"] #driversSection {
+        display: none;
+      }
     </style>
   </head>
-  <body id="top">
+  <body id="top" data-admin-view="{{ admin_view or 'all' }}">
     <div class="page">
       <header class="topbar">
         <div>
           <div class="kicker">Centro de control</div>
-          <h1>Panel Maestro</h1>
+          <h1>{{ admin_page_title or "Panel Maestro" }}</h1>
           <p class="subtitle">Operaciones en vivo para {{ admin_usuario or "admin" }}</p>
         </div>
         <div class="session">
           <div class="pill" id="dbStatus">DB</div>
           <div class="pill" id="syncStatus">Auto</div>
+          {% if (admin_view or 'all') != 'all' %}
+            <a class="logout" href="/admin">Volver al panel</a>
+          {% endif %}
           <a class="logout" href="/admin/logout">Salir</a>
         </div>
       </header>
@@ -1194,23 +1247,23 @@
       </section>
 
       <section class="section-hub">
-        <a class="section-link" href="#twilioSection">
+        <a class="section-link" href="/admin/twilio">
           <strong>Twilio</strong>
           <span>Canal, plantillas y estado de mensajeria.</span>
         </a>
-        <a class="section-link" href="#monitorSection">
+        <a class="section-link" href="/admin/monitor">
           <strong>Monitoreo</strong>
           <span>Mapa en vivo de conductores y cobertura activa.</span>
         </a>
-        <a class="section-link" href="#testsSection">
+        <a class="section-link" href="/admin/tests">
           <strong>Pruebas</strong>
           <span>Servicios de prueba y coordenadas manuales.</span>
         </a>
-        <a class="section-link" href="#driversSection">
+        <a class="section-link" href="/admin/drivers">
           <strong>Conductores</strong>
           <span>Busqueda, filtros rapidos y gestion del equipo.</span>
         </a>
-        <a class="section-link" href="#billingSection">
+        <a class="section-link" href="/admin/billing">
           <strong>Mensualidades</strong>
           <span>Controla planes, renovaciones y dias extra.</span>
         </a>
@@ -1399,7 +1452,7 @@
             <h3 class="panel-title">Mensualidades</h3>
             <p class="panel-sub">Usa la lista de conductores y entra a detalles para renovar, sumar dias o desactivar.</p>
           </div>
-          <a class="button" href="#driversSection">Abrir gestion</a>
+          <a class="button" href="/admin/drivers">Abrir gestion</a>
         </div>
         <p class="drivers-legend">Esta seccion queda como acceso directo a la parte de suscripciones. Cada conductor conserva sus acciones completas en el detalle individual.</p>
       </section>

@@ -4219,6 +4219,10 @@
                   <span>Ganancias</span>
                   <strong>{{ ganancias_total_formatted }}</strong>
                 </div>
+                <div class="panel-stat">
+                  <span>Dias restantes</span>
+                  <strong>{{ subscription_info.dias_restantes if subscription_info else 0 }}</strong>
+                </div>
               </div>
               <div class="panel-card">
                 <div class="panel-card-title">Disponibilidad</div>
@@ -4230,6 +4234,14 @@
                   </label>
                 </div>
                 <div class="panel-plate" id="accountAvailabilityNote" style="margin-top:6px;">{% if driver_online %}Recibiendo servicios en tiempo real.{% else %}Estas fuera de linea por ahora.{% endif %}</div>
+              </div>
+              <div class="panel-card">
+                <div class="panel-card-title">Suscripcion</div>
+                <div class="panel-switch-row">
+                  <span>Estado del plan</span>
+                  <strong style="font-size:14px;">{% if subscription_info and subscription_info.suscripcion_activa %}Activa{% else %}Pendiente{% endif %}</strong>
+                </div>
+                <div class="panel-plate" style="margin-top:6px;">Vence: {{ subscription_info.fin_suscripcion_short if subscription_info else 'Sin fecha' }}</div>
               </div>
               <div class="panel-card">
                 <div class="panel-card-title">Configuracion visual</div>

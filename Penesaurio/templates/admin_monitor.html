@@ -283,12 +283,9 @@
 
       function createServiceTimerIcon(service) {
         const nextStage = (currentStages || []).find((stage) => Number(service.age_seconds || 0) < Number(stage.seconds || 0));
-        const remaining = service.next_stage_seconds == null
-          ? 'Abierto'
-          : formatCountdown((nextStage?.seconds ?? service.next_stage_seconds) - Number(service.age_seconds || 0));
         const label = nextStage == null
-          ? 'Sin mas anillos'
-          : `Siguiente anillo ${remaining}`;
+          ? 'Ultimo anillo activo'
+          : `Siguiente anillo ${formatCountdown((nextStage?.seconds ?? service.next_stage_seconds) - Number(service.age_seconds || 0))}`;
         return L.divIcon({
           className: '',
           html: `<div class="service-timer"><strong>${service.nombre || 'Servicio'}</strong>${label}</div>`,
@@ -332,9 +329,10 @@
 
         servicesList.innerHTML = services.length
           ? services.map((service) => {
-              const nextText = service.next_stage_seconds == null
-                ? 'Sin siguiente anillo'
-                : `Siguiente anillo en ${formatCountdown(service.next_stage_seconds - service.age_seconds)}`;
+              const nextStage = (currentStages || []).find((stage) => Number(service.age_seconds || 0) < Number(stage.seconds || 0));
+              const nextText = nextStage == null
+                ? 'Ultimo anillo activo'
+                : `Siguiente anillo en ${formatCountdown(Number(nextStage.seconds || 0) - Number(service.age_seconds || 0))}`;
               return `<div class="monitor-item"><strong>${service.nombre}</strong><span>${service.direccion || 'Sin direccion'}</span><span>${nextText}</span></div>`;
             }).join('')
           : '<div class="monitor-item"><strong>Sin servicios visibles</strong><span>Cuando entre uno nuevo saldra aqui con su anillo actual.</span></div>';
@@ -354,7 +352,8 @@
         for (const stage of currentStages || []) {
           if (age <= Number(stage.seconds || 0)) return Number(stage.radius_meters || 0);
         }
-        return null;
+        const lastStage = (currentStages || [])[currentStages.length - 1];
+        return lastStage ? Number(lastStage.radius_meters || 0) : null;
       }
 
       function renderMap(data) {
