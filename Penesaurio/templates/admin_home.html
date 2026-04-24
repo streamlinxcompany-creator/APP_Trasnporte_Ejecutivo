@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Panel Maestro | Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #0b0d10;
+        --panel: rgba(20, 24, 30, 0.95);
+        --stroke: rgba(255, 255, 255, 0.08);
+        --accent: #36c487;
+        --text: #f2f4f7;
+        --muted: #9aa3ad;
+        --shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Sora", system-ui, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top, rgba(54, 196, 135, 0.08), transparent 45%),
+          radial-gradient(circle at 20% 20%, rgba(90, 162, 255, 0.12), transparent 40%),
+          var(--bg);
+      }
+      .page {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 32px 28px 60px;
+      }
+      .topbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 26px;
+      }
+      .kicker {
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 11px;
+        color: var(--accent);
+        margin-bottom: 8px;
+      }
+      h1 {
+        margin: 0 0 8px 0;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 34px;
+      }
+      .subtitle {
+        margin: 0;
+        color: var(--muted);
+        max-width: 680px;
+      }
+      .session {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .pill, .logout {
+        padding: 10px 16px;
+        border-radius: 999px;
+        border: 1px solid var(--stroke);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 12px;
+      }
+      .hero {
+        margin-bottom: 24px;
+        padding: 24px;
+        border-radius: 24px;
+        border: 1px solid var(--stroke);
+        background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(11,13,16,0.88));
+        box-shadow: var(--shadow);
+      }
+      .hero strong {
+        display: block;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 26px;
+        margin-bottom: 8px;
+      }
+      .hero span {
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+      .card {
+        display: grid;
+        gap: 12px;
+        min-height: 190px;
+        padding: 22px;
+        border-radius: 24px;
+        border: 1px solid var(--stroke);
+        background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(12, 16, 22, 0.94));
+        box-shadow: var(--shadow);
+        color: var(--text);
+        text-decoration: none;
+        transition: transform 0.18s ease, border-color 0.18s ease;
+      }
+      .card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(54, 196, 135, 0.45);
+      }
+      .card small {
+        text-transform: uppercase;
+        letter-spacing: 1.8px;
+        color: var(--accent);
+        font-size: 11px;
+      }
+      .card strong {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 24px;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      .card span {
+        font-size: 13px;
+      }
+      @media (max-width: 980px) {
+        .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 680px) {
+        .topbar { flex-direction: column; }
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div>
+          <div class="kicker">Centro de control</div>
+          <h1>Panel Maestro</h1>
+          <p class="subtitle">Entra por secciones. El panel principal queda limpio y cada modulo abre su propia vista con la informacion completa.</p>
+        </div>
+        <div class="session">
+          <div class="pill">Admin {{ admin_usuario or "admin" }}</div>
+          <a class="logout" href="/admin/logout">Salir</a>
+        </div>
+      </header>
+
+      <section class="hero">
+        <strong>Todo separado como un panel de control serio.</strong>
+        <span>Monitoreo en vivo para mapa y anillos, panel operativo para pruebas y Twilio, y gestion de conductores con mensualidades desde una vista mas clara.</span>
+      </section>
+
+      <section class="grid">
+        <a class="card" href="/admin/monitor">
+          <small>Mapa</small>
+          <strong>Monitoreo En Vivo</strong>
+          <p>Conductores conectados, servicios activos, anillos de despacho y vista dedicada sin estar peleando con todo el panel al tiempo.</p>
+          <span>Abrir monitoreo</span>
+        </a>
+
+        <a class="card" href="/admin/panel#twilioSection">
+          <small>Canal</small>
+          <strong>Twilio</strong>
+          <p>Estado del canal, plantillas y funciones relacionadas con mensajeria en una seccion independiente del flujo visual principal.</p>
+          <span>Ir a Twilio</span>
+        </a>
+
+        <a class="card" href="/admin/panel#testsSection">
+          <small>Pruebas</small>
+          <strong>Servicios De Prueba</strong>
+          <p>Genera servicios, pega coordenadas manuales y prueba anillos o cobertura sin mezclarlo con monitoreo o suscripciones.</p>
+          <span>Ir a pruebas</span>
+        </a>
+
+        <a class="card" href="/admin/panel#driversSection">
+          <small>Equipo</small>
+          <strong>Conductores</strong>
+          <p>Lista con busqueda por nombre, usuario, placa o vehiculo, y acceso directo al detalle de cada conductor.</p>
+          <span>Gestionar conductores</span>
+        </a>
+
+        <a class="card" href="/admin/panel#billingSection">
+          <small>Pagos</small>
+          <strong>Mensualidades</strong>
+          <p>Control rapido para renovaciones, dias extra y estado del plan desde la parte administrativa del equipo.</p>
+          <span>Ir a mensualidades</span>
+        </a>
+
+        <a class="card" href="/admin/panel">
+          <small>Todo</small>
+          <strong>Panel Operativo</strong>
+          <p>Vista completa para cuando quieras tener varias herramientas abiertas al mismo tiempo dentro del panel clasico.</p>
+          <span>Abrir panel completo</span>
+        </a>
+      </section>
+    </div>
+  </body>
+</html>

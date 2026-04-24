@@ -1554,6 +1554,7 @@
       let monitorCoverageCircle = null;
       let monitorCoverageCenter = null;
       let monitorDriverMarkers = [];
+      let monitorFirstLoad = true;
       let coverageConfig = {
         center_lat: 6.030589,
         center_lng: -75.431704,
@@ -1575,6 +1576,12 @@
       function formatKmLabel(meters) {
         const km = (Number(meters || 0) / 1000);
         return `${km.toFixed(km >= 10 ? 0 : 1)} km`;
+      }
+
+      function parseFiniteCoord(value) {
+        if (value === null || value === undefined || value === "") return null;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && Math.abs(parsed) > 0.000001 ? parsed : null;
       }
 
       function formatElapsed(seconds) {
@@ -1732,9 +1739,9 @@
 
         const points = [[coverageConfig.center_lat, coverageConfig.center_lng]];
         (data.conductores || []).forEach((conductor) => {
-          const lat = Number(conductor.current_lat);
-          const lng = Number(conductor.current_lng);
-          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          const lat = parseFiniteCoord(conductor.current_lat);
+          const lng = parseFiniteCoord(conductor.current_lng);
+          if (!conductor.online || lat == null || lng == null) return;
           points.push([lat, lng]);
           const marker = L.marker([lat, lng], {
             icon: buildInitialsMarker(conductor.initials),
@@ -1743,9 +1750,11 @@
           monitorDriverMarkers.push(marker);
         });
 
-        if (points.length === 1) {
+        if (monitorFirstLoad && points.length === 1) {
+          monitorFirstLoad = false;
           monitorMap.setView(points[0], 13);
-        } else {
+        } else if (monitorFirstLoad && points.length > 1) {
+          monitorFirstLoad = false;
           monitorMap.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 14 });
         }
       }

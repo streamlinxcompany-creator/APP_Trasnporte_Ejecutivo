@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Monitoreo En Vivo | Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <style>
+      :root {
+        --bg: #0b0d10;
+        --panel: rgba(20, 24, 30, 0.95);
+        --stroke: rgba(255,255,255,0.08);
+        --accent: #36c487;
+        --accent-2: #4f8cff;
+        --text: #f2f4f7;
+        --muted: #9aa3ad;
+        --shadow: 0 16px 34px rgba(0,0,0,0.45);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Sora", system-ui, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top, rgba(54, 196, 135, 0.08), transparent 45%),
+          radial-gradient(circle at 20% 20%, rgba(90, 162, 255, 0.12), transparent 40%),
+          var(--bg);
+      }
+      .page {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 28px 24px 40px;
+      }
+      .topbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 20px;
+      }
+      .kicker {
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 11px;
+        color: var(--accent);
+        margin-bottom: 8px;
+      }
+      h1 {
+        margin: 0 0 8px 0;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 32px;
+      }
+      .subtitle {
+        margin: 0;
+        color: var(--muted);
+        max-width: 760px;
+      }
+      .top-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .button {
+        padding: 10px 16px;
+        border-radius: 14px;
+        border: 1px solid var(--stroke);
+        background: rgba(255,255,255,0.04);
+        color: var(--text);
+        text-decoration: none;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .button.primary {
+        background: var(--accent);
+        color: #07110d;
+        border-color: transparent;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 18px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+      }
+      .map-panel {
+        padding: 18px;
+      }
+      .map-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+      }
+      .stage-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .stage-pill {
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--stroke);
+        background: rgba(255,255,255,0.04);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .stage-pill strong { color: var(--text); }
+      #monitorMap {
+        width: 100%;
+        height: 76vh;
+        min-height: 560px;
+        border-radius: 20px;
+        overflow: hidden;
+      }
+      .side-panel {
+        padding: 18px;
+        display: grid;
+        gap: 16px;
+        align-content: start;
+      }
+      .side-block {
+        padding: 16px;
+        border-radius: 18px;
+        border: 1px solid rgba(255,255,255,0.05);
+        background: rgba(255,255,255,0.03);
+      }
+      .side-block h3 {
+        margin: 0 0 10px 0;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 18px;
+      }
+      .monitor-list {
+        display: grid;
+        gap: 10px;
+        max-height: 60vh;
+        overflow: auto;
+      }
+      .monitor-item {
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid var(--stroke);
+        background: rgba(10, 13, 18, 0.75);
+      }
+      .monitor-item strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+      .monitor-item span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .driver-badge {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #111827, #1d4ed8);
+        color: #fff;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        border: 2px solid rgba(255,255,255,0.9);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.24);
+      }
+      .service-badge {
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background: #f97316;
+        border: 3px solid rgba(255,255,255,0.92);
+        box-shadow: 0 8px 18px rgba(249, 115, 22, 0.35);
+      }
+      .service-timer {
+        min-width: 140px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        background: rgba(7, 10, 16, 0.92);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.08);
+        text-align: center;
+        font-size: 11px;
+        line-height: 1.35;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.22);
+      }
+      .service-timer strong {
+        display: block;
+        font-size: 12px;
+      }
+      @media (max-width: 1100px) {
+        .layout { grid-template-columns: 1fr; }
+        #monitorMap { height: 62vh; min-height: 420px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div>
+          <div class="kicker">Monitoreo</div>
+          <h1>Monitoreo En Vivo</h1>
+          <p class="subtitle">Conductores con ubicacion valida, servicios abiertos y anillos de despacho sin reiniciar tu zoom cada pocos segundos.</p>
+        </div>
+        <div class="top-actions">
+          <button class="button primary" id="refreshBtn">Recargar</button>
+          <a class="button" href="/admin">Volver al panel</a>
+          <a class="button" href="/admin/panel">Panel operativo</a>
+        </div>
+      </header>
+
+      <section class="layout">
+        <div class="panel map-panel">
+          <div class="map-toolbar">
+            <div class="stage-row" id="stageRow"></div>
+          </div>
+          <div id="monitorMap"></div>
+        </div>
+
+        <aside class="panel side-panel">
+          <div class="side-block">
+            <h3>Conductores</h3>
+            <div class="monitor-list" id="driversList"></div>
+          </div>
+          <div class="side-block">
+            <h3>Servicios</h3>
+            <div class="monitor-list" id="servicesList"></div>
+          </div>
+        </aside>
+      </section>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+      const stageRow = document.getElementById('stageRow');
+      const driversList = document.getElementById('driversList');
+      const servicesList = document.getElementById('servicesList');
+      const refreshBtn = document.getElementById('refreshBtn');
+
+      let map = null;
+      let driverMarkers = [];
+      let serviceMarkers = [];
+      let serviceCircles = [];
+      let currentDrivers = [];
+      let currentServices = [];
+      let currentStages = [];
+      let firstLoad = true;
+
+      function formatCountdown(seconds) {
+        const value = Math.max(0, Number(seconds || 0));
+        const m = Math.floor(value / 60);
+        const s = value % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+
+      function createDriverIcon(initials) {
+        return L.divIcon({
+          className: '',
+          html: `<div class="driver-badge">${initials || 'C'}</div>`,
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+        });
+      }
+
+      function createServiceIcon() {
+        return L.divIcon({
+          className: '',
+          html: '<div class="service-badge"></div>',
+          iconSize: [18, 18],
+          iconAnchor: [9, 9],
+        });
+      }
+
+      function createServiceTimerIcon(service) {
+        const nextStage = (currentStages || []).find((stage) => Number(service.age_seconds || 0) < Number(stage.seconds || 0));
+        const remaining = service.next_stage_seconds == null
+          ? 'Abierto'
+          : formatCountdown((nextStage?.seconds ?? service.next_stage_seconds) - Number(service.age_seconds || 0));
+        const label = nextStage == null
+          ? 'Sin mas anillos'
+          : `Siguiente anillo ${remaining}`;
+        return L.divIcon({
+          className: '',
+          html: `<div class="service-timer"><strong>${service.nombre || 'Servicio'}</strong>${label}</div>`,
+          iconSize: [150, 44],
+          iconAnchor: [75, -14],
+        });
+      }
+
+      function initMap() {
+        if (map) return;
+        map = L.map('monitorMap', {
+          zoomControl: true,
+          scrollWheelZoom: true,
+        }).setView([6.030589, -75.431704], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap',
+        }).addTo(map);
+      }
+
+      async function fetchJson(url) {
+        const res = await fetch(url, {
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        return res.json();
+      }
+
+      function renderStagePills(stages) {
+        stageRow.innerHTML = (stages || []).map((stage) => {
+          const km = (Number(stage.radius_meters || 0) / 1000).toFixed(stage.radius_meters >= 1000 ? 1 : 2);
+          return `<span class="stage-pill"><strong>${stage.seconds}s</strong> · ${km} km</span>`;
+        }).join('');
+      }
+
+      function renderSideLists(drivers, services) {
+        driversList.innerHTML = drivers.length
+          ? drivers.map((driver) => `<div class="monitor-item"><strong>${driver.nombre}</strong><span>${driver.placa}</span><span>${driver.location_updated_at || 'Sin hora'}</span></div>`).join('')
+          : '<div class="monitor-item"><strong>Sin conductores con ubicacion valida</strong><span>Solo se muestran conductores online con coordenadas reales.</span></div>';
+
+        servicesList.innerHTML = services.length
+          ? services.map((service) => {
+              const nextText = service.next_stage_seconds == null
+                ? 'Sin siguiente anillo'
+                : `Siguiente anillo en ${formatCountdown(service.next_stage_seconds - service.age_seconds)}`;
+              return `<div class="monitor-item"><strong>${service.nombre}</strong><span>${service.direccion || 'Sin direccion'}</span><span>${nextText}</span></div>`;
+            }).join('')
+          : '<div class="monitor-item"><strong>Sin servicios visibles</strong><span>Cuando entre uno nuevo saldra aqui con su anillo actual.</span></div>';
+      }
+
+      function clearMapLayers() {
+        driverMarkers.forEach((marker) => map.removeLayer(marker));
+        serviceMarkers.forEach((marker) => map.removeLayer(marker));
+        serviceCircles.forEach((circle) => map.removeLayer(circle));
+        driverMarkers = [];
+        serviceMarkers = [];
+        serviceCircles = [];
+      }
+
+      function getCurrentRadius(service) {
+        const age = Number(service.age_seconds || 0);
+        for (const stage of currentStages || []) {
+          if (age <= Number(stage.seconds || 0)) return Number(stage.radius_meters || 0);
+        }
+        return null;
+      }
+
+      function renderMap(data) {
+        initMap();
+        clearMapLayers();
+
+        const points = [];
+        currentDrivers = (data.conductores || []).filter((driver) => {
+          const lat = Number(driver.current_lat);
+          const lng = Number(driver.current_lng);
+          return driver.online && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) > 0.000001 && Math.abs(lng) > 0.000001;
+        });
+        currentServices = (data.servicios || []).filter((service) => {
+          const lat = Number(service.lat);
+          const lng = Number(service.lng);
+          return Number.isFinite(lat) && Number.isFinite(lng);
+        });
+
+        currentDrivers.forEach((driver) => {
+          const lat = Number(driver.current_lat);
+          const lng = Number(driver.current_lng);
+          points.push([lat, lng]);
+          const marker = L.marker([lat, lng], { icon: createDriverIcon(driver.initials) }).addTo(map);
+          marker.bindPopup(`<strong>${driver.nombre}</strong><br/>${driver.placa}<br/>${driver.location_updated_at || 'Sin hora'}`);
+          driverMarkers.push(marker);
+        });
+
+        currentServices.forEach((service) => {
+          const lat = Number(service.lat);
+          const lng = Number(service.lng);
+          points.push([lat, lng]);
+          const dot = L.marker([lat, lng], { icon: createServiceIcon() }).addTo(map);
+          dot.bindPopup(`<strong>${service.nombre}</strong><br/>${service.direccion || 'Sin direccion'}`);
+          serviceMarkers.push(dot);
+
+          const liveRadius = getCurrentRadius(service);
+          if (liveRadius) {
+            const circle = L.circle([lat, lng], {
+              radius: liveRadius,
+              color: '#4f8cff',
+              weight: 2,
+              fillColor: '#4f8cff',
+              fillOpacity: 0.09,
+            }).addTo(map);
+            serviceCircles.push(circle);
+          }
+
+          const timer = L.marker([lat, lng], { icon: createServiceTimerIcon(service) }).addTo(map);
+          serviceMarkers.push(timer);
+        });
+
+        renderSideLists(currentDrivers, currentServices);
+
+        if (firstLoad && points.length) {
+          firstLoad = false;
+          map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 14 });
+        }
+      }
+
+      async function loadMonitor() {
+        const data = await fetchJson('/admin/api/monitor');
+        if (!data.ok) return;
+        currentStages = data.match_stages || [];
+        renderStagePills(data.match_stages || []);
+        renderMap(data);
+      }
+
+      setInterval(() => {
+        if (!map) return;
+        currentServices = currentServices.map((service) => ({ ...service, age_seconds: Number(service.age_seconds || 0) + 1 }));
+        serviceCircles.forEach((circle) => map.removeLayer(circle));
+        serviceCircles = [];
+        currentServices.forEach((service) => {
+          const lat = Number(service.lat);
+          const lng = Number(service.lng);
+          const liveRadius = getCurrentRadius(service);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng) || !liveRadius) return;
+          const circle = L.circle([lat, lng], {
+            radius: liveRadius,
+            color: '#4f8cff',
+            weight: 2,
+            fillColor: '#4f8cff',
+            fillOpacity: 0.09,
+          }).addTo(map);
+          serviceCircles.push(circle);
+        });
+        const timerMarkers = serviceMarkers.filter((marker) => marker.options?.icon?.options?.html?.includes('service-timer'));
+        timerMarkers.forEach((marker) => map.removeLayer(marker));
+        serviceMarkers = serviceMarkers.filter((marker) => !marker.options?.icon?.options?.html?.includes('service-timer'));
+        currentServices.forEach((service) => {
+          const lat = Number(service.lat);
+          const lng = Number(service.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          const timer = L.marker([lat, lng], { icon: createServiceTimerIcon(service) }).addTo(map);
+          serviceMarkers.push(timer);
+        });
+        renderSideLists(currentDrivers, currentServices);
+      }, 1000);
+
+      refreshBtn.addEventListener('click', loadMonitor);
+      loadMonitor();
+      setInterval(loadMonitor, 8000);
+    </script>
+  </body>
+</html>

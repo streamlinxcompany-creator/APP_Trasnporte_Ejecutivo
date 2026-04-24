@@ -1965,7 +1965,21 @@ def perfil():
 def admin_dashboard():
     if not admin_session_active():
         return redirect(url_for("login"))
+    return render_template("admin_home.html", admin_usuario=session.get("admin_usuario"))
+
+
+@app.route("/admin/panel")
+def admin_panel():
+    if not admin_session_active():
+        return redirect(url_for("login"))
     return render_template("admin.html", admin_usuario=session.get("admin_usuario"))
+
+
+@app.route("/admin/monitor")
+def admin_monitor_page():
+    if not admin_session_active():
+        return redirect(url_for("login"))
+    return render_template("admin_monitor.html", admin_usuario=session.get("admin_usuario"))
 
 
 @app.route("/admin/logout")
@@ -2380,17 +2394,25 @@ def admin_monitor_api():
         return jsonify({"ok": False, "error": "No autenticado."}), 401
 
     conn = get_conn()
-    rows = conn.execute(
+    driver_rows = conn.execute(
         """
         SELECT id, usuario, nombre_real, placa, is_online, current_lat, current_lng, location_updated_at
         FROM conductores
         ORDER BY nombre_real COLLATE NOCASE ASC, usuario COLLATE NOCASE ASC
         """
     ).fetchall()
+    service_rows = conn.execute(
+        """
+        SELECT id, cliente_telefono, mensaje_cliente, estado, timestamp
+        FROM pedidos
+        WHERE lower(estado) IN ('disponible', 'pendiente')
+        ORDER BY id DESC
+        """
+    ).fetchall()
     conn.close()
 
     conductores = []
-    for row in rows:
+    for row in driver_rows:
         nombre = row["nombre_real"] or row["usuario"] or "Conductor"
         initials_parts = [part[:1].upper() for part in nombre.split() if part.strip()]
         conductores.append(
@@ -2406,10 +2428,41 @@ def admin_monitor_api():
             }
         )
 
+    servicios = []
+    for row in service_rows:
+        detalles = parse_detalles(row["mensaje_cliente"] or "")
+        direccion = detalles.get("Direccion", row["mensaje_cliente"] or "")
+        lat, lng = extract_service_coords(row)
+        age_seconds = elapsed_seconds(row["timestamp"])
+        current_radius = get_service_match_radius(age_seconds)
+        next_stage_seconds = None
+        next_stage_radius = None
+        for stage_seconds, stage_radius in SERVICE_MATCH_STAGES:
+            if age_seconds < stage_seconds:
+                next_stage_seconds = stage_seconds
+                next_stage_radius = stage_radius
+                break
+        servicios.append(
+            {
+                "id": row["id"],
+                "nombre": detalles.get("Nombre", "Cliente"),
+                "direccion": format_saved_address(direccion),
+                "tipo": detalles.get("Tipo", ""),
+                "lat": lat,
+                "lng": lng,
+                "timestamp": row["timestamp"] or "",
+                "age_seconds": age_seconds,
+                "current_radius_meters": current_radius,
+                "next_stage_seconds": next_stage_seconds,
+                "next_stage_radius_meters": next_stage_radius,
+            }
+        )
+
     return jsonify(
         {
             "ok": True,
             "conductores": conductores,
+            "servicios": servicios,
             "coverage": get_service_coverage_config(),
             "match_stages": [
                 {"seconds": seconds, "radius_meters": radius}
