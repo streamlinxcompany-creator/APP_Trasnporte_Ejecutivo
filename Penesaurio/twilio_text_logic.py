@@ -842,9 +842,11 @@ def get_direcciones(cur, usuario_id, is_reserved_direccion):
 def build_direcciones_prompt(direcciones, format_saved_address):
     if not direcciones:
         return ""
-    lineas = ["*Ubicaciones guardadas:*"]
+    lineas = ["*Ubicaciones guardadas:*", ""]
     for idx, row in enumerate(direcciones, start=1):
         lineas.extend(build_saved_location_option_lines(row, idx, format_saved_address))
+        if idx < len(direcciones):
+            lineas.append("")
     lineas.append("*Elige una* o usa *NUEVA* / *EDITAR UBICACIONES*.")
     return "\n".join(lineas)
 
