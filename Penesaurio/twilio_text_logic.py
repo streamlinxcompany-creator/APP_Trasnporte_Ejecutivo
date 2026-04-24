@@ -500,7 +500,7 @@ def build_waiting_for_map_message():
 
 def build_save_location_question():
     return (
-        "*Ya tengo tu ubicacion.*\n"
+        "*Perfecto.* Ya tengo el punto de recogida.\n"
         "*Quieres guardarla?*\n"
         "Responde *SI* o *NO*."
     )
@@ -508,6 +508,21 @@ def build_save_location_question():
 
 def build_location_label_request():
     return "*Como quieres llamarla?*"
+
+
+def build_location_reference_request_message():
+    return (
+        "*Genial, ya tengo tu ubicacion.*\n"
+        "*Ahora enviame porfa la direccion breve* para llegar mejor.\n"
+        "Ej: *Calle 19 #20-31*"
+    )
+
+
+def build_reference_ack_name_request_message():
+    return (
+        "*Perfecto.* Ya tengo tu ubicacion y tu referencia.\n"
+        "*Ahora cuentame tu nombre.*"
+    )
 
 
 def build_location_saved_message(label):
@@ -519,7 +534,7 @@ def build_location_manage_intro(direcciones, format_saved_address):
         return "*Aun no tienes ubicaciones guardadas.*"
     lineas = ["*Tus ubicaciones:*"]
     for idx, row in enumerate(direcciones, start=1):
-        lineas.append(f"{idx}. {get_saved_location_display(row, idx, format_saved_address)}")
+        lineas.extend(build_saved_location_option_lines(row, idx, format_saved_address))
     lineas.append("*Escribe el numero* que quieres editar.")
     return "\n".join(lineas)
 
@@ -554,6 +569,27 @@ def get_saved_location_display(row, index=0, format_saved_address=None):
     if index:
         return f"Ubicacion guardada {index}"
     return "Ubicacion guardada"
+
+
+def get_saved_location_secondary_text(row, format_saved_address=None):
+    direccion = (row["direccion"] or "").strip() if row else ""
+    if format_saved_address:
+        direccion = format_saved_address(direccion)
+    etiqueta = (row["etiqueta"] or "").strip() if row else ""
+    if not direccion:
+        return ""
+    if etiqueta and normalize_user_text(etiqueta) == normalize_user_text(direccion):
+        return ""
+    return direccion
+
+
+def build_saved_location_option_lines(row, index=0, format_saved_address=None):
+    primary = get_saved_location_display(row, index, format_saved_address)
+    secondary = get_saved_location_secondary_text(row, format_saved_address)
+    lines = [f"{index}. {primary}"] if index else [primary]
+    if secondary:
+        lines.append(f"   - {secondary}")
+    return lines
 
 
 def build_saved_location_payload(row):
@@ -808,8 +844,7 @@ def build_direcciones_prompt(direcciones, format_saved_address):
         return ""
     lineas = ["*Ubicaciones guardadas:*"]
     for idx, row in enumerate(direcciones, start=1):
-        direccion = get_saved_location_display(row, idx, format_saved_address)
-        lineas.append(f"{idx}. [{direccion}]")
+        lineas.extend(build_saved_location_option_lines(row, idx, format_saved_address))
     lineas.append("*Elige una* o usa *NUEVA* / *EDITAR UBICACIONES*.")
     return "\n".join(lineas)
 
@@ -1014,7 +1049,7 @@ def build_continue_service_name_request_message():
 
 
 def build_address_ack_name_request_message():
-    return "*Ya tengo tu ubicacion.*\n*Ahora cuentame tu nombre.*"
+    return build_reference_ack_name_request_message()
 
 
 def build_open_service_status_message():
@@ -1077,6 +1112,30 @@ def build_open_service_eta_message(service_row):
     return f"{intro}\nTe avisamos por aqui apenas se asigne un conductor.\n{SHORT_CANCEL_HINT}"
 
 
+def build_open_service_reassurance_message(service_row):
+    nombre = extract_request_field(
+        service_row["mensaje_cliente"] if service_row else "",
+        "Nombre",
+    )
+    if nombre:
+        return f"*{nombre},* estamos aca para servirte. Cualquier cosa me avisas."
+    return "*Estamos aca para servirte.* Cualquier cosa me avisas."
+
+
+def is_open_service_soft_ping(text):
+    normalized = normalize_user_text(text)
+    if not normalized:
+        return False
+    if normalized in GREETING_KEYWORDS:
+        return True
+    if has_open_service_status_question(text):
+        return False
+    if normalized in {"ok", "okay", "vale", "listo", "dale", "gracias", "ok gracias"}:
+        return True
+    word_count = len([word for word in normalized.split() if word.strip()])
+    return word_count > 0 and word_count <= 4 and not is_booking_request_text(text)
+
+
 def get_latest_search_service(cur, telefono):
     row = cur.execute(
         """
@@ -1118,9 +1177,12 @@ def build_customer_request_payload(
 ):
     visible_location = display_label or direccion or "Ubicacion compartida"
     partes = [f"Nombre: {nombre}", f"Direccion: {visible_location}"]
+    pickup_note = (location_payload.get("pickup_note") or "").strip()
     latitude = location_payload.get("latitude")
     longitude = location_payload.get("longitude")
     raw_direccion = location_payload.get("raw_direccion") or direccion
+    if pickup_note and normalize_user_text(pickup_note) != normalize_user_text(visible_location):
+        partes.append(f"Referencia: {pickup_note}")
     if (not latitude or not longitude) and direccion:
         parsed_lat, parsed_lng = parse_coords_from_text(raw_direccion)
         if parsed_lat is not None and parsed_lng is not None:
@@ -1260,6 +1322,7 @@ def queue_pending_request_with_zone_check(
                         "latitude": dispatch_payload.get("latitude") or "",
                         "longitude": dispatch_payload.get("longitude") or "",
                         "coords": dispatch_payload.get("coords") or "",
+                        "pickup_note": dispatch_payload.get("pickup_note") or "",
                         "label": dispatch_payload.get("label") or display_label or "",
                         "service_type": dispatch_payload.get("service_type") or "",
                     }
@@ -1832,6 +1895,9 @@ def start_known_user_flow(
 
 
 def start_new_user_flow(cur, telefono, timestamp, direccion="", original_text="", meta=""):
+    if direccion and parse_meta_json(meta):
+        set_conversation(cur, telefono, "detalle_recogida", timestamp, direccion="", meta=meta)
+        return build_location_reference_request_message()
     set_conversation(cur, telefono, "nombre", timestamp, direccion=direccion, meta=meta)
     if direccion:
         return build_address_ack_name_request_message()
@@ -1904,13 +1970,12 @@ def handle_ai_preconversation(
                 set_conversation(
                     cur,
                     telefono,
-                    "guardar_ubicacion_confirm",
+                    "detalle_recogida",
                     fecha_actual,
                     nombre=nombre_detectado,
-                    direccion=direccion_detectada,
                     meta=dump_meta_json(location_payload),
                 )
-                return build_save_location_question()
+                return build_location_reference_request_message()
             if direccion_row:
                 saved_payload = build_saved_location_payload(direccion_row)
                 selected_label = get_saved_location_display(
@@ -2013,13 +2078,12 @@ def handle_ai_preconversation(
                 set_conversation(
                     cur,
                     telefono,
-                    "guardar_ubicacion_confirm",
+                    "detalle_recogida",
                     fecha_actual,
                     nombre=nombre,
-                    direccion=direccion,
                     meta=dump_meta_json(location_payload),
                 )
-                return build_save_location_question()
+                return build_location_reference_request_message()
             if direccion_row:
                 saved_payload = build_saved_location_payload(direccion_row)
                 selected_label = get_saved_location_display(
@@ -2152,7 +2216,10 @@ def handle_twilio_webhook(
         if mensaje_lower in GREETING_KEYWORDS:
             if open_service:
                 conn.close()
-                return respond_client(telefono, build_open_service_eta_message(open_service))
+                return respond_client(
+                    telefono,
+                    build_open_service_reassurance_message(open_service),
+                )
 
             usuario = get_usuario_by_telefono(cur, telefono)
             if usuario:
@@ -2228,7 +2295,7 @@ def handle_twilio_webhook(
         ).fetchone()
 
         if wants_location_help(mensaje_limpio) and not (
-            row and row["paso"] in {"guardar_ubicacion_confirm", "guardar_ubicacion_nombre", "confirmar_fuera_zona"}
+            row and row["paso"] in {"detalle_recogida", "guardar_ubicacion_confirm", "guardar_ubicacion_nombre", "confirmar_fuera_zona"}
         ):
             conn.close()
             help_text = build_map_only_help_message()
@@ -2259,6 +2326,12 @@ def handle_twilio_webhook(
                 )
                 if debug_hook:
                     debug_hook({"stage": "open_service", "analysis": analysis})
+                if is_open_service_soft_ping(mensaje_limpio):
+                    conn.close()
+                    return respond_client(
+                        telefono,
+                        build_open_service_reassurance_message(open_service),
+                    )
                 respuesta_abierta = analysis["reply"] or build_open_service_eta_message(
                     open_service
                 )
@@ -2290,20 +2363,16 @@ def handle_twilio_webhook(
                     set_conversation(
                         cur,
                         telefono,
-                        "guardar_ubicacion_confirm",
+                        "detalle_recogida",
                         fecha_actual,
                         nombre=usuario["nombre"],
-                        direccion=location_payload["direccion"] or location_payload.get("coords", ""),
                         meta=dump_meta_json(location_payload),
                     )
                     conn.commit()
                     conn.close()
                     return respond_client(
                         telefono,
-                        build_save_location_question(),
-                        reply_sender=reply_sender,
-                        buttons_key="save_location_confirm",
-                        buttons_variables={"1": build_save_location_question()},
+                        build_location_reference_request_message(),
                     )
                 respuesta = start_new_user_flow(
                     cur,
@@ -2381,6 +2450,7 @@ def handle_twilio_webhook(
                 "latitude": pending_request.get("latitude") or "",
                 "longitude": pending_request.get("longitude") or "",
                 "coords": pending_request.get("coords") or "",
+                "pickup_note": pending_request.get("pickup_note") or pending_request.get("direccion") or "",
                 "label": pending_request.get("label") or "",
                 "service_type": pending_request.get("service_type") or INTERMUNICIPAL_LABEL,
             }
@@ -2462,6 +2532,7 @@ def handle_twilio_webhook(
                     "latitude": row_meta.get("latitude") or "",
                     "longitude": row_meta.get("longitude") or "",
                     "coords": row_meta.get("coords") or "",
+                    "pickup_note": row["direccion"] or "",
                     "label": "",
                 }
                 usuario = get_usuario_by_telefono(cur, telefono)
@@ -2506,18 +2577,21 @@ def handle_twilio_webhook(
 
             usuario = get_usuario_by_telefono(cur, telefono)
             usuario_id = usuario["id"] if usuario else None
+            saved_reference = (row["direccion"] or "").strip()
+            saved_address = saved_reference or row_meta.get("raw_direccion") or etiqueta
             pending_payload = {
-                "direccion": etiqueta,
-                "raw_direccion": row_meta.get("raw_direccion") or row["direccion"] or "",
+                "direccion": saved_reference or etiqueta,
+                "raw_direccion": saved_address,
                 "latitude": row_meta.get("latitude") or "",
                 "longitude": row_meta.get("longitude") or "",
                 "coords": row_meta.get("coords") or "",
+                "pickup_note": saved_reference,
                 "label": etiqueta,
             }
             persist_new_address(
                 cur,
                 usuario_id,
-                pending_payload["raw_direccion"] or row["direccion"] or etiqueta,
+                saved_address,
                 fecha_actual,
                 etiqueta=etiqueta,
                 latitude=pending_payload["latitude"],
@@ -2754,12 +2828,11 @@ def handle_twilio_webhook(
                         cur.execute(
                             """
                             UPDATE conversaciones
-                            SET paso = 'guardar_ubicacion_confirm', nombre = ?, direccion = ?, meta = ?, updated_at = ?
+                            SET paso = 'detalle_recogida', nombre = ?, direccion = '', meta = ?, updated_at = ?
                             WHERE telefono = ?
                             """,
                             (
                                 nombre_detectado,
-                                direccion,
                                 dump_meta_json(location_payload),
                                 fecha_actual,
                                 telefono,
@@ -2769,10 +2842,7 @@ def handle_twilio_webhook(
                         conn.close()
                         return respond_client(
                             telefono,
-                            build_save_location_question(),
-                            reply_sender=reply_sender,
-                            buttons_key="save_location_confirm",
-                            buttons_variables={"1": build_save_location_question()},
+                            build_location_reference_request_message(),
                         )
 
                     if direccion_row:
@@ -3003,6 +3073,72 @@ def handle_twilio_webhook(
                 buttons_variables={"1": respuesta_texto},
             )
 
+        if paso == "detalle_recogida":
+            if is_shared_location_payload(location_payload):
+                cur.execute(
+                    """
+                    UPDATE conversaciones
+                    SET meta = ?, updated_at = ?
+                    WHERE telefono = ?
+                    """,
+                    (dump_meta_json(location_payload), fecha_actual, telefono),
+                )
+                conn.commit()
+                conn.close()
+                return respond_client(
+                    telefono,
+                    build_location_reference_request_message(),
+                )
+
+            referencia = (mensaje_limpio or "").strip().strip(".,")
+            if not referencia:
+                conn.close()
+                return respond_client(
+                    telefono,
+                    build_location_reference_request_message(),
+                )
+
+            if len(referencia) > 140:
+                conn.close()
+                return respond_client(
+                    telefono,
+                    "*Escribeme una referencia corta.* Ejemplo: barrio, unidad, torre o apartamento.",
+                )
+
+            if row["nombre"]:
+                cur.execute(
+                    """
+                    UPDATE conversaciones
+                    SET direccion = ?, paso = 'guardar_ubicacion_confirm', updated_at = ?
+                    WHERE telefono = ?
+                    """,
+                    (referencia, fecha_actual, telefono),
+                )
+                conn.commit()
+                conn.close()
+                return respond_client(
+                    telefono,
+                    build_save_location_question(),
+                    reply_sender=reply_sender,
+                    buttons_key="save_location_confirm",
+                    buttons_variables={"1": build_save_location_question()},
+                )
+
+            cur.execute(
+                """
+                UPDATE conversaciones
+                SET direccion = ?, paso = 'nombre', updated_at = ?
+                WHERE telefono = ?
+                """,
+                (referencia, fecha_actual, telefono),
+            )
+            conn.commit()
+            conn.close()
+            return respond_client(
+                telefono,
+                build_reference_ack_name_request_message(),
+            )
+
         if paso == "direccion":
             if wants_location_help(mensaje_limpio):
                 conn.close()
@@ -3079,11 +3215,10 @@ def handle_twilio_webhook(
                 cur.execute(
                     """
                     UPDATE conversaciones
-                    SET paso = 'guardar_ubicacion_confirm', direccion = ?, meta = ?, updated_at = ?
+                    SET paso = 'detalle_recogida', direccion = '', meta = ?, updated_at = ?
                     WHERE telefono = ?
                     """,
                     (
-                        location_payload["direccion"] or location_payload.get("coords", ""),
                         dump_meta_json(location_payload),
                         fecha_actual,
                         telefono,
@@ -3093,10 +3228,7 @@ def handle_twilio_webhook(
                 conn.close()
                 return respond_client(
                     telefono,
-                    build_save_location_question(),
-                    reply_sender=reply_sender,
-                    buttons_key="save_location_confirm",
-                    buttons_variables={"1": build_save_location_question()},
+                    build_location_reference_request_message(),
                 )
 
             if not mensaje_limpio:

@@ -3861,6 +3861,12 @@
                             <span>Origen</span>
                             <strong>{{ pedido.detalles.get('Direccion', pedido.mensaje_cliente) }}</strong>
                           </div>
+                          {% if pedido.detalles.get('Referencia') %}
+                          <div class="servicios-row">
+                            <span>Referencia</span>
+                            <strong>{{ pedido.detalles.get('Referencia') }}</strong>
+                          </div>
+                          {% endif %}
                           <div class="servicios-row">
                             <span>Cliente</span>
                             <strong>{{ pedido.detalles.get('Nombre', 'Cliente') }} (WhatsApp)</strong>
@@ -3928,6 +3934,12 @@
                             <span class="te-active-route-label">Origen</span>
                             <strong>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</strong>
                           </div>
+                          {% if active_pedido.detalles.get('Referencia') %}
+                          <div class="te-active-route">
+                            <span class="te-active-route-label">Referencia</span>
+                            <strong>{{ active_pedido.detalles.get('Referencia') }}</strong>
+                          </div>
+                          {% endif %}
                           <div class="te-active-chip-row">
                             <span class="te-active-chip">{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</span>
                             <span class="te-active-chip">{{ active_pedido.cliente_telefono }}</span>
@@ -3958,6 +3970,12 @@
                               <span>Origen</span>
                               <strong>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</strong>
                             </div>
+                            {% if active_pedido.detalles.get('Referencia') %}
+                            <div class="te-service-summary-item is-wide">
+                              <span>Referencia</span>
+                              <strong>{{ active_pedido.detalles.get('Referencia') }}</strong>
+                            </div>
+                            {% endif %}
                             <div class="te-service-summary-item">
                               <span>Cliente</span>
                               <strong>{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</strong>

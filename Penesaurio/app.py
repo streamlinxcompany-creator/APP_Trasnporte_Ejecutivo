@@ -47,6 +47,7 @@ TWILIO_SEND_RETRIES = 3
 DEFAULT_MEMBERSHIP_DAYS = 30
 PAYMENT_WHATSAPP_NUMBER = "573106269788"
 PAYMENT_PENDING_COPY = "Recuerda pagar tu mensualidad para volver a ver el mapa y tomar viajes."
+CONVERSATION_IDLE_NUDGE_SECONDS = 5 * 60
 DEFAULT_COVERAGE_CENTER_LAT = 6.030589
 DEFAULT_COVERAGE_CENTER_LNG = -75.431704
 DEFAULT_COVERAGE_RADIUS_METERS = 6000
@@ -1298,6 +1299,112 @@ def send_whatsapp_reply(phone, body, buttons_key="", buttons_variables=None):
     )
 
 
+def build_conversation_idle_message(name=""):
+    clean_name = (name or "").strip()
+    if clean_name:
+        return f"*{clean_name},* estamos aca para servirte. Cualquier cosa me avisas."
+    return "*Estamos aca para servirte.* Cualquier cosa me avisas."
+
+
+def verify_idle_conversations():
+    now = datetime.now()
+    sent_follow_ups = []
+
+    try:
+        conn = get_conn()
+        rows = conn.execute(
+            """
+            SELECT c.telefono, c.nombre, c.meta, c.updated_at, u.nombre AS usuario_nombre
+            FROM conversaciones c
+            LEFT JOIN usuarios u ON u.telefono = c.telefono
+            WHERE c.telefono IS NOT NULL
+              AND c.telefono != ''
+              AND c.updated_at IS NOT NULL
+              AND c.updated_at != ''
+            """
+        ).fetchall()
+
+        for row in rows:
+            updated_at = parse_db_datetime(row["updated_at"])
+            if updated_at is None:
+                continue
+
+            elapsed_seconds = int((now - updated_at).total_seconds())
+            if elapsed_seconds < CONVERSATION_IDLE_NUDGE_SECONDS:
+                continue
+
+            raw_meta = (row["meta"] or "").strip()
+            try:
+                meta = json.loads(raw_meta) if raw_meta else {}
+            except Exception:
+                meta = {}
+            if not isinstance(meta, dict):
+                meta = {}
+
+            sent_at = parse_db_datetime(meta.get("idle_follow_up_sent_at"))
+            if sent_at is not None and sent_at >= updated_at:
+                continue
+
+            preferred_name = (
+                (row["nombre"] or "").strip()
+                or (row["usuario_nombre"] or "").strip()
+            )
+            sent_follow_ups.append(
+                (
+                    row["telefono"],
+                    preferred_name,
+                    meta,
+                    format_db_datetime(now),
+                )
+            )
+
+        conn.close()
+    except Exception as exc:
+        print(f"Error verificando conversaciones inactivas: {exc}")
+        return 0
+
+    delivered_count = 0
+    for phone, preferred_name, meta, sent_timestamp in sent_follow_ups:
+        ok, err = send_whatsapp_message(
+            phone,
+            build_conversation_idle_message(preferred_name),
+        )
+        if not ok:
+            print(f"No se pudo enviar seguimiento por inactividad a {phone}. {err}")
+            log_system_event(
+                "error",
+                "conversation_followup",
+                "Fallo seguimiento por inactividad",
+                f"telefono={phone} error={err}",
+            )
+            continue
+
+        try:
+            meta["idle_follow_up_sent_at"] = sent_timestamp
+            conn = get_conn()
+            conn.execute(
+                """
+                UPDATE conversaciones
+                SET meta = ?
+                WHERE telefono = ?
+                """,
+                (json.dumps(meta, ensure_ascii=True), phone),
+            )
+            conn.commit()
+            conn.close()
+            delivered_count += 1
+            log_system_event(
+                "info",
+                "conversation_followup",
+                "Seguimiento por inactividad enviado",
+                f"telefono={phone}",
+            )
+        except Exception as exc:
+            print(f"No se pudo guardar seguimiento por inactividad para {phone}: {exc}")
+
+    return delivered_count
+
+
 def verificar_expiracion_servicios():
     now = datetime.now()
     expired_phones = []
@@ -1445,6 +1552,7 @@ def start_expiration_worker():
         while True:
             verificar_expiracion_servicios()
             retry_assignment_notifications()
+            verify_idle_conversations()
             time.sleep(EXPIRATION_CHECK_SECONDS)
 
     worker = threading.Thread(target=loop, name="servicios-expiracion", daemon=True)
