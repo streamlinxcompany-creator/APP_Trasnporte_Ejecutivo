@@ -78,6 +78,8 @@ LOCATION_NEW_KEYWORDS = {
 BUTTON_PAYLOAD_ALIASES = {
     "save_yes": "si",
     "save_no": "no",
+    "out_of_zone_yes": "si",
+    "out_of_zone_no": "no",
     "show_saved_locations": "guardadas",
     "show_saved": "guardadas",
     "new_location": "nueva",
@@ -690,6 +692,17 @@ def build_out_of_zone_confirmation_message():
     )
 
 
+def respond_out_of_zone_confirmation(phone, reply_sender=None):
+    message = build_out_of_zone_confirmation_message()
+    return respond_client(
+        phone,
+        message,
+        reply_sender=reply_sender,
+        buttons_key="out_of_zone_confirm" if reply_sender else "",
+        buttons_variables={"1": message} if reply_sender else None,
+    )
+
+
 def parse_meta_json(raw_value):
     text = (raw_value or "").strip()
     if not text:
@@ -1132,12 +1145,19 @@ def respond_client(
     buttons_variables=None,
 ):
     if reply_sender and buttons_key:
-        reply_sender(
+        sent_ok, _sent_error = reply_sender(
             phone,
             text,
             buttons_key=buttons_key,
             buttons_variables=buttons_variables or {},
         )
+        if not sent_ok:
+            resp = MessagingResponse()
+            if text:
+                resp.message(text)
+            xml = str(resp)
+            print(f"TwiML fallback -> {xml}")
+            return xml, 200, {"Content-Type": "text/xml; charset=utf-8"}
         resp = MessagingResponse()
         xml = str(resp)
         print(f"TwiML -> {xml}")
@@ -2312,6 +2332,11 @@ def handle_twilio_webhook(
             if respuesta_ai:
                 conn.commit()
                 conn.close()
+                if respuesta_ai == build_out_of_zone_confirmation_message():
+                    return respond_out_of_zone_confirmation(
+                        telefono,
+                        reply_sender=reply_sender,
+                    )
                 return respond_client(telefono, respuesta_ai)
 
             if usuario:
@@ -2411,7 +2436,10 @@ def handle_twilio_webhook(
                 )
 
             conn.close()
-            return respond_client(telefono, build_out_of_zone_confirmation_message())
+            return respond_out_of_zone_confirmation(
+                telefono,
+                reply_sender=reply_sender,
+            )
 
         if paso == "guardar_ubicacion_confirm":
             if normalize_user_text(mensaje_limpio) in {"si", "guardar"}:
@@ -2452,7 +2480,10 @@ def handle_twilio_webhook(
                 conn.commit()
                 conn.close()
                 if out_of_zone_message:
-                    return respond_client(telefono, out_of_zone_message)
+                    return respond_out_of_zone_confirmation(
+                        telefono,
+                        reply_sender=reply_sender,
+                    )
                 return respond_client(
                     telefono,
                     build_request_message(row["nombre"] or (usuario["nombre"] if usuario else "")),
@@ -2506,7 +2537,10 @@ def handle_twilio_webhook(
             conn.commit()
             conn.close()
             if out_of_zone_message:
-                return respond_client(telefono, out_of_zone_message)
+                return respond_out_of_zone_confirmation(
+                    telefono,
+                    reply_sender=reply_sender,
+                )
             return respond_client(
                 telefono,
                 f"{build_location_saved_message(etiqueta)}\n{build_request_message_for_saved_location(row['nombre'] or (usuario['nombre'] if usuario else ''), etiqueta)}",
@@ -2761,7 +2795,10 @@ def handle_twilio_webhook(
                         conn.commit()
                         conn.close()
                         if out_of_zone_message:
-                            return respond_client(telefono, out_of_zone_message)
+                            return respond_out_of_zone_confirmation(
+                                telefono,
+                                reply_sender=reply_sender,
+                            )
                         return respond_client(
                             telefono,
                             build_request_message_for_saved_location(
@@ -3129,7 +3166,10 @@ def handle_twilio_webhook(
                 conn.commit()
                 conn.close()
                 if out_of_zone_message:
-                    return respond_client(telefono, out_of_zone_message)
+                    return respond_out_of_zone_confirmation(
+                        telefono,
+                        reply_sender=reply_sender,
+                    )
                 return respond_client(
                     telefono,
                     build_request_message_for_saved_location(nombre, selected_label),
@@ -3160,7 +3200,10 @@ def handle_twilio_webhook(
                     conn.commit()
                     conn.close()
                     if out_of_zone_message:
-                        return respond_client(telefono, out_of_zone_message)
+                        return respond_out_of_zone_confirmation(
+                            telefono,
+                            reply_sender=reply_sender,
+                        )
                     return respond_client(
                         telefono,
                         build_request_message_for_saved_location(nombre, selected_label),

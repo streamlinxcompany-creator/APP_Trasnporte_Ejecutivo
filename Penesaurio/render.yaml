@@ -13,6 +13,8 @@ services:
         sync: false
       - key: TWILIO_CONTENT_SID_SAVE_LOCATION_CONFIRM
         sync: false
+      - key: TWILIO_CONTENT_SID_OUT_OF_ZONE_CONFIRM
+        sync: false
       - key: TWILIO_CONTENT_SID_LOCATION_HELP_OFFER
         sync: false
       - key: TWILIO_CONTENT_SID_LOCATION_HELP_STEPS
