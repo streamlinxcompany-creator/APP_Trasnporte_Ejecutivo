@@ -3,16 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Pago pendiente | Despacho Ejecutivo</title>
+    <meta name="theme-color" content="#0b2540" />
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='zipp-icon.png') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='zipp-icon.png') }}" />
+    <title>Pago pendiente | Zipp</title>
     <style>
       :root {
-        --bg: #060608;
-        --panel: rgba(12, 14, 18, 0.94);
+        --bg: #071f3b;
+        --panel: rgba(12, 31, 57, 0.94);
         --stroke: rgba(255, 255, 255, 0.08);
-        --gold: #f2c744;
-        --gold-soft: rgba(242, 199, 68, 0.15);
-        --text: #f4f5f7;
-        --muted: #9ba5b2;
+        --gold: #bed6f0;
+        --gold-soft: rgba(190, 214, 240, 0.15);
+        --text: #eef4fb;
+        --muted: #a6b6cc;
         --danger: #ff8a65;
       }
 
@@ -26,7 +29,7 @@
         font-family: "Sora", system-ui, sans-serif;
         color: var(--text);
         background:
-          radial-gradient(circle at top, rgba(242, 199, 68, 0.14), transparent 38%),
+          radial-gradient(circle at top, rgba(190, 214, 240, 0.14), transparent 38%),
           radial-gradient(circle at 80% 20%, rgba(255, 138, 101, 0.12), transparent 34%),
           #050608;
         display: grid;
@@ -50,7 +53,7 @@
         position: absolute;
         inset: 0;
         background:
-          linear-gradient(135deg, rgba(242, 199, 68, 0.12), transparent 55%);
+          linear-gradient(135deg, rgba(190, 214, 240, 0.12), transparent 55%);
         pointer-events: none;
       }
 

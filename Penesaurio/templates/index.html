@@ -1,13 +1,15 @@
-ï»¿<!doctype html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b0d10" />
+    <meta name="theme-color" content="#0b2540" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
-    <title>Inicio | Despacho Ejecutivo</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='zipp-icon.png') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='zipp-icon.png') }}" />
+    <title>Inicio | Zipp</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link
       rel="stylesheet"
@@ -17,14 +19,14 @@
     />
     <style>
       :root {
-        --bg: #0b0d10;
-        --panel: rgba(20, 22, 28, 0.92);
-        --panel-strong: #171a20;
-        --card: rgba(24, 27, 34, 0.95);
-        --text: #f4f6f8;
-        --muted: #a0a8b3;
-        --accent: #f2c744;
-        --accent-2: #36c487;
+        --bg: #071f3b;
+        --panel: rgba(12, 31, 57, 0.92);
+        --panel-strong: #0b2540;
+        --card: rgba(17, 39, 70, 0.95);
+        --text: #eef4fb;
+        --muted: #a6b6cc;
+        --accent: #bed6f0;
+        --accent-2: #7ea6e3;
         --stroke: rgba(255, 255, 255, 0.08);
         --shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
         --nav-height: 70px;
@@ -54,9 +56,9 @@
         margin: 0;
         font-family: 'Sora', sans-serif;
         color: var(--text);
-        background: radial-gradient(circle at 20% 0%, rgba(242, 199, 68, 0.12), transparent 35%),
-          radial-gradient(circle at 80% 10%, rgba(54, 196, 135, 0.12), transparent 45%),
-          #07090d;
+        background: radial-gradient(circle at 20% 0%, rgba(190, 214, 240, 0.12), transparent 35%),
+          radial-gradient(circle at 80% 10%, rgba(126, 166, 227, 0.14), transparent 45%),
+          #041427;
         min-height: 100vh;
         overflow: hidden;
       }
@@ -177,7 +179,7 @@
         appearance: none;
       }
       .icon-btn.is-open {
-        border-color: rgba(242, 199, 68, 0.5);
+        border-color: rgba(190, 214, 240, 0.5);
         background: rgba(28, 31, 39, 0.96);
         box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
       }
@@ -189,7 +191,7 @@
         width: 18px;
         height: 12px;
         border-radius: 3px;
-        background: linear-gradient(180deg, #f7d154 0% 50%, #1648a4 50% 75%, #c0392b 75% 100%);
+        background: linear-gradient(180deg, #d5e4f6 0% 50%, #1648a4 50% 75%, #c0392b 75% 100%);
         border: 1px solid rgba(255, 255, 255, 0.2);
       }
       .icon-dot {
@@ -200,7 +202,7 @@
         height: 6px;
         border-radius: 50%;
         background: var(--accent);
-        box-shadow: 0 0 8px rgba(242, 199, 68, 0.6);
+        box-shadow: 0 0 8px rgba(190, 214, 240, 0.6);
       }
       .icon-dot.is-hidden {
         opacity: 0;
@@ -213,9 +215,9 @@
         width: min(330px, calc(100vw - 36px));
         padding: 14px;
         border-radius: 20px;
-        border: 1px solid rgba(242, 199, 68, 0.26);
+        border: 1px solid rgba(190, 214, 240, 0.26);
         background:
-          radial-gradient(circle at top right, rgba(242, 199, 68, 0.14), transparent 36%),
+          radial-gradient(circle at top right, rgba(190, 214, 240, 0.14), transparent 36%),
           linear-gradient(180deg, rgba(16, 19, 26, 0.98), rgba(11, 13, 18, 0.98));
         box-shadow: 0 26px 48px rgba(0, 0, 0, 0.44);
         backdrop-filter: blur(16px);
@@ -237,8 +239,8 @@
         right: 18px;
         width: 14px;
         height: 14px;
-        border-left: 1px solid rgba(242, 199, 68, 0.22);
-        border-top: 1px solid rgba(242, 199, 68, 0.22);
+        border-left: 1px solid rgba(190, 214, 240, 0.22);
+        border-top: 1px solid rgba(190, 214, 240, 0.22);
         background: rgba(18, 22, 30, 0.98);
         transform: rotate(45deg);
       }
@@ -292,7 +294,7 @@
         height: 18px;
         border-radius: 999px;
         background: var(--accent);
-        box-shadow: 0 0 10px rgba(242, 199, 68, 0.5);
+        box-shadow: 0 0 10px rgba(190, 214, 240, 0.5);
       }
       .services-grid {
         display: grid;
@@ -317,14 +319,14 @@
       .service-card:active,
       .service-card.active {
         transform: translateY(-2px);
-        border-color: rgba(242, 199, 68, 0.6);
-        box-shadow: 0 16px 32px rgba(242, 199, 68, 0.2);
+        border-color: rgba(190, 214, 240, 0.6);
+        box-shadow: 0 16px 32px rgba(190, 214, 240, 0.2);
       }
       .service-icon {
         width: 42px;
         height: 42px;
         border-radius: 14px;
-        background: linear-gradient(135deg, rgba(242, 199, 68, 0.25), rgba(54, 196, 135, 0.2));
+        background: linear-gradient(135deg, rgba(190, 214, 240, 0.25), rgba(126, 166, 227, 0.2));
         display: grid;
         place-items: center;
         font-size: 0.9rem;
@@ -369,7 +371,7 @@
         width: 40px;
         height: 40px;
         border-radius: 12px;
-        background: rgba(54, 196, 135, 0.2);
+        background: rgba(126, 166, 227, 0.2);
         display: grid;
         place-items: center;
         font-size: 0.8rem;
@@ -439,7 +441,7 @@
         background: #dfe8f2;
       }
       .safety-card.two {
-        background-image: linear-gradient(135deg, rgba(242, 199, 68, 0.15), rgba(54, 196, 135, 0.2));
+        background-image: linear-gradient(135deg, rgba(190, 214, 240, 0.15), rgba(126, 166, 227, 0.2));
       }
       .safety-map {
         position: absolute;
@@ -485,7 +487,7 @@
         width: min(92%, 420px);
         border-radius: 18px;
         background: rgba(18, 18, 20, 0.95);
-        border: 1px solid rgba(242, 199, 68, 0.45);
+        border: 1px solid rgba(190, 214, 240, 0.45);
         padding: 16px;
         box-shadow: 0 22px 40px rgba(0, 0, 0, 0.7);
       }
@@ -505,7 +507,7 @@
         align-items: center;
       }
       .priority-row span {
-        color: rgba(242, 199, 68, 0.7);
+        color: rgba(190, 214, 240, 0.7);
         font-size: 0.85rem;
       }
       .priority-row strong {
@@ -522,7 +524,7 @@
       .priority-progress {
         height: 100%;
         width: 100%;
-        background: linear-gradient(90deg, #f7d154, rgba(242, 199, 68, 0.3));
+        background: linear-gradient(90deg, #d5e4f6, rgba(190, 214, 240, 0.3));
         transform-origin: left;
         transform: scaleX(1);
       }
@@ -535,7 +537,7 @@
       }
       .route-map-wrap {
         border-radius: 18px;
-        border: 1px solid rgba(242, 199, 68, 0.35);
+        border: 1px solid rgba(190, 214, 240, 0.35);
         background: rgba(10, 10, 12, 0.65);
         box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
         overflow: hidden;
@@ -549,7 +551,7 @@
         align-items: center;
         justify-content: space-between;
         padding: 12px 14px;
-        border-bottom: 1px solid rgba(242, 199, 68, 0.18);
+        border-bottom: 1px solid rgba(190, 214, 240, 0.18);
       }
       .route-map-meta {
         display: flex;
@@ -557,8 +559,8 @@
         gap: 8px;
       }
       .route-map-btn {
-        border: 1px solid rgba(242, 199, 68, 0.4);
-        background: rgba(242, 199, 68, 0.12);
+        border: 1px solid rgba(190, 214, 240, 0.4);
+        background: rgba(190, 214, 240, 0.12);
         color: var(--accent);
         font-size: 0.62rem;
         letter-spacing: 0.1em;
@@ -577,8 +579,8 @@
       .route-map-pill {
         padding: 4px 8px;
         border-radius: 999px;
-        border: 1px solid rgba(242, 199, 68, 0.35);
-        color: rgba(242, 199, 68, 0.85);
+        border: 1px solid rgba(190, 214, 240, 0.35);
+        color: rgba(190, 214, 240, 0.85);
         font-size: 0.65rem;
         letter-spacing: 0.08em;
       }
@@ -612,11 +614,11 @@
         letter-spacing: 0.28em;
         text-transform: uppercase;
         font-size: 0.62rem;
-        color: rgba(242, 199, 68, 0.75);
+        color: rgba(190, 214, 240, 0.75);
       }
       .servicios-earnings {
         padding: 10px 18px;
-        border: 1px solid rgba(242, 199, 68, 0.55);
+        border: 1px solid rgba(190, 214, 240, 0.55);
         border-radius: 16px;
         background: rgba(12, 12, 14, 0.85);
         color: var(--accent);
@@ -628,7 +630,7 @@
         display: block;
         font-family: 'Sora', sans-serif;
         letter-spacing: 0.2em;
-        color: rgba(242, 199, 68, 0.6);
+        color: rgba(190, 214, 240, 0.6);
         font-size: 0.6rem;
         margin-top: 2px;
       }
@@ -646,12 +648,12 @@
       .servicios-card {
         background: rgba(18, 18, 20, 0.9);
         border-radius: 18px;
-        border: 1px solid rgba(242, 199, 68, 0.35);
+        border: 1px solid rgba(190, 214, 240, 0.35);
         padding: 16px;
         box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
       }
       .servicios-card.active {
-        border-color: rgba(242, 199, 68, 0.55);
+        border-color: rgba(190, 214, 240, 0.55);
       }
       .servicios-time {
         text-align: right;
@@ -675,7 +677,7 @@
         align-items: center;
       }
       .servicios-row span {
-        color: rgba(242, 199, 68, 0.7);
+        color: rgba(190, 214, 240, 0.7);
         font-size: 0.85rem;
       }
       .servicios-row strong {
@@ -690,9 +692,9 @@
       .servicios-detail {
         width: 100%;
         border-radius: 999px;
-        border: 1px solid rgba(242, 199, 68, 0.55);
+        border: 1px solid rgba(190, 214, 240, 0.55);
         padding: 8px 12px;
-        background: rgba(242, 199, 68, 0.08);
+        background: rgba(190, 214, 240, 0.08);
         color: var(--accent);
         font-family: 'Space Grotesk', sans-serif;
         letter-spacing: 0.1em;
@@ -706,10 +708,10 @@
         position: relative;
         width: 100%;
         border-radius: 999px;
-        border: 1px solid rgba(242, 199, 68, 0.6);
+        border: 1px solid rgba(190, 214, 240, 0.6);
         padding: 6px 10px;
-        background: rgba(242, 199, 68, 0.08);
-        color: #f7e6a6;
+        background: rgba(190, 214, 240, 0.08);
+        color: #e8f2ff;
         font-family: 'Space Grotesk', sans-serif;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -725,7 +727,7 @@
         position: absolute;
         inset: 4px;
         border-radius: 999px;
-        background: linear-gradient(90deg, rgba(242, 199, 68, 0.5), rgba(242, 199, 68, 0.2));
+        background: linear-gradient(90deg, rgba(190, 214, 240, 0.5), rgba(190, 214, 240, 0.2));
         transform-origin: left;
         transform: scaleX(0);
         opacity: 0;
@@ -760,7 +762,7 @@
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #f2c744, #9a6d10);
+        background: linear-gradient(135deg, #bed6f0, #436283);
         display: grid;
         place-items: center;
         color: #1b1203;
@@ -790,7 +792,7 @@
         color: #1b1203;
       }
       .swipe-track.accepted {
-        background: rgba(242, 199, 68, 0.35);
+        background: rgba(190, 214, 240, 0.35);
       }
       .swipe-track.dragging .swipe-handle,
       .swipe-track.dragging .swipe-progress {
@@ -799,10 +801,10 @@
       .servicios-finish {
         width: 100%;
         border-radius: 999px;
-        border: 1px solid rgba(242, 199, 68, 0.7);
+        border: 1px solid rgba(190, 214, 240, 0.7);
         padding: 10px 12px;
-        background: linear-gradient(135deg, rgba(242, 199, 68, 0.3), rgba(242, 199, 68, 0.08));
-        color: #f7e6a6;
+        background: linear-gradient(135deg, rgba(190, 214, 240, 0.3), rgba(190, 214, 240, 0.08));
+        color: #e8f2ff;
         font-family: 'Space Grotesk', sans-serif;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -1671,7 +1673,7 @@
         box-shadow: 0 16px 28px rgba(37, 99, 235, 0.24);
       }
       .nav-btn::before {
-        content: 'â†—';
+        content: '?';
         font-size: 1rem;
         line-height: 1;
       }
@@ -2065,7 +2067,7 @@
       .te-preview-card .swipe-handle {
         width: 34px;
         height: 34px;
-        background: linear-gradient(135deg, #f2c744, #d2a11d);
+        background: linear-gradient(135deg, #bed6f0, #5f81ab);
         color: #0f172a;
       }
       .te-preview-card .swipe-text {
@@ -2383,7 +2385,7 @@
         width: 48px;
         height: 48px;
         border-radius: 14px;
-        border: 1px solid rgba(242, 199, 68, 0.35);
+        border: 1px solid rgba(190, 214, 240, 0.35);
         background: rgba(0, 0, 0, 0.45);
         display: grid;
         place-items: center;
@@ -2508,7 +2510,7 @@
         width: min(92%, 420px);
         border-radius: 18px;
         background: rgba(18, 18, 20, 0.95);
-        border: 1px solid rgba(242, 199, 68, 0.35);
+        border: 1px solid rgba(190, 214, 240, 0.35);
         padding: 16px;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
       }
@@ -2520,7 +2522,7 @@
         font-size: 0.8rem;
       }
       .detail-close {
-        border: 1px solid rgba(242, 199, 68, 0.4);
+        border: 1px solid rgba(190, 214, 240, 0.4);
         background: rgba(0, 0, 0, 0.35);
         color: var(--accent);
         border-radius: 10px;
@@ -2537,7 +2539,7 @@
       .detail-map-wrap {
         margin-top: 12px;
         border-radius: 16px;
-        border: 1px solid rgba(242, 199, 68, 0.35);
+        border: 1px solid rgba(190, 214, 240, 0.35);
         overflow: hidden;
         background: rgba(10, 10, 12, 0.6);
       }
@@ -2560,7 +2562,7 @@
         overflow-y: auto;
         border-radius: 20px;
         background: rgba(13, 16, 22, 0.96);
-        border: 1px solid rgba(242, 199, 68, 0.3);
+        border: 1px solid rgba(190, 214, 240, 0.3);
         padding: 18px;
         box-shadow: 0 22px 42px rgba(0, 0, 0, 0.7);
       }
@@ -2631,8 +2633,8 @@
       .modal-note {
         padding: 12px 14px;
         border-radius: 14px;
-        border: 1px dashed rgba(242, 199, 68, 0.32);
-        background: rgba(242, 199, 68, 0.08);
+        border: 1px dashed rgba(190, 214, 240, 0.32);
+        background: rgba(190, 214, 240, 0.08);
         color: rgba(244, 246, 248, 0.88);
         font-size: 0.82rem;
         line-height: 1.5;
@@ -2647,7 +2649,7 @@
         font-size: 0.7rem;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        background: rgba(54, 196, 135, 0.16);
+        background: rgba(126, 166, 227, 0.16);
         color: #9af0c8;
       }
       .modal-pill.is-offline {
@@ -2665,8 +2667,8 @@
         cursor: pointer;
       }
       .modal-choice.active {
-        border-color: rgba(242, 199, 68, 0.52);
-        background: rgba(242, 199, 68, 0.1);
+        border-color: rgba(190, 214, 240, 0.52);
+        background: rgba(190, 214, 240, 0.1);
       }
       .modal-choice strong {
         display: block;
@@ -2725,7 +2727,7 @@
       .dispatch-pill {
         padding: 8px 12px;
         border-radius: 999px;
-        border: 1px solid rgba(242, 199, 68, 0.4);
+        border: 1px solid rgba(190, 214, 240, 0.4);
         background: rgba(15, 15, 18, 0.8);
         color: var(--accent);
         font-family: 'Space Grotesk', sans-serif;
@@ -2735,7 +2737,7 @@
       .dispatch-card {
         background: var(--panel);
         border-radius: 18px;
-        border: 1px solid rgba(242, 199, 68, 0.3);
+        border: 1px solid rgba(190, 214, 240, 0.3);
         padding: 16px;
         box-shadow: var(--shadow);
       }
@@ -2753,7 +2755,7 @@
         align-items: center;
       }
       .dispatch-row span {
-        color: rgba(242, 199, 68, 0.7);
+        color: rgba(190, 214, 240, 0.7);
         font-size: 0.85rem;
       }
       .dispatch-row strong {
@@ -2768,9 +2770,9 @@
       .dispatch-btn {
         width: 100%;
         border-radius: 999px;
-        border: 1px solid rgba(242, 199, 68, 0.55);
+        border: 1px solid rgba(190, 214, 240, 0.55);
         padding: 10px 12px;
-        background: rgba(242, 199, 68, 0.12);
+        background: rgba(190, 214, 240, 0.12);
         color: var(--accent);
         font-family: 'Space Grotesk', sans-serif;
         letter-spacing: 0.08em;
@@ -2781,11 +2783,11 @@
         cursor: pointer;
       }
       .dispatch-btn.accept {
-        background: linear-gradient(135deg, rgba(242, 199, 68, 0.25), rgba(242, 199, 68, 0.05));
-        color: #f7e6a6;
+        background: linear-gradient(135deg, rgba(190, 214, 240, 0.25), rgba(190, 214, 240, 0.05));
+        color: #e8f2ff;
       }
       .dispatch-active {
-        border-color: rgba(242, 199, 68, 0.45);
+        border-color: rgba(190, 214, 240, 0.45);
       }
       .dispatch-title {
         font-family: 'Space Grotesk', sans-serif;
@@ -2835,15 +2837,15 @@
         padding: 12px;
         border-radius: 16px;
         background: rgba(12, 12, 14, 0.65);
-        border: 1px solid rgba(242, 199, 68, 0.2);
+        border: 1px solid rgba(190, 214, 240, 0.2);
         box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
       }
       .trip-tag {
         width: 44px;
         height: 44px;
         border-radius: 14px;
-        background: linear-gradient(140deg, rgba(242, 199, 68, 0.25), rgba(242, 199, 68, 0.05));
-        border: 1px solid rgba(242, 199, 68, 0.45);
+        background: linear-gradient(140deg, rgba(190, 214, 240, 0.25), rgba(190, 214, 240, 0.05));
+        border: 1px solid rgba(190, 214, 240, 0.45);
         display: grid;
         place-items: center;
         color: var(--accent);
@@ -2964,8 +2966,8 @@
         cursor: pointer;
       }
       .viajes-filter-chip.active {
-        border-color: rgba(242, 199, 68, 0.44);
-        background: rgba(242, 199, 68, 0.14);
+        border-color: rgba(190, 214, 240, 0.44);
+        background: rgba(190, 214, 240, 0.14);
         color: var(--accent);
       }
       .viajes-date-tools {
@@ -3042,7 +3044,7 @@
         padding: 14px;
         border-radius: 18px;
         background: rgba(18, 20, 26, 0.92);
-        border: 1px solid rgba(242, 199, 68, 0.18);
+        border: 1px solid rgba(190, 214, 240, 0.18);
         box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
         min-width: 0;
         max-width: 100%;
@@ -3055,8 +3057,8 @@
         width: 44px;
         height: 44px;
         border-radius: 14px;
-        background: rgba(242, 199, 68, 0.18);
-        border: 1px solid rgba(242, 199, 68, 0.35);
+        background: rgba(190, 214, 240, 0.18);
+        border: 1px solid rgba(190, 214, 240, 0.35);
         color: var(--accent);
         display: grid;
         place-items: center;
@@ -3085,7 +3087,7 @@
         flex: 0 0 auto;
         padding: 6px 10px;
         border-radius: 999px;
-        background: rgba(54, 196, 135, 0.12);
+        background: rgba(126, 166, 227, 0.12);
         color: #b6f3d8;
         font-size: 0.68rem;
         font-weight: 700;
@@ -3126,8 +3128,8 @@
         color: var(--muted);
       }
       .viaje-chip.highlight {
-        background: rgba(54, 196, 135, 0.12);
-        border-color: rgba(54, 196, 135, 0.4);
+        background: rgba(126, 166, 227, 0.12);
+        border-color: rgba(126, 166, 227, 0.4);
         color: #b6f3d8;
       }
       .viaje-actions {
@@ -3157,8 +3159,8 @@
         display: none;
       }
       .balance-card {
-        background: linear-gradient(135deg, rgba(54, 196, 135, 0.22), rgba(11, 13, 16, 0.85));
-        border: 1px solid rgba(54, 196, 135, 0.4);
+        background: linear-gradient(135deg, rgba(126, 166, 227, 0.22), rgba(11, 13, 16, 0.85));
+        border: 1px solid rgba(126, 166, 227, 0.4);
         border-radius: 20px;
         padding: 20px;
         box-shadow: var(--shadow);
@@ -3183,7 +3185,7 @@
       }
       .panel-conductor {
         background: rgba(12, 12, 14, 0.98);
-        border: 1px solid rgba(242, 199, 68, 0.2);
+        border: 1px solid rgba(190, 214, 240, 0.2);
         border-radius: 18px;
         padding: 16px;
         display: grid;
@@ -3209,13 +3211,13 @@
         padding: 12px;
         border-radius: 16px;
         background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(242, 199, 68, 0.2);
+        border: 1px solid rgba(190, 214, 240, 0.2);
       }
       .panel-avatar {
         width: 52px;
         height: 52px;
         border-radius: 50%;
-        background: #f2c744;
+        background: #bed6f0;
         color: #1b1203;
         font-weight: 700;
         display: grid;
@@ -3346,7 +3348,7 @@
         width: 18px;
         left: 3px;
         top: 3px;
-        background: #f2c744;
+        background: #bed6f0;
         border-radius: 50%;
         transition: 0.2s;
       }
@@ -3406,7 +3408,7 @@
         height: 18px;
       }
       .nav-item.active .nav-icon {
-        background: rgba(242, 199, 68, 0.2);
+        background: rgba(190, 214, 240, 0.2);
         color: var(--accent);
       }
       .nav-center {
@@ -3420,7 +3422,7 @@
         width: 62px;
         height: 62px;
         border-radius: 20px;
-        border: 1px solid rgba(242, 199, 68, 0.6);
+        border: 1px solid rgba(190, 214, 240, 0.6);
         background:
           radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.35), transparent 55%),
           linear-gradient(160deg, #f6d56b 0%, #e2b53e 40%, #c09022 100%);
@@ -3433,7 +3435,7 @@
         justify-content: center;
         gap: 2px;
         transform: translateY(-14px);
-        box-shadow: 0 16px 28px rgba(242, 199, 68, 0.35), inset 0 2px 4px rgba(255, 255, 255, 0.25);
+        box-shadow: 0 16px 28px rgba(190, 214, 240, 0.35), inset 0 2px 4px rgba(255, 255, 255, 0.25);
         cursor: pointer;
         appearance: none;
         text-decoration: none;
@@ -3467,7 +3469,7 @@
         position: absolute;
         inset: -8px;
         border-radius: 24px;
-        background: radial-gradient(circle, rgba(242, 199, 68, 0.3), transparent 65%);
+        background: radial-gradient(circle, rgba(190, 214, 240, 0.3), transparent 65%);
         z-index: -1;
         opacity: 0.8;
       }
@@ -3634,7 +3636,7 @@
                 <input type="hidden" name="pedido_id" id="priorityId" value="" />
                 <div class="swipe-track" data-swipe>
                   <div class="swipe-progress"></div>
-                  <span class="swipe-handle">Â»</span>
+                  <span class="swipe-handle">»</span>
                   <span class="swipe-text">Desliza para aceptar servicio</span>
                 </div>
               </form>
@@ -3673,7 +3675,7 @@
                     <div class="detail-title" id="topDropdownTitle">Centro rapido</div>
                     <div class="action-subtitle" id="topDropdownSubtitle"></div>
                   </div>
-                  <button type="button" class="top-dropdown-close" id="topDropdownClose" aria-label="Cerrar menu">Ã—</button>
+                  <button type="button" class="top-dropdown-close" id="topDropdownClose" aria-label="Cerrar menu">×</button>
                 </div>
                 <div class="top-dropdown-body" id="topDropdownBody"></div>
                 <div class="top-dropdown-footer" id="topDropdownFooter"></div>
@@ -3708,10 +3710,10 @@
                   <div class="trip-icon">TR</div>
                   <div>
                     <div class="trip-title">{{ ultimo.detalles.get('Direccion', ultimo.mensaje_cliente) }}</div>
-                    <div class="trip-meta">{{ ultimo.hora }} Â· {{ ultimo.cliente_telefono }}</div>
+                    <div class="trip-meta">{{ ultimo.hora }} · {{ ultimo.cliente_telefono }}</div>
                   </div>
                 </div>
-                <div class="trip-meta">Estandar Â· Efectivo</div>
+                <div class="trip-meta">Estandar · Efectivo</div>
                 <div class="trip-meta">{{ ultimo.timestamp }}</div>
                 <button
                   class="trip-cta"
@@ -3759,7 +3761,7 @@
                   <div id="serviceMap"></div>
                   <div class="te-map-gradient"></div>
                   <div class="te-map-hud">
-                    <div class="route-map-title">Transporte Ejecutivo</div>
+                    <div class="route-map-title">Zipp</div>
                     <div class="route-map-meta">
                       <div class="route-map-pill muted" id="routeDistance">-- km</div>
                       <div class="route-map-pill" id="mapModeLabel">{% if active_pedido %}Ruta activa{% else %}En linea{% endif %}</div>
@@ -3887,7 +3889,7 @@
                               <input type="hidden" name="pedido_id" value="{{ pedido.id }}" />
                               <div class="swipe-track" data-swipe>
                                 <div class="swipe-progress"></div>
-                                <span class="swipe-handle">Â»</span>
+                                <span class="swipe-handle">»</span>
                                 <span class="swipe-text">Desliza para aceptar servicio</span>
                               </div>
                             </form>
@@ -4005,7 +4007,7 @@
                             <form method="post" action="{{ url_for('finalizar_servicio') }}">
                               <div class="swipe-track" data-swipe>
                                 <div class="swipe-progress"></div>
-                                <span class="swipe-handle">Â»</span>
+                                <span class="swipe-handle">»</span>
                                 <span class="swipe-text">Desliza para finalizar servicio</span>
                               </div>
                             </form>
@@ -4021,7 +4023,7 @@
                           </div>
                           <div class="te-chat-panel-actions">
                             <div class="te-chat-status" id="chatStatus">En vivo</div>
-                            <button type="button" class="te-chat-close" id="closeChatPanelBtn" aria-label="Cerrar chat">Ã—</button>
+                            <button type="button" class="te-chat-close" id="closeChatPanelBtn" aria-label="Cerrar chat">×</button>
                           </div>
                         </div>
                         <div class="te-chat-panel-card">
@@ -4264,7 +4266,7 @@
               <div class="panel-card">
                 <div class="panel-card-title">Configuracion visual</div>
                 <div class="panel-switch-row">
-                  <span>Modo ejecutivo</span>
+                  <span>Modo Zipp</span>
                   <label class="switch">
                     <input type="checkbox" id="uiModeToggle" {% if ui_mode == 'executive' %}checked{% endif %} />
                     <span class="slider"></span>
@@ -4737,7 +4739,7 @@
         }
         if (options.announce) {
           showToast(
-            uiMode === 'executive' ? 'Modo ejecutivo activado.' : 'Modo clasico activado.',
+            uiMode === 'executive' ? 'Modo Zipp activado.' : 'Modo clasico activado.',
             1800
           );
         }
@@ -5242,7 +5244,7 @@
             <div class="modal-list">
               <div class="modal-list-item">
                 <strong>${escapeHtml(dashboardData.conductorNombre || 'Conductor')}</strong>
-                <p>Placa ${escapeHtml(dashboardData.conductorPlaca || '-')} Â· ${escapeHtml(dashboardData.conductorVehiculo || 'Vehiculo')} ${escapeHtml(dashboardData.conductorModelo || '')}</p>
+                <p>Placa ${escapeHtml(dashboardData.conductorPlaca || '-')} · ${escapeHtml(dashboardData.conductorVehiculo || 'Vehiculo')} ${escapeHtml(dashboardData.conductorModelo || '')}</p>
               </div>
             </div>
             <div class="modal-note">
@@ -6889,7 +6891,7 @@
                 <div class="swipe-track" data-swipe>
                   <div class="swipe-expiry"></div>
                   <div class="swipe-progress"></div>
-                  <span class="swipe-handle">Â»</span>
+                  <span class="swipe-handle">»</span>
                   <span class="swipe-text">Desliza para aceptar servicio</span>
                 </div>
               </form>
@@ -7115,14 +7117,14 @@
 
         const clientIcon = L.divIcon({
           className: 'marker-wrap',
-          html: '<div style="width:28px;height:28px;border-radius:10px;background:#f2c744;color:#1b1203;font-weight:700;display:grid;place-items:center;">B</div>',
+          html: '<div style="width:28px;height:28px;border-radius:10px;background:#bed6f0;color:#1b1203;font-weight:700;display:grid;place-items:center;">B</div>',
           iconSize: [28, 28],
           iconAnchor: [14, 28],
         });
 
         const driverIcon = L.divIcon({
           className: 'marker-wrap',
-          html: '<div style="width:28px;height:28px;border-radius:10px;background:#1f2937;color:#f2c744;font-weight:700;display:grid;place-items:center;border:1px solid rgba(242,199,68,0.6);">A</div>',
+          html: '<div style="width:28px;height:28px;border-radius:10px;background:#1f2937;color:#bed6f0;font-weight:700;display:grid;place-items:center;border:1px solid rgba(190,214,240,0.6);">A</div>',
           iconSize: [28, 28],
           iconAnchor: [14, 28],
         });
@@ -7139,7 +7141,7 @@
                 [driverLat, driverLng],
                 [clientLat, clientLng],
               ],
-              { color: '#f7d154', weight: 5, opacity: 0.95 }
+              { color: '#d5e4f6', weight: 5, opacity: 0.95 }
             ).addTo(detailMap);
             const baseBounds = L.latLngBounds([driverLat, driverLng], [clientLat, clientLng]);
             const distance = haversineDistance(driverLat, driverLng, clientLat, clientLng);
@@ -7158,7 +7160,7 @@
               }
               const route = data.routes[0];
               detailRoute = L.geoJSON(route.geometry, {
-                style: { color: '#f7d154', weight: 5, opacity: 0.95 },
+                style: { color: '#d5e4f6', weight: 5, opacity: 0.95 },
               }).addTo(detailMap);
               const bounds = L.latLngBounds([driverLat, driverLng], [clientLat, clientLng]);
               bounds.extend(detailRoute.getBounds());
@@ -7276,7 +7278,7 @@
                   <input type="hidden" name="pedido_id" value="${servicio.id}" />
                   <div class="swipe-track" data-swipe>
                     <div class="swipe-progress"></div>
-                    <span class="swipe-handle">Â»</span>
+                    <span class="swipe-handle">»</span>
                     <span class="swipe-text">Desliza para aceptar servicio</span>
                   </div>
                 </form>

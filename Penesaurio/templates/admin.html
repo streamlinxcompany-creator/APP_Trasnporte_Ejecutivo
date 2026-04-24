@@ -1,9 +1,11 @@
-ï»¿<!doctype html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ admin_page_title or "Centro de Control" }} | Admin</title>
+    <meta name="theme-color" content="#0b2540" />
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='zipp-icon.png') }}" />
+    <title>{{ admin_page_title or "Centro de Control" }} | Zipp Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,18 +20,18 @@
     />
     <style>
       :root {
-        --bg: #0a0d12;
-        --bg-soft: #0f141c;
-        --panel: rgba(18, 24, 36, 0.94);
-        --panel-strong: #141c28;
+        --bg: #071f3b;
+        --bg-soft: #0b2540;
+        --panel: rgba(12, 31, 57, 0.94);
+        --panel-strong: #173452;
         --stroke: rgba(255, 255, 255, 0.08);
-        --accent: #f2c14e;
-        --accent-soft: rgba(242, 193, 78, 0.18);
-        --success: #46e19f;
+        --accent: #bed6f0;
+        --accent-soft: rgba(190, 214, 240, 0.18);
+        --success: #7ea6e3;
         --danger: #ff6b6b;
-        --info: #55a9ff;
-        --text: #e9eef5;
-        --muted: #9aa8b4;
+        --info: #9fbeea;
+        --text: #eef4fb;
+        --muted: #a6b6cc;
         --shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
       }
 
@@ -42,8 +44,8 @@
         min-height: 100vh;
         font-family: "Sora", system-ui, sans-serif;
         color: var(--text);
-        background: radial-gradient(circle at top, rgba(242, 193, 78, 0.08), transparent 45%),
-          radial-gradient(circle at 20% 20%, rgba(82, 160, 255, 0.12), transparent 40%),
+        background: radial-gradient(circle at top, rgba(190, 214, 240, 0.08), transparent 45%),
+          radial-gradient(circle at 20% 20%, rgba(126, 166, 227, 0.12), transparent 40%),
           var(--bg);
       }
 
@@ -113,12 +115,12 @@
 
       .pill.ok {
         color: #0a140e;
-        background: rgba(70, 225, 159, 0.9);
+        background: rgba(126, 166, 227, 0.9);
       }
 
       .pill.warn {
         color: #1a1200;
-        background: rgba(242, 193, 78, 0.8);
+        background: rgba(190, 214, 240, 0.8);
       }
 
       .pill.bad {
@@ -166,7 +168,7 @@
       }
       .section-link:hover {
         transform: translateY(-2px);
-        border-color: rgba(54, 196, 135, 0.45);
+        border-color: rgba(126, 166, 227, 0.45);
         box-shadow: 0 16px 30px rgba(0, 0, 0, 0.28);
       }
       .section-link strong {
@@ -195,7 +197,7 @@
         content: "";
         position: absolute;
         inset: 0;
-        background: linear-gradient(140deg, rgba(242, 193, 78, 0.08), transparent 55%);
+        background: linear-gradient(140deg, rgba(190, 214, 240, 0.08), transparent 55%);
         opacity: 0.8;
         pointer-events: none;
       }
@@ -308,7 +310,7 @@
         height: 10px;
         border-radius: 50%;
         background: var(--success);
-        box-shadow: 0 0 12px rgba(70, 225, 159, 0.6);
+        box-shadow: 0 0 12px rgba(126, 166, 227, 0.6);
       }
 
       .button {
@@ -495,9 +497,9 @@
         width: 18px;
         height: 18px;
         border-radius: 999px;
-        background: #36c487;
+        background: #7ea6e3;
         border: 3px solid rgba(255, 255, 255, 0.92);
-        box-shadow: 0 10px 20px rgba(54, 196, 135, 0.35);
+        box-shadow: 0 10px 20px rgba(126, 166, 227, 0.35);
       }
       .driver-search {
         width: min(320px, 100%);
@@ -655,7 +657,7 @@
       }
 
       .log-item.warn {
-        border-color: rgba(242, 193, 78, 0.35);
+        border-color: rgba(190, 214, 240, 0.35);
       }
 
       .log-top {
@@ -690,12 +692,12 @@
 
       .log-badge.warn {
         color: var(--accent);
-        border-color: rgba(242, 193, 78, 0.4);
+        border-color: rgba(190, 214, 240, 0.4);
       }
 
       .log-badge.info {
         color: var(--info);
-        border-color: rgba(85, 169, 255, 0.4);
+        border-color: rgba(159, 190, 234, 0.4);
       }
 
       .log-time {
@@ -920,7 +922,7 @@
       }
 
       .status-pill.free {
-        background: rgba(70, 225, 159, 0.15);
+        background: rgba(126, 166, 227, 0.15);
         color: var(--success);
       }
 
@@ -1130,18 +1132,18 @@
         --panel: rgba(20, 24, 30, 0.95);
         --panel-strong: #151a22;
         --stroke: rgba(255, 255, 255, 0.08);
-        --accent: #36c487;
-        --accent-soft: rgba(54, 196, 135, 0.18);
-        --success: #36c487;
+        --accent: #7ea6e3;
+        --accent-soft: rgba(126, 166, 227, 0.18);
+        --success: #7ea6e3;
         --danger: #ff6b6b;
-        --info: #5aa2ff;
+        --info: #9fbeea;
         --text: #f2f4f7;
         --muted: #9aa3ad;
         --shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
       }
       body {
-        background: radial-gradient(circle at top, rgba(54, 196, 135, 0.08), transparent 45%),
-          radial-gradient(circle at 20% 20%, rgba(90, 162, 255, 0.12), transparent 40%),
+        background: radial-gradient(circle at top, rgba(126, 166, 227, 0.08), transparent 45%),
+          radial-gradient(circle at 20% 20%, rgba(159, 190, 234, 0.12), transparent 40%),
           var(--bg);
       }
       body::before {
@@ -1689,9 +1691,9 @@
 
         coverageCircle = L.circle([coverageConfig.center_lat, coverageConfig.center_lng], {
           radius: coverageConfig.radius_meters,
-          color: "#36c487",
+          color: "#7ea6e3",
           weight: 2,
-          fillColor: "#36c487",
+          fillColor: "#7ea6e3",
           fillOpacity: 0.16,
         }).addTo(coverageMap);
 
@@ -1744,7 +1746,7 @@
         if (!monitorStageList) return;
         monitorStageList.innerHTML = stages.map((stage) => {
           const km = (Number(stage.radius_meters || 0) / 1000).toFixed(stage.radius_meters >= 1000 ? 1 : 2);
-          return `<span class="monitor-stage-pill"><strong>${stage.seconds}s</strong> Â· ${km} km</span>`;
+          return `<span class="monitor-stage-pill"><strong>${stage.seconds}s</strong> · ${km} km</span>`;
         }).join("");
       }
 
@@ -1780,9 +1782,9 @@
 
         monitorCoverageCircle = L.circle([coverageConfig.center_lat, coverageConfig.center_lng], {
           radius: coverageConfig.radius_meters,
-          color: "#36c487",
+          color: "#7ea6e3",
           weight: 2,
-          fillColor: "#36c487",
+          fillColor: "#7ea6e3",
           fillOpacity: 0.12,
         }).addTo(monitorMap);
         monitorCoverageCenter = L.marker(
@@ -1857,7 +1859,7 @@
 
         twilioDot.style.background = data.twilio_enabled ? "var(--success)" : "var(--danger)";
         twilioDot.style.boxShadow = data.twilio_enabled
-          ? "0 0 12px rgba(70, 225, 159, 0.6)"
+          ? "0 0 12px rgba(126, 166, 227, 0.6)"
           : "0 0 12px rgba(255, 107, 107, 0.6)";
         twilioLabel.textContent = "Twilio siempre activo";
 
@@ -1941,7 +1943,7 @@
         filteredDrivers.forEach(conductor => {
           const subscriptionClass = conductor.suscripcion_activa ? "free" : "busy";
           const subscriptionLabel = conductor.suscripcion_activa
-            ? `Activa Â· ${conductor.dias_restantes} dia(s)`
+            ? `Activa · ${conductor.dias_restantes} dia(s)`
             : "Pago pendiente";
           const card = document.createElement("article");
           card.className = "driver-card";
@@ -2031,13 +2033,13 @@
         currentDriverDetailId = conductor.id;
         const subscriptionClass = conductor.suscripcion_activa ? "free" : "busy";
         const subscriptionLabel = conductor.suscripcion_activa
-          ? `Activa Â· ${conductor.dias_restantes} dia(s)`
+          ? `Activa · ${conductor.dias_restantes} dia(s)`
           : "Pago pendiente";
         const existingPlanValue = driverPlanDaysInput.value;
         const existingExtraValue = driverExtraDaysInput.value;
 
         driverDetailName.textContent = conductor.nombre;
-        driverDetailSub.textContent = `@${conductor.usuario} Â· ${conductor.vehiculo} ${conductor.modelo} Â· placa ${conductor.placa}`;
+        driverDetailSub.textContent = `@${conductor.usuario} · ${conductor.vehiculo} ${conductor.modelo} · placa ${conductor.placa}`;
         driverDetailChips.innerHTML = `
           <span class="status-pill ${conductor.estado === "Ocupado" ? "busy" : "free"}">${conductor.estado}</span>
           <span class="status-pill ${subscriptionClass}">${subscriptionLabel}</span>

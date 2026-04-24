@@ -28,7 +28,7 @@ def webhook():
     resp = MessagingResponse()
     
     # Aquí personalizas la respuesta
-    respuesta_texto = "¡Hola! 🚗 Bienvenido a Transporte Ejecutivo. Hemos recibido tu solicitud y un asesor te contactará en breve."
+    respuesta_texto = "¡Hola! 🚗 Bienvenido a Zipp. Hemos recibido tu solicitud y un asesor te contactará en breve."
     
     resp.message(respuesta_texto)
 

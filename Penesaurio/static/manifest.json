@@ -1,9 +1,21 @@
-﻿{
-  "name": "Despacho Ejecutivo",
-  "short_name": "Despacho",
+{
+  "name": "Zipp",
+  "short_name": "Zipp",
   "start_url": "/login",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "orientation": "portrait"
+  "background_color": "#071f3b",
+  "theme_color": "#0b2540",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/static/zipp-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/zipp-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }

@@ -3,20 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Monitoreo En Vivo | Admin</title>
+    <meta name="theme-color" content="#0b2540" />
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='zipp-icon.png') }}" />
+    <title>Monitoreo En Vivo | Zipp Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <style>
       :root {
-        --bg: #0b0d10;
-        --panel: rgba(20, 24, 30, 0.95);
+        --bg: #071f3b;
+        --panel: rgba(12, 31, 57, 0.95);
         --stroke: rgba(255,255,255,0.08);
-        --accent: #36c487;
-        --accent-2: #4f8cff;
-        --text: #f2f4f7;
-        --muted: #9aa3ad;
+        --accent: #bed6f0;
+        --accent-2: #7ea6e3;
+        --text: #eef4fb;
+        --muted: #a6b6cc;
         --shadow: 0 16px 34px rgba(0,0,0,0.45);
       }
       * { box-sizing: border-box; }
@@ -26,8 +28,8 @@
         font-family: "Sora", system-ui, sans-serif;
         color: var(--text);
         background:
-          radial-gradient(circle at top, rgba(54, 196, 135, 0.08), transparent 45%),
-          radial-gradient(circle at 20% 20%, rgba(90, 162, 255, 0.12), transparent 40%),
+          radial-gradient(circle at top, rgba(190, 214, 240, 0.08), transparent 45%),
+          radial-gradient(circle at 20% 20%, rgba(126, 166, 227, 0.12), transparent 40%),
           var(--bg);
       }
       .page {

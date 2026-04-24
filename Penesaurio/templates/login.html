@@ -1,24 +1,26 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#0b2540" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
-    <title>Ingreso | Despacho Ejecutivo</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='zipp-icon.png') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='zipp-icon.png') }}" />
+    <title>Ingreso | Zipp</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg: #060606;
-        --panel: rgba(16, 16, 18, 0.9);
-        --panel-strong: rgba(10, 10, 12, 0.98);
-        --gold: #f2c744;
-        --gold-2: #b99035;
-        --text: #f5f5f5;
-        --muted: #9aa0a6;
+        --bg: #071f3b;
+        --panel: rgba(12, 31, 57, 0.92);
+        --panel-strong: rgba(11, 37, 64, 0.98);
+        --gold: #bed6f0;
+        --gold-2: #6f8fb8;
+        --text: #eef4fb;
+        --muted: #a6b6cc;
       }
       * {
         box-sizing: border-box;
@@ -26,10 +28,10 @@
       body {
         margin: 0;
         background:
-          radial-gradient(circle at 15% 20%, rgba(242, 199, 68, 0.14), transparent 38%),
-          radial-gradient(circle at 85% 0%, rgba(140, 140, 155, 0.35), transparent 45%),
-          radial-gradient(circle at 70% 80%, rgba(242, 199, 68, 0.08), transparent 45%),
-          #030303;
+          radial-gradient(circle at 15% 20%, rgba(190, 214, 240, 0.14), transparent 38%),
+          radial-gradient(circle at 85% 0%, rgba(96, 126, 164, 0.35), transparent 45%),
+          radial-gradient(circle at 70% 80%, rgba(126, 166, 227, 0.1), transparent 45%),
+          #041427;
         color: var(--text);
         font-family: 'Sora', sans-serif;
         min-height: 100dvh;
@@ -61,12 +63,12 @@
           repeating-linear-gradient(
             0deg,
             transparent 0 70px,
-            rgba(242, 199, 68, 0.12) 70px 72px
+            rgba(190, 214, 240, 0.12) 70px 72px
           ),
           repeating-linear-gradient(
             90deg,
             transparent 0 70px,
-            rgba(242, 199, 68, 0.12) 70px 72px
+            rgba(190, 214, 240, 0.12) 70px 72px
           );
         opacity: 0.35;
         pointer-events: none;
@@ -76,7 +78,7 @@
         position: absolute;
         inset: 0;
         background:
-          radial-gradient(circle at 20% 10%, rgba(242, 199, 68, 0.2), transparent 40%),
+          radial-gradient(circle at 20% 10%, rgba(190, 214, 240, 0.2), transparent 40%),
           radial-gradient(circle at 80% 80%, rgba(60, 60, 70, 0.5), transparent 45%);
         opacity: 0.35;
         mix-blend-mode: screen;
@@ -110,7 +112,7 @@
         font-size: 0.72rem;
         letter-spacing: 0.28em;
         text-transform: uppercase;
-        color: rgba(242, 199, 68, 0.65);
+        color: rgba(190, 214, 240, 0.65);
       }
       .hero-title {
         position: relative;
@@ -125,8 +127,8 @@
         gap: 8px;
         padding: 6px 12px;
         border-radius: 999px;
-        background: rgba(242, 199, 68, 0.12);
-        border: 1px solid rgba(242, 199, 68, 0.4);
+        background: rgba(190, 214, 240, 0.12);
+        border: 1px solid rgba(190, 214, 240, 0.4);
         color: var(--gold);
         font-size: 0.72rem;
         letter-spacing: 0.2em;
@@ -139,7 +141,7 @@
         gap: 10px;
         padding: 8px 14px;
         border-radius: 999px;
-        border: 1px solid rgba(242, 199, 68, 0.35);
+        border: 1px solid rgba(190, 214, 240, 0.35);
         color: var(--gold);
         letter-spacing: 0.2em;
         text-transform: uppercase;
@@ -170,8 +172,8 @@
       .hero-chip {
         padding: 8px 14px;
         border-radius: 999px;
-        border: 1px solid rgba(242, 199, 68, 0.25);
-        color: rgba(242, 199, 68, 0.85);
+        border: 1px solid rgba(190, 214, 240, 0.25);
+        color: rgba(190, 214, 240, 0.85);
         background: rgba(12, 12, 14, 0.8);
         font-size: 0.78rem;
         letter-spacing: 0.08em;
@@ -189,7 +191,7 @@
         padding: 18px;
         border-radius: 18px;
         background: linear-gradient(135deg, rgba(12, 12, 15, 0.92), rgba(20, 20, 24, 0.75));
-        border: 1px solid rgba(242, 199, 68, 0.18);
+        border: 1px solid rgba(190, 214, 240, 0.18);
         box-shadow: 0 20px 36px rgba(0, 0, 0, 0.45);
         position: relative;
         overflow: hidden;
@@ -201,14 +203,14 @@
         left: 0;
         width: 100%;
         height: 2px;
-        background: linear-gradient(90deg, rgba(242, 199, 68, 0.7), transparent 70%);
+        background: linear-gradient(90deg, rgba(190, 214, 240, 0.7), transparent 70%);
         opacity: 0.8;
       }
       .hero-card-tag {
         font-size: 0.7rem;
         letter-spacing: 0.2em;
         text-transform: uppercase;
-        color: rgba(242, 199, 68, 0.7);
+        color: rgba(190, 214, 240, 0.7);
         margin-bottom: 8px;
       }
       .hero-card h5 {
@@ -277,7 +279,7 @@
         left: 0;
         right: 0;
         height: 2px;
-        background: linear-gradient(90deg, rgba(242, 199, 68, 0.9), transparent 70%);
+        background: linear-gradient(90deg, rgba(190, 214, 240, 0.9), transparent 70%);
       }
       .panel-title {
         font-size: 1.4rem;
@@ -292,7 +294,7 @@
         gap: 6px;
         padding: 6px;
         border-radius: 999px;
-        border: 1px solid rgba(242, 199, 68, 0.25);
+        border: 1px solid rgba(190, 214, 240, 0.25);
         background: rgba(12, 12, 14, 0.85);
         margin-bottom: 18px;
       }
@@ -300,7 +302,7 @@
         flex: 1;
         border: none;
         background: transparent;
-        color: rgba(242, 199, 68, 0.7);
+        color: rgba(190, 214, 240, 0.7);
         padding: 8px 12px;
         border-radius: 999px;
         font-size: 0.72rem;
@@ -310,9 +312,9 @@
         transition: background 0.2s ease, color 0.2s ease;
       }
       .toggle-btn.is-active {
-        background: linear-gradient(90deg, #f2c744, #f6db8a);
+        background: linear-gradient(90deg, #bed6f0, #c0daf5);
         color: #1a1406;
-        box-shadow: 0 10px 20px rgba(242, 199, 68, 0.25);
+        box-shadow: 0 10px 20px rgba(190, 214, 240, 0.25);
       }
       .register-only {
         display: none;
@@ -322,14 +324,14 @@
       }
       .alert-luxe {
         background: rgba(29, 23, 16, 0.9);
-        border: 1px solid rgba(242, 199, 68, 0.35);
+        border: 1px solid rgba(190, 214, 240, 0.35);
         color: #f6d98c;
       }
       .form-label {
         font-size: 0.85rem;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: rgba(242, 199, 68, 0.7);
+        color: rgba(190, 214, 240, 0.7);
       }
       .form-control {
         background: #0f0f11;
@@ -343,22 +345,22 @@
       }
       .form-control:focus {
         border-color: var(--gold);
-        box-shadow: 0 0 0 0.2rem rgba(242, 199, 68, 0.2);
+        box-shadow: 0 0 0 0.2rem rgba(190, 214, 240, 0.2);
       }
       .btn-gold {
-        background: linear-gradient(90deg, #f2c744, #f6db8a);
+        background: linear-gradient(90deg, #bed6f0, #c0daf5);
         border: none;
         border-radius: 12px;
         padding: 12px;
         font-weight: 700;
         color: #1a1406;
-        box-shadow: 0 12px 30px rgba(242, 199, 68, 0.25);
+        box-shadow: 0 12px 30px rgba(190, 214, 240, 0.25);
         min-height: 48px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
       }
       .btn-gold:hover {
         transform: translateY(-1px);
-        box-shadow: 0 16px 36px rgba(242, 199, 68, 0.35);
+        box-shadow: 0 16px 36px rgba(190, 214, 240, 0.35);
       }
       .panel-footnote {
         margin-top: 16px;
@@ -374,7 +376,7 @@
         font-size: 0.7rem;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: rgba(242, 199, 68, 0.65);
+        color: rgba(190, 214, 240, 0.65);
         pointer-events: none;
         z-index: 5;
       }
@@ -489,15 +491,15 @@
         --bg: #0b0d10;
         --panel: rgba(22, 24, 28, 0.95);
         --panel-strong: #1a1d22;
-        --gold: #36c487;
+        --gold: #7ea6e3;
         --gold-2: #9aa3ad;
         --text: #f4f6f8;
         --muted: #9aa3ad;
         --stroke: rgba(255, 255, 255, 0.08);
       }
       body {
-        background: radial-gradient(circle at 15% 10%, rgba(54, 196, 135, 0.12), transparent 40%),
-          radial-gradient(circle at 85% 15%, rgba(90, 162, 255, 0.12), transparent 45%),
+        background: radial-gradient(circle at 15% 10%, rgba(126, 166, 227, 0.12), transparent 40%),
+          radial-gradient(circle at 85% 15%, rgba(159, 190, 234, 0.12), transparent 45%),
           #0b0d10;
         color: var(--text);
       }
@@ -542,11 +544,11 @@
       .toggle-btn.is-active {
         background: var(--gold);
         color: #06110c;
-        box-shadow: 0 12px 24px rgba(54, 196, 135, 0.25);
+        box-shadow: 0 12px 24px rgba(126, 166, 227, 0.25);
       }
       .alert-luxe {
-        background: rgba(54, 196, 135, 0.16);
-        border-color: rgba(54, 196, 135, 0.35);
+        background: rgba(126, 166, 227, 0.16);
+        border-color: rgba(126, 166, 227, 0.35);
         color: #dff7ee;
       }
       .form-label {
@@ -559,12 +561,12 @@
       }
       .form-control:focus {
         border-color: var(--gold);
-        box-shadow: 0 0 0 0.2rem rgba(54, 196, 135, 0.25);
+        box-shadow: 0 0 0 0.2rem rgba(126, 166, 227, 0.25);
       }
       .btn-gold {
         background: var(--gold);
         color: #06110c;
-        box-shadow: 0 12px 24px rgba(54, 196, 135, 0.25);
+        box-shadow: 0 12px 24px rgba(126, 166, 227, 0.25);
       }
       .auth-seal {
         color: rgba(255, 255, 255, 0.5);
@@ -575,10 +577,10 @@
     <div class="auth-shell">
       <section class="auth-hero">
         <div class="hero-top">
-          <div class="brand-pill">Transporte Ejecutivo</div>
+          <div class="brand-pill">Zipp</div>
         </div>
         <div class="hero-title">
-          <span class="hero-kicker">Modo Ejecutivo</span>
+          <span class="hero-kicker">Modo Zipp</span>
           <h1>Conduce con presencia ejecutiva</h1>
         </div>
         <p>Accede al panel premium de servicios. Flujo rapido, alertas en tiempo real y control total desde tu movil.</p>
@@ -590,7 +592,7 @@
         <div class="hero-grid">
           <div class="hero-card">
             <div class="hero-card-tag">Servicio premium</div>
-            <h5>Clientes ejecutivos</h5>
+            <h5>Clientes Zipp</h5>
             <span>Rutas claras y pago puntual con prioridad real.</span>
           </div>
           <div class="hero-card">

@@ -15,7 +15,7 @@ except Exception:
 SHORT_CANCEL_HINT = "Si deseas cancelar, escribe *CANCELAR*."
 MAICOL_SOURCE_PATH = r"C:\Users\Juan Pablo\Desktop\Maicol\MaicolSistem.py"
 DEFAULT_GROQ_TEXT_MODEL = "llama-3.3-70b-versatile"
-FIRST_CONTACT_WELCOME = "*Hola, bienvenid@ a Transporte Ejecutivo.*"
+FIRST_CONTACT_WELCOME = "*Hola, bienvenid@ a Zipp.*"
 MAP_ONLY_REJECTION_MESSAGE = (
     "*Necesito tu ubicacion actual* desde WhatsApp para recogerte.\n"
     "No puedo tomar direcciones escritas.\n"
@@ -1365,7 +1365,7 @@ class TwilioGroqAssistant:
 
     def build_system_prompt(self):
         return (
-            "Eres el asistente de WhatsApp de Transporte Ejecutivo. "
+            "Eres el asistente de WhatsApp de Zipp. "
             "Debes responder breve, claro, amable y cercano. "
             "Ayudas a reservar servicios, aclarar dudas basicas y entender mensajes libres del cliente. "
             "El cliente siempre debe sentirse acompanado y bien atendido. "
