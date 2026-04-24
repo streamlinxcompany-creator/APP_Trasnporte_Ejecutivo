@@ -686,9 +686,9 @@ def is_intermunicipal_request(
 
 def build_out_of_zone_confirmation_message():
     return (
-        "*Tu recogida esta fuera de La Ceja.*\n"
-        "Podemos enviar el carro desde La Ceja, pero el valor y el tiempo incluyen ese desplazamiento.\n"
-        "Responde *SI* para enviarlo o *NO* para cambiar la ubicacion."
+        "*Principalmente trabajamos en La Ceja.*\n"
+        "La ubicacion que me diste esta por fuera de nuestra zona principal, pero podemos intentar la solicitud por si hay un conductor cerca.\n"
+        "Responde *SI* para enviarla o *NO* para cambiar la ubicacion."
     )
 
 

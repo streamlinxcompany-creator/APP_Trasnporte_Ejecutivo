@@ -1,6 +1,7 @@
 ﻿import base64
 import hashlib
 import json
+import math
 import os
 import re
 import sqlite3
@@ -49,6 +50,11 @@ PAYMENT_PENDING_COPY = "Recuerda pagar tu mensualidad para volver a ver el mapa 
 DEFAULT_COVERAGE_CENTER_LAT = 6.030589
 DEFAULT_COVERAGE_CENTER_LNG = -75.431704
 DEFAULT_COVERAGE_RADIUS_METERS = 6000
+SERVICE_MATCH_STAGES = [
+    (30, 500),
+    (60, 1200),
+    (120, 2500),
+]
 EXPIRATION_MESSAGE = (
     "No logramos asignarte conductor en este momento. "
     "Cancelamos la solicitud para no hacerte esperar. "
@@ -520,6 +526,12 @@ def init_db():
         )
     if "ultima_mensualidad_at" not in conductor_cols:
         cur.execute("ALTER TABLE conductores ADD COLUMN ultima_mensualidad_at TEXT")
+    if "current_lat" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN current_lat REAL")
+    if "current_lng" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN current_lng REAL")
+    if "location_updated_at" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN location_updated_at TEXT")
 
     cur.execute(
         """
@@ -865,6 +877,72 @@ def parse_coords_from_text(value):
     except Exception:
         return None, None
     return lat, lng
+
+
+def parse_float_or_none(value):
+    try:
+        return float(str(value).strip())
+    except Exception:
+        return None
+
+
+def haversine_distance_meters(lat1, lng1, lat2, lng2):
+    if None in {lat1, lng1, lat2, lng2}:
+        return None
+    radius = 6371000.0
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    d_lat = math.radians(lat2 - lat1)
+    d_lng = math.radians(lng2 - lng1)
+    a = (
+        math.sin(d_lat / 2) ** 2
+        + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(d_lng / 2) ** 2
+    )
+    return radius * (2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
+
+
+def extract_service_coords(row_or_message):
+    mensaje_cliente = (
+        row_or_message["mensaje_cliente"]
+        if isinstance(row_or_message, sqlite3.Row)
+        else row_or_message
+    )
+    detalles = parse_detalles(mensaje_cliente or "")
+    direccion = detalles.get("Direccion", mensaje_cliente or "")
+    lat = detalles.get("Latitude") or detalles.get("Latitud") or ""
+    lng = detalles.get("Longitude") or detalles.get("Longitud") or ""
+    lat_val = parse_float_or_none(lat)
+    lng_val = parse_float_or_none(lng)
+    if lat_val is not None and lng_val is not None:
+        return lat_val, lng_val
+    if direccion:
+        return parse_coords_from_text(direccion)
+    return None, None
+
+
+def get_service_match_radius(elapsed_seconds_value):
+    seconds = max(0, int(elapsed_seconds_value or 0))
+    for max_seconds, radius_meters in SERVICE_MATCH_STAGES:
+        if seconds <= max_seconds:
+            return radius_meters
+    return None
+
+
+def is_service_visible_for_driver(row, driver_lat=None, driver_lng=None):
+    timestamp = row["timestamp"] if isinstance(row, sqlite3.Row) else row.get("timestamp")
+    elapsed = elapsed_seconds(timestamp)
+    radius_limit = get_service_match_radius(elapsed)
+    if radius_limit is None:
+        return True, None, elapsed
+
+    service_lat, service_lng = extract_service_coords(row)
+    if service_lat is None or service_lng is None:
+        return True, None, elapsed
+    if driver_lat is None or driver_lng is None:
+        return False, None, elapsed
+
+    distance = haversine_distance_meters(driver_lat, driver_lng, service_lat, service_lng)
+    return bool(distance is not None and distance <= radius_limit), distance, elapsed
 
 
 def format_saved_address(value):
@@ -2227,6 +2305,9 @@ def admin_drivers_api():
                 c.mensualidades_pagadas,
                 c.dias_mensualidad,
                 c.ultima_mensualidad_at,
+                c.current_lat,
+                c.current_lng,
+                c.location_updated_at,
                 (
                     SELECT COUNT(*)
                     FROM pedidos p
@@ -2284,10 +2365,58 @@ def admin_drivers_api():
                 "mensualidades_pagadas": subscription["mensualidades_pagadas"],
                 "dias_mensualidad": subscription["dias_mensualidad"],
                 "ultima_mensualidad_at": format_ts_short(subscription["ultima_mensualidad_at"]),
+                "current_lat": row["current_lat"],
+                "current_lng": row["current_lng"],
+                "location_updated_at": row["location_updated_at"] or "",
             }
         )
 
     return jsonify({"ok": True, "conductores": conductores})
+
+
+@app.route("/admin/api/monitor")
+def admin_monitor_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    conn = get_conn()
+    rows = conn.execute(
+        """
+        SELECT id, usuario, nombre_real, placa, is_online, current_lat, current_lng, location_updated_at
+        FROM conductores
+        ORDER BY nombre_real COLLATE NOCASE ASC, usuario COLLATE NOCASE ASC
+        """
+    ).fetchall()
+    conn.close()
+
+    conductores = []
+    for row in rows:
+        nombre = row["nombre_real"] or row["usuario"] or "Conductor"
+        initials_parts = [part[:1].upper() for part in nombre.split() if part.strip()]
+        conductores.append(
+            {
+                "id": row["id"],
+                "nombre": nombre,
+                "placa": row["placa"] or "-",
+                "online": bool(row["is_online"]) if row["is_online"] is not None else True,
+                "current_lat": row["current_lat"],
+                "current_lng": row["current_lng"],
+                "location_updated_at": row["location_updated_at"] or "",
+                "initials": "".join(initials_parts[:2]) or "C",
+            }
+        )
+
+    return jsonify(
+        {
+            "ok": True,
+            "conductores": conductores,
+            "coverage": get_service_coverage_config(),
+            "match_stages": [
+                {"seconds": seconds, "radius_meters": radius}
+                for seconds, radius in SERVICE_MATCH_STAGES
+            ],
+        }
+    )
 
 
 @app.route("/admin/api/driver/subscription", methods=["POST"])
@@ -2583,6 +2712,12 @@ def build_panel_context():
 
     rows = []
     if not active_pedido_id and driver_online:
+        driver_row = conn.execute(
+            "SELECT current_lat, current_lng FROM conductores WHERE id = ?",
+            (session.get("conductor_id"),),
+        ).fetchone()
+        driver_lat = parse_float_or_none(driver_row["current_lat"]) if driver_row else None
+        driver_lng = parse_float_or_none(driver_row["current_lng"]) if driver_row else None
         rows = conn.execute(
             """
             SELECT id, estado, cliente_telefono, mensaje_cliente, timestamp
@@ -2591,6 +2726,9 @@ def build_panel_context():
             ORDER BY id ASC
             """
         ).fetchall()
+        rows = [
+            row for row in rows if is_service_visible_for_driver(row, driver_lat, driver_lng)[0]
+        ]
 
     rows_mios = conn.execute(
         """
@@ -3056,25 +3194,33 @@ def servicios_status_api():
 
     conn = get_conn()
     driver_row = conn.execute(
-        "SELECT is_online FROM conductores WHERE id = ?",
+        "SELECT is_online, current_lat, current_lng FROM conductores WHERE id = ?",
         (session.get("conductor_id"),),
     ).fetchone()
     is_online = bool(driver_row["is_online"]) if driver_row and driver_row["is_online"] is not None else True
     if not is_online:
         conn.close()
         return jsonify({"ok": True, "count": 0, "max_id": 0, "online": False})
+    driver_lat = parse_float_or_none(driver_row["current_lat"]) if driver_row else None
+    driver_lng = parse_float_or_none(driver_row["current_lng"]) if driver_row else None
 
-    row = conn.execute(
+    rows = conn.execute(
         """
-        SELECT COUNT(*) AS count, MAX(id) AS max_id
+        SELECT id, timestamp, mensaje_cliente
         FROM pedidos
         WHERE lower(estado) IN ('disponible', 'pendiente')
+        ORDER BY id ASC
         """
-    ).fetchone()
+    ).fetchall()
     conn.close()
 
-    count_val = row["count"] if row and row["count"] is not None else 0
-    max_id_val = row["max_id"] if row and row["max_id"] is not None else 0
+    visible_rows = [
+        row
+        for row in rows
+        if is_service_visible_for_driver(row, driver_lat, driver_lng)[0]
+    ]
+    count_val = len(visible_rows)
+    max_id_val = visible_rows[-1]["id"] if visible_rows else 0
     return jsonify({"ok": True, "count": count_val, "max_id": max_id_val, "online": True})
 
 
@@ -3086,13 +3232,15 @@ def servicios_list_api():
     try:
         conn = get_conn()
         driver_row = conn.execute(
-            "SELECT is_online FROM conductores WHERE id = ?",
+            "SELECT is_online, current_lat, current_lng FROM conductores WHERE id = ?",
             (session.get("conductor_id"),),
         ).fetchone()
         is_online = bool(driver_row["is_online"]) if driver_row and driver_row["is_online"] is not None else True
         if not is_online:
             conn.close()
             return jsonify({"ok": True, "servicios": [], "online": False})
+        driver_lat = parse_float_or_none(driver_row["current_lat"]) if driver_row else None
+        driver_lng = parse_float_or_none(driver_row["current_lng"]) if driver_row else None
         rows = conn.execute(
             """
             SELECT id, cliente_telefono, mensaje_cliente, timestamp
@@ -3107,6 +3255,13 @@ def servicios_list_api():
 
     servicios = []
     for row in rows:
+        visible, distance_meters, age_seconds = is_service_visible_for_driver(
+            row,
+            driver_lat,
+            driver_lng,
+        )
+        if not visible:
+            continue
         detalles = parse_detalles(row["mensaje_cliente"] or "")
         direccion = detalles.get("Direccion", row["mensaje_cliente"] or "")
         lat = detalles.get("Latitude") or detalles.get("Latitud") or ""
@@ -3126,6 +3281,9 @@ def servicios_list_api():
                 "tipo": detalles.get("Tipo", ""),
                 "lat": lat,
                 "lng": lng,
+                "distance_meters": round(distance_meters) if distance_meters is not None else None,
+                "match_radius_meters": get_service_match_radius(age_seconds),
+                "age_seconds": age_seconds,
             }
         )
 
@@ -3155,6 +3313,36 @@ def conductor_availability_api():
     conn.commit()
     conn.close()
     return jsonify({"ok": True, "online": enabled})
+
+
+@app.route("/api/conductor/location", methods=["POST"])
+def conductor_location_api():
+    if not session.get("conductor_id"):
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    data = request.get_json(silent=True) or {}
+    try:
+        lat = float(data.get("lat"))
+        lng = float(data.get("lng"))
+    except Exception:
+        return jsonify({"ok": False, "error": "Coordenadas invalidas."}), 400
+
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return jsonify({"ok": False, "error": "Coordenadas fuera de rango."}), 400
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_conn()
+    conn.execute(
+        """
+        UPDATE conductores
+        SET current_lat = ?, current_lng = ?, location_updated_at = ?
+        WHERE id = ?
+        """,
+        (lat, lng, timestamp, session.get("conductor_id")),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "lat": lat, "lng": lng, "timestamp": timestamp})
 
 
 @app.route("/api/conductor/ui-mode", methods=["GET", "POST"])

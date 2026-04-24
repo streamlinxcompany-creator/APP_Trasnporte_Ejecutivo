@@ -4476,6 +4476,8 @@
       let selectedServiceId = {{ pedidos[0].id if pedidos else 'null' }};
       let driverPosition = null;
       let driverWatchId = null;
+      let lastDriverLocationSyncAt = 0;
+      let locationSyncInFlight = false;
       let drawerOpen = false;
       let routeRefreshTimer = null;
       let routeRequestToken = 0;
@@ -6352,6 +6354,27 @@
         });
       }
 
+      async function syncDriverLocation(lat, lng) {
+        const now = Date.now();
+        if (locationSyncInFlight || now - lastDriverLocationSyncAt < 10000) return;
+        locationSyncInFlight = true;
+        lastDriverLocationSyncAt = now;
+        try {
+          await fetch('/api/conductor/location', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ lat, lng }),
+          });
+        } catch (err) {
+          // ignore background sync issues
+        } finally {
+          locationSyncInFlight = false;
+        }
+      }
+
       function getSelectedService() {
         if (!latestServices.length) return null;
         const selected = latestServices.find((service) => String(service.id) === String(selectedServiceId));
@@ -6912,6 +6935,7 @@
         updateDriverMarker(lat, lng);
         updateSafetyDriverMarker(lat, lng);
         updateDriverStatus('Carro ubicado en tiempo real');
+        syncDriverLocation(lat, lng);
         if (centerMap && serviceMap && !getMapTarget()) {
           serviceMap.setView([lat, lng], 15);
         }

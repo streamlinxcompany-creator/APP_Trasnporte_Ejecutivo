@@ -147,6 +147,37 @@
         gap: 16px;
         margin-bottom: 24px;
       }
+      .section-hub {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 24px;
+      }
+      .section-link {
+        display: grid;
+        gap: 8px;
+        padding: 18px;
+        border-radius: 18px;
+        border: 1px solid var(--stroke);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(10, 13, 18, 0.8));
+        color: var(--text);
+        text-decoration: none;
+        transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+      }
+      .section-link:hover {
+        transform: translateY(-2px);
+        border-color: rgba(54, 196, 135, 0.45);
+        box-shadow: 0 16px 30px rgba(0, 0, 0, 0.28);
+      }
+      .section-link strong {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 18px;
+      }
+      .section-link span {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
 
       .stat-card {
         background: var(--panel);
@@ -236,6 +267,9 @@
         grid-column: span 4;
       }
       .coverage-panel {
+        grid-column: span 8;
+      }
+      .monitor-panel {
         grid-column: span 8;
       }
 
@@ -411,6 +445,68 @@
       }
       .coverage-actions .button {
         flex: 1;
+      }
+      .monitor-map {
+        width: 100%;
+        height: 360px;
+        border-radius: 18px;
+        border: 1px solid var(--stroke);
+        overflow: hidden;
+        background: rgba(8, 12, 18, 0.7);
+      }
+      .monitor-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+      }
+      .monitor-stage-list {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .monitor-stage-pill {
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--stroke);
+        background: rgba(255, 255, 255, 0.04);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .monitor-stage-pill strong {
+        color: var(--text);
+      }
+      .driver-live-marker {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #111827, #1d4ed8);
+        color: #fff;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        border: 2px solid rgba(255, 255, 255, 0.9);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
+      }
+      .coverage-center-marker {
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background: #36c487;
+        border: 3px solid rgba(255, 255, 255, 0.92);
+        box-shadow: 0 10px 20px rgba(54, 196, 135, 0.35);
+      }
+      .driver-search {
+        width: min(320px, 100%);
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid var(--stroke);
+        background: rgba(8, 12, 18, 0.72);
+        color: var(--text);
+        font-family: "Sora", sans-serif;
       }
 
       .keypad button {
@@ -997,11 +1093,15 @@
           max-height: 480px;
         }
         .coverage-panel,
+        .monitor-panel,
         .active-panel,
         .twilio-panel,
         .generator-panel,
         .coords-panel {
           grid-column: span 12;
+        }
+        .section-hub {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .coverage-grid {
           grid-template-columns: 1fr;
@@ -1018,6 +1118,9 @@
         }
         .driver-detail-top {
           align-items: center;
+        }
+        .section-hub {
+          grid-template-columns: 1fr;
         }
       }
       /* Clean minimal theme overrides */
@@ -1052,7 +1155,7 @@
       }
     </style>
   </head>
-  <body>
+  <body id="top">
     <div class="page">
       <header class="topbar">
         <div>
@@ -1090,8 +1193,31 @@
         </div>
       </section>
 
+      <section class="section-hub">
+        <a class="section-link" href="#twilioSection">
+          <strong>Twilio</strong>
+          <span>Canal, plantillas y estado de mensajeria.</span>
+        </a>
+        <a class="section-link" href="#monitorSection">
+          <strong>Monitoreo</strong>
+          <span>Mapa en vivo de conductores y cobertura activa.</span>
+        </a>
+        <a class="section-link" href="#testsSection">
+          <strong>Pruebas</strong>
+          <span>Servicios de prueba y coordenadas manuales.</span>
+        </a>
+        <a class="section-link" href="#driversSection">
+          <strong>Conductores</strong>
+          <span>Busqueda, filtros rapidos y gestion del equipo.</span>
+        </a>
+        <a class="section-link" href="#billingSection">
+          <strong>Mensualidades</strong>
+          <span>Controla planes, renovaciones y dias extra.</span>
+        </a>
+      </section>
+
       <section class="main-grid">
-        <div class="panel twilio-panel">
+        <div class="panel twilio-panel" id="twilioSection">
           <div class="panel-header">
             <div>
               <h3 class="panel-title">Canal Twilio</h3>
@@ -1107,7 +1233,7 @@
           <div class="hint">La mensajeria ya no se puede apagar desde este panel.</div>
         </div>
 
-        <div class="panel generator-panel">
+        <div class="panel generator-panel" id="testsSection">
           <div class="panel-header">
             <div>
               <h3 class="panel-title">Generador de servicios</h3>
@@ -1192,6 +1318,21 @@
           <div class="hint">Centro sugerido: parque principal. Todo lo que caiga fuera del radio guardado pedira confirmacion intermunicipal.</div>
         </div>
 
+        <div class="panel monitor-panel" id="monitorSection">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Monitoreo en vivo</h3>
+              <p class="panel-sub">Ubicacion reciente de conductores y anillos de despacho visibles para admin.</p>
+            </div>
+            <button class="button" id="refreshMonitorBtn">Recargar mapa</button>
+          </div>
+          <div class="monitor-toolbar">
+            <div class="monitor-stage-list" id="monitorStageList"></div>
+            <a class="button" href="#top">Volver al panel</a>
+          </div>
+          <div class="monitor-map" id="monitorMap"></div>
+        </div>
+
         <div class="panel active-panel">
           <div class="panel-header">
             <div>
@@ -1235,18 +1376,32 @@
         </div>
       </section>
 
-      <section class="table-panel">
+      <section class="table-panel" id="driversSection">
         <div class="panel-header">
           <div>
             <h3 class="panel-title">Conductores registrados</h3>
             <p class="panel-sub">Resumen limpio arriba, detalle completo aparte</p>
           </div>
-          <button class="button" id="refreshDriversBtn">Recargar</button>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <input class="driver-search" id="driverSearchInput" type="search" placeholder="Buscar por nombre, usuario, placa o vehiculo" />
+            <button class="button" id="refreshDriversBtn">Recargar</button>
+          </div>
         </div>
         <p class="drivers-legend">Mostramos primero lo importante: nombre, estado y un acceso claro para entrar al detalle de cada conductor.</p>
         <div class="drivers-list" id="driversList">
           <div class="empty-state">Cargando conductores...</div>
         </div>
+      </section>
+
+      <section class="table-panel" id="billingSection">
+        <div class="panel-header">
+          <div>
+            <h3 class="panel-title">Mensualidades</h3>
+            <p class="panel-sub">Usa la lista de conductores y entra a detalles para renovar, sumar dias o desactivar.</p>
+          </div>
+          <a class="button" href="#driversSection">Abrir gestion</a>
+        </div>
+        <p class="drivers-legend">Esta seccion queda como acceso directo a la parte de suscripciones. Cada conductor conserva sus acciones completas en el detalle individual.</p>
       </section>
     </div>
 
@@ -1343,6 +1498,7 @@
       const driversList = document.getElementById("driversList");
       const refreshServicesBtn = document.getElementById("refreshServicesBtn");
       const refreshDriversBtn = document.getElementById("refreshDriversBtn");
+      const refreshMonitorBtn = document.getElementById("refreshMonitorBtn");
       const refreshLogsBtn = document.getElementById("refreshLogsBtn");
       const clearLogsBtn = document.getElementById("clearLogsBtn");
       const qtyInput = document.getElementById("qtyInput");
@@ -1353,6 +1509,8 @@
       const fillCoordsBtn = document.getElementById("fillCoordsBtn");
       const logsList = document.getElementById("logsList");
       const logsSource = document.getElementById("logsSource");
+      const driverSearchInput = document.getElementById("driverSearchInput");
+      const monitorStageList = document.getElementById("monitorStageList");
       const coverageRadiusValue = document.getElementById("coverageRadiusValue");
       const coverageRadiusSlider = document.getElementById("coverageRadiusSlider");
       const coverageLatInput = document.getElementById("coverageLatInput");
@@ -1392,6 +1550,10 @@
       let coverageMap = null;
       let coverageMarker = null;
       let coverageCircle = null;
+      let monitorMap = null;
+      let monitorCoverageCircle = null;
+      let monitorCoverageCenter = null;
+      let monitorDriverMarkers = [];
       let coverageConfig = {
         center_lat: 6.030589,
         center_lng: -75.431704,
@@ -1500,6 +1662,94 @@
         renderCoverageMap();
       }
 
+      function buildInitialsMarker(initials) {
+        return L.divIcon({
+          className: "",
+          html: `<div class="driver-live-marker">${initials || "C"}</div>`,
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+        });
+      }
+
+      function buildCoverageCenterMarker() {
+        return L.divIcon({
+          className: "",
+          html: '<div class="coverage-center-marker"></div>',
+          iconSize: [18, 18],
+          iconAnchor: [9, 9],
+        });
+      }
+
+      function renderMonitorStages(stages = []) {
+        if (!monitorStageList) return;
+        monitorStageList.innerHTML = stages.map((stage) => {
+          const km = (Number(stage.radius_meters || 0) / 1000).toFixed(stage.radius_meters >= 1000 ? 1 : 2);
+          return `<span class="monitor-stage-pill"><strong>${stage.seconds}s</strong> · ${km} km</span>`;
+        }).join("");
+      }
+
+      function initMonitorMap() {
+        if (monitorMap || typeof L === "undefined") return;
+        monitorMap = L.map("monitorMap", {
+          zoomControl: true,
+          scrollWheelZoom: true,
+        }).setView([coverageConfig.center_lat, coverageConfig.center_lng], 13);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap",
+        }).addTo(monitorMap);
+      }
+
+      async function loadMonitor() {
+        const data = await fetchJson("/admin/api/monitor");
+        if (!data.ok) return;
+        coverageConfig = {
+          center_lat: Number(data.coverage?.center_lat ?? coverageConfig.center_lat),
+          center_lng: Number(data.coverage?.center_lng ?? coverageConfig.center_lng),
+          radius_meters: Number(data.coverage?.radius_meters ?? coverageConfig.radius_meters),
+        };
+        syncCoverageInputs();
+        initMonitorMap();
+        renderMonitorStages(data.match_stages || []);
+
+        monitorDriverMarkers.forEach((marker) => monitorMap.removeLayer(marker));
+        monitorDriverMarkers = [];
+        if (monitorCoverageCircle) monitorMap.removeLayer(monitorCoverageCircle);
+        if (monitorCoverageCenter) monitorMap.removeLayer(monitorCoverageCenter);
+
+        monitorCoverageCircle = L.circle([coverageConfig.center_lat, coverageConfig.center_lng], {
+          radius: coverageConfig.radius_meters,
+          color: "#36c487",
+          weight: 2,
+          fillColor: "#36c487",
+          fillOpacity: 0.12,
+        }).addTo(monitorMap);
+        monitorCoverageCenter = L.marker(
+          [coverageConfig.center_lat, coverageConfig.center_lng],
+          { icon: buildCoverageCenterMarker() }
+        ).addTo(monitorMap);
+
+        const points = [[coverageConfig.center_lat, coverageConfig.center_lng]];
+        (data.conductores || []).forEach((conductor) => {
+          const lat = Number(conductor.current_lat);
+          const lng = Number(conductor.current_lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          points.push([lat, lng]);
+          const marker = L.marker([lat, lng], {
+            icon: buildInitialsMarker(conductor.initials),
+          }).addTo(monitorMap);
+          marker.bindPopup(`<strong>${conductor.nombre}</strong><br/>${conductor.placa}<br/>${conductor.location_updated_at || "Sin hora"}`);
+          monitorDriverMarkers.push(marker);
+        });
+
+        if (points.length === 1) {
+          monitorMap.setView(points[0], 13);
+        } else {
+          monitorMap.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 14 });
+        }
+      }
+
       async function saveCoverage() {
         const payload = {
           center_lat: Number(coverageLatInput.value),
@@ -1606,15 +1856,27 @@
         if (!data.ok) return;
         const conductores = data.conductores || [];
         driversCache = conductores;
+        const search = (driverSearchInput?.value || "").trim().toLowerCase();
         driversList.innerHTML = "";
 
-        if (!conductores.length) {
+        const filteredDrivers = !search
+          ? conductores
+          : conductores.filter((conductor) =>
+              [conductor.nombre, conductor.usuario, conductor.placa, conductor.vehiculo, conductor.modelo]
+                .join(" ")
+                .toLowerCase()
+                .includes(search)
+            );
+
+        if (!filteredDrivers.length) {
           closeDriverDetail();
-          driversList.innerHTML = '<div class="empty-state">Aun no hay conductores registrados.</div>';
+          driversList.innerHTML = conductores.length
+            ? '<div class="empty-state">No hay conductores que coincidan con la busqueda.</div>'
+            : '<div class="empty-state">Aun no hay conductores registrados.</div>';
           return;
         }
 
-        conductores.forEach(conductor => {
+        filteredDrivers.forEach(conductor => {
           const subscriptionClass = conductor.suscripcion_activa ? "free" : "busy";
           const subscriptionLabel = conductor.suscripcion_activa
             ? `Activa · ${conductor.dias_restantes} dia(s)`
@@ -1883,13 +2145,16 @@
         loadServices();
         loadDrivers();
         loadLogs();
+        loadMonitor();
       }
 
       function setupEvents() {
         refreshServicesBtn.addEventListener("click", loadServices);
         refreshDriversBtn.addEventListener("click", loadDrivers);
+        refreshMonitorBtn?.addEventListener("click", loadMonitor);
         refreshLogsBtn.addEventListener("click", loadLogs);
         clearLogsBtn.addEventListener("click", clearLogs);
+        driverSearchInput?.addEventListener("input", () => loadDrivers());
 
         sendCoordsBtn?.addEventListener("click", async () => {
           const coords = coordsInput?.value || "";
