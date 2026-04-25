@@ -51,6 +51,7 @@ CONVERSATION_IDLE_NUDGE_SECONDS = 5 * 60
 DEFAULT_COVERAGE_CENTER_LAT = 6.030589
 DEFAULT_COVERAGE_CENTER_LNG = -75.431704
 DEFAULT_COVERAGE_RADIUS_METERS = 6000
+GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
 SERVICE_MATCH_STAGES = [
     (30, 500),
     (60, 1200),
@@ -115,6 +116,33 @@ CONDUCTOR_SUBSCRIPTION_PROTECTED_ENDPOINTS = {
     "reenviar_asignacion",
 }
 
+CAR_COLOR_OPTIONS = [
+    {"value": "negro", "label": "Negro", "swatch": "#111827"},
+    {"value": "blanco", "label": "Blanco", "swatch": "#f8fafc"},
+    {"value": "gris", "label": "Gris", "swatch": "#94a3b8"},
+    {"value": "plateado", "label": "Plateado", "swatch": "#cbd5e1"},
+    {"value": "azul", "label": "Azul", "swatch": "#2563eb"},
+    {"value": "rojo", "label": "Rojo", "swatch": "#dc2626"},
+    {"value": "vino", "label": "Vino", "swatch": "#881337"},
+    {"value": "verde", "label": "Verde", "swatch": "#15803d"},
+    {"value": "beige", "label": "Beige", "swatch": "#d6c6a5"},
+    {"value": "amarillo", "label": "Amarillo", "swatch": "#facc15"},
+]
+
+
+def get_setting(name, default=""):
+    env_value = os.environ.get(name)
+    if env_value not in (None, ""):
+        return env_value
+    if local_settings is not None:
+        local_value = getattr(local_settings, name, "")
+        if local_value not in (None, ""):
+            return local_value
+    return default
+
+
+GOOGLE_CLIENT_ID = get_setting("GOOGLE_CLIENT_ID", "")
+
 
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
@@ -144,6 +172,92 @@ def parse_db_datetime(value):
         except ValueError:
             continue
     return None
+
+
+def split_vehicle_name(value):
+    text = (value or "").strip()
+    if not text:
+        return "", ""
+    parts = text.split(None, 1)
+    if len(parts) == 1:
+        return parts[0], ""
+    return parts[0], parts[1]
+
+
+def conductor_profile_complete_from_row(row):
+    if row is None:
+        return False
+    return bool(row["nombre_real"] and row["placa"] and row["vehiculo"] and row["modelo"])
+
+
+def conductor_profile_complete_from_session():
+    return bool(
+        session.get("conductor_nombre")
+        and session.get("conductor_placa")
+        and session.get("conductor_vehiculo")
+        and session.get("conductor_modelo")
+    )
+
+
+def hydrate_conductor_session(row):
+    session["conductor_id"] = row["id"]
+    session["conductor_usuario"] = row["usuario"]
+    session["conductor_nombre"] = row["nombre_real"]
+    session["conductor_placa"] = row["placa"]
+    session["conductor_vehiculo"] = row["vehiculo"] if "vehiculo" in row.keys() else None
+    session["conductor_modelo"] = row["modelo"] if "modelo" in row.keys() else None
+    session["conductor_carro_color"] = row["carro_color"] if "carro_color" in row.keys() else None
+
+
+def render_login_page():
+    return render_template("login.html", google_client_id=GOOGLE_CLIENT_ID)
+
+
+def render_profile_page(row=None):
+    row = row or get_conductor_row(session.get("conductor_id"))
+    marca, linea = split_vehicle_name(row["vehiculo"] if row else "")
+    return render_template(
+        "profile.html",
+        car_color_options=CAR_COLOR_OPTIONS,
+        google_client_id=GOOGLE_CLIENT_ID,
+        profile_data={
+            "nombre_real": row["nombre_real"] if row else "",
+            "placa": row["placa"] if row else "",
+            "marca_vehiculo": marca,
+            "linea_vehiculo": linea,
+            "modelo": row["modelo"] if row else "",
+            "carro_color": row["carro_color"] if row and "carro_color" in row.keys() else "",
+            "usuario": row["usuario"] if row else "",
+            "email": row["email"] if row and "email" in row.keys() else "",
+        },
+    )
+
+
+def verify_google_id_token(id_token):
+    if not GOOGLE_CLIENT_ID:
+        return None, "Google Sign-In no esta configurado todavia."
+    query = urllib.parse.urlencode({"id_token": id_token})
+    url = f"{GOOGLE_TOKENINFO_URL}?{query}"
+    try:
+        with urllib.request.urlopen(url, timeout=8) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError:
+        return None, "No pudimos validar tu cuenta de Google. Intenta de nuevo."
+    except Exception:
+        return None, "No se pudo conectar con Google para validar el acceso."
+
+    audience = payload.get("aud")
+    issuer = payload.get("iss")
+    email = (payload.get("email") or "").strip().lower()
+    if audience != GOOGLE_CLIENT_ID:
+        return None, "La credencial de Google no pertenece a esta aplicacion."
+    if issuer not in ("accounts.google.com", "https://accounts.google.com"):
+        return None, "No pudimos confirmar el origen de la cuenta de Google."
+    if not payload.get("sub") or not email:
+        return None, "Google no envio la informacion minima de la cuenta."
+    if payload.get("email_verified") not in ("true", True):
+        return None, "Confirma tu correo de Google antes de continuar."
+    return payload, ""
 
 
 def compute_subscription_state(status_suscripto, fin_suscripcion, reference_dt=None):
@@ -533,6 +647,18 @@ def init_db():
         cur.execute("ALTER TABLE conductores ADD COLUMN current_lng REAL")
     if "location_updated_at" not in conductor_cols:
         cur.execute("ALTER TABLE conductores ADD COLUMN location_updated_at TEXT")
+    if "email" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN email TEXT")
+    if "google_sub" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN google_sub TEXT")
+    if "carro_color" not in conductor_cols:
+        cur.execute("ALTER TABLE conductores ADD COLUMN carro_color TEXT")
+    cur.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_conductores_google_sub ON conductores(google_sub)"
+    )
+    cur.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_conductores_email ON conductores(email)"
+    )
 
     cur.execute(
         """
@@ -1895,7 +2021,7 @@ def login():
 
         if not usuario or not password:
             flash("Usuario y contrasena son obligatorios.")
-            return render_template("login.html")
+            return render_login_page()
 
         conn = get_conn()
         admin_row = conn.execute(
@@ -1907,7 +2033,7 @@ def login():
             if action == "register":
                 flash("El usuario admin esta reservado. Inicia sesion.")
                 conn.close()
-                return render_template("login.html")
+                return render_login_page()
             if check_password_hash(admin_row["password_hash"], password):
                 conn.close()
                 session.clear()
@@ -1916,7 +2042,7 @@ def login():
                 return redirect(url_for("admin_dashboard"))
             flash("Credenciales invalidas.")
             conn.close()
-            return render_template("login.html")
+            return render_login_page()
 
         row = conn.execute(
             "SELECT * FROM conductores WHERE usuario = ?", (usuario,)
@@ -1926,19 +2052,19 @@ def login():
             if not confirm_password:
                 flash("Confirma la contrasena para registrarte.")
                 conn.close()
-                return render_template("login.html")
+                return render_login_page()
             if password != confirm_password:
                 flash("Las contrasenas no coinciden.")
                 conn.close()
-                return render_template("login.html")
+                return render_login_page()
             if row is not None:
                 flash("El usuario ya existe. Inicia sesion.")
                 conn.close()
-                return render_template("login.html")
+                return render_login_page()
             password_hash = generate_password_hash(password)
             conn.execute(
-                "INSERT INTO conductores (usuario, password_hash) VALUES (?, ?)",
-                (usuario, password_hash),
+                "INSERT INTO conductores (usuario, password_hash, email) VALUES (?, ?, ?)",
+                (usuario, password_hash, usuario if "@" in usuario else None),
             )
             conn.commit()
             row = conn.execute(
@@ -1948,28 +2074,102 @@ def login():
             if row is None:
                 flash("El usuario no existe. Registra una cuenta nueva.")
                 conn.close()
-                return render_template("login.html")
+                return render_login_page()
             if not check_password_hash(row["password_hash"], password):
                 flash("Credenciales invalidas.")
                 conn.close()
-                return render_template("login.html")
+                return render_login_page()
 
         conn.close()
-        session["conductor_id"] = row["id"]
-        session["conductor_usuario"] = row["usuario"]
-        session["conductor_nombre"] = row["nombre_real"]
-        session["conductor_placa"] = row["placa"]
-        session["conductor_vehiculo"] = row["vehiculo"] if "vehiculo" in row.keys() else None
-        session["conductor_modelo"] = row["modelo"] if "modelo" in row.keys() else None
+        hydrate_conductor_session(row)
 
+        if not conductor_profile_complete_from_row(row):
+            return redirect(url_for("perfil"))
         if not get_conductor_subscription_snapshot(row)["suscripcion_activa"]:
             return redirect(url_for("payment_pending"))
-
-        if not row["nombre_real"] or not row["placa"] or not row["vehiculo"] or not row["modelo"]:
-            return redirect(url_for("perfil"))
         return redirect(url_for("inicio"))
 
-    return render_template("login.html")
+    return render_login_page()
+
+
+@app.route("/auth/google", methods=["POST"])
+def google_auth():
+    id_token = request.form.get("credential", "").strip()
+    if not id_token and request.is_json:
+        payload = request.get_json(silent=True) or {}
+        id_token = (payload.get("credential") or "").strip()
+    if not id_token:
+        flash("No recibimos la credencial de Google.")
+        return redirect(url_for("login"))
+
+    google_payload, error_message = verify_google_id_token(id_token)
+    if google_payload is None:
+        flash(error_message)
+        return redirect(url_for("login"))
+
+    email = (google_payload.get("email") or "").strip().lower()
+    google_sub = (google_payload.get("sub") or "").strip()
+    display_name = (google_payload.get("name") or "").strip()
+    generated_password = generate_password_hash(token_urlsafe(24))
+
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM conductores WHERE google_sub = ?",
+        (google_sub,),
+    ).fetchone()
+    if row is None:
+        row = conn.execute(
+            "SELECT * FROM conductores WHERE lower(email) = ?",
+            (email,),
+        ).fetchone()
+    if row is None:
+        row = conn.execute(
+            "SELECT * FROM conductores WHERE lower(usuario) = ?",
+            (email,),
+        ).fetchone()
+
+    if row is None:
+        conn.execute(
+            """
+            INSERT INTO conductores (usuario, password_hash, nombre_real, email, google_sub)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (email, generated_password, display_name or None, email, google_sub),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM conductores WHERE google_sub = ?",
+            (google_sub,),
+        ).fetchone()
+    else:
+        conn.execute(
+            """
+            UPDATE conductores
+            SET email = COALESCE(NULLIF(email, ''), ?),
+                google_sub = COALESCE(NULLIF(google_sub, ''), ?),
+                nombre_real = CASE
+                    WHEN nombre_real IS NULL OR trim(nombre_real) = '' THEN ?
+                    ELSE nombre_real
+                END
+            WHERE id = ?
+            """,
+            (email, google_sub, display_name or None, row["id"]),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM conductores WHERE id = ?",
+            (row["id"],),
+        ).fetchone()
+
+    conn.close()
+    session.clear()
+    hydrate_conductor_session(row)
+
+    if not conductor_profile_complete_from_row(row):
+        return redirect(url_for("perfil"))
+    if not get_conductor_subscription_snapshot(row)["suscripcion_activa"]:
+        return redirect(url_for("payment_pending"))
+    return redirect(url_for("inicio"))
 
 
 @app.route("/")
@@ -1978,15 +2178,10 @@ def index_root():
         return redirect(url_for("admin_dashboard"))
     if session.get("conductor_id"):
         row = get_conductor_row(session.get("conductor_id"))
+        if not conductor_profile_complete_from_session():
+            return redirect(url_for("perfil"))
         if row is not None and not get_conductor_subscription_snapshot(row)["suscripcion_activa"]:
             return redirect(url_for("payment_pending"))
-        if (
-            not session.get("conductor_nombre")
-            or not session.get("conductor_placa")
-            or not session.get("conductor_vehiculo")
-            or not session.get("conductor_modelo")
-        ):
-            return redirect(url_for("perfil"))
         return redirect(url_for("inicio"))
     return redirect(url_for("login"))
 
@@ -2010,12 +2205,7 @@ def payment_pending():
 
     subscription = get_conductor_subscription_snapshot(row)
     if subscription["suscripcion_activa"]:
-        if (
-            not session.get("conductor_nombre")
-            or not session.get("conductor_placa")
-            or not session.get("conductor_vehiculo")
-            or not session.get("conductor_modelo")
-        ):
+        if not conductor_profile_complete_from_session():
             return redirect(url_for("perfil"))
         return redirect(url_for("inicio"))
     return render_template(
@@ -2034,39 +2224,51 @@ def perfil():
     if not session.get("conductor_id"):
         return redirect(url_for("login"))
 
-    if (
-        session.get("conductor_nombre")
-        and session.get("conductor_placa")
-        and session.get("conductor_vehiculo")
-        and session.get("conductor_modelo")
-    ):
+    row = get_conductor_row(session.get("conductor_id"))
+    if row is None:
+        session.clear()
+        return redirect(url_for("login"))
+    if conductor_profile_complete_from_row(row):
+        if not get_conductor_subscription_snapshot(row)["suscripcion_activa"]:
+            return redirect(url_for("payment_pending"))
         return redirect(url_for("inicio"))
 
     if request.method == "POST":
         nombre = request.form.get("nombre_real", "").strip()
         placa = request.form.get("placa", "").strip().upper()
-        vehiculo = request.form.get("vehiculo", "").strip()
+        marca = request.form.get("marca_vehiculo", "").strip()
+        linea = request.form.get("linea_vehiculo", "").strip()
         modelo = request.form.get("modelo", "").strip()
+        carro_color = request.form.get("carro_color", "").strip().lower()
+        vehiculo = " ".join(part for part in [marca, linea] if part)
 
-        if not nombre or not placa or not vehiculo or not modelo:
-            flash("Nombre, placa, vehiculo y modelo son obligatorios.")
-            return render_template("profile.html")
+        valid_colors = {item["value"] for item in CAR_COLOR_OPTIONS}
+        if not nombre or not placa or not marca or not linea or not modelo or carro_color not in valid_colors:
+            flash("Completa nombre, placa, marca, linea, ano y color del carro.")
+            return render_profile_page(row)
 
         conn = get_conn()
         conn.execute(
-            "UPDATE conductores SET nombre_real = ?, placa = ?, vehiculo = ?, modelo = ? WHERE id = ?",
-            (nombre, placa, vehiculo, modelo, session["conductor_id"]),
+            """
+            UPDATE conductores
+            SET nombre_real = ?, placa = ?, vehiculo = ?, modelo = ?, carro_color = ?
+            WHERE id = ?
+            """,
+            (nombre, placa, vehiculo, modelo, carro_color, session["conductor_id"]),
         )
         conn.commit()
+        row = conn.execute(
+            "SELECT * FROM conductores WHERE id = ?",
+            (session["conductor_id"],),
+        ).fetchone()
         conn.close()
 
-        session["conductor_nombre"] = nombre
-        session["conductor_placa"] = placa
-        session["conductor_vehiculo"] = vehiculo
-        session["conductor_modelo"] = modelo
+        hydrate_conductor_session(row)
+        if not get_conductor_subscription_snapshot(row)["suscripcion_activa"]:
+            return redirect(url_for("payment_pending"))
         return redirect(url_for("inicio"))
 
-    return render_template("profile.html")
+    return render_profile_page(row)
 
 
 @app.route("/admin")
@@ -3023,12 +3225,7 @@ def inicio():
     if not session.get("conductor_id"):
         return redirect(url_for("login"))
 
-    if (
-        not session.get("conductor_nombre")
-        or not session.get("conductor_placa")
-        or not session.get("conductor_vehiculo")
-        or not session.get("conductor_modelo")
-    ):
+    if not conductor_profile_complete_from_session():
         return redirect(url_for("perfil"))
 
     context = build_panel_context()
@@ -3048,12 +3245,7 @@ def dashboard():
     if not session.get("conductor_id"):
         return redirect(url_for("login"))
 
-    if (
-        not session.get("conductor_nombre")
-        or not session.get("conductor_placa")
-        or not session.get("conductor_vehiculo")
-        or not session.get("conductor_modelo")
-    ):
+    if not conductor_profile_complete_from_session():
         return redirect(url_for("perfil"))
 
     context = build_panel_context()

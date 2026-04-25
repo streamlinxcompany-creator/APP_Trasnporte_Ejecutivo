@@ -3,458 +3,552 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b2540" />
+    <meta name="theme-color" content="#0b1220" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='zipp-icon.png') }}" />
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='zipp-icon.png') }}" />
     <title>Activacion | Zipp</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg: #071f3b;
-        --panel: rgba(12, 31, 57, 0.92);
-        --panel-strong: rgba(11, 37, 64, 0.98);
-        --gold: #bed6f0;
-        --gold-2: #6f8fb8;
-        --text: #eef4fb;
-        --muted: #a6b6cc;
+        --bg: #09111d;
+        --panel: rgba(12, 19, 33, 0.96);
+        --panel-soft: rgba(19, 29, 48, 0.88);
+        --line: rgba(169, 188, 219, 0.18);
+        --line-strong: rgba(169, 188, 219, 0.34);
+        --text: #edf4ff;
+        --muted: #98a8c0;
+        --accent: #9cc2ff;
+        --accent-strong: #dce9ff;
+        --success: #b7f0d0;
+        --danger: #fecaca;
       }
       * {
         box-sizing: border-box;
       }
       body {
         margin: 0;
-        background: radial-gradient(circle at 80% 20%, rgba(190, 214, 240, 0.1), transparent 40%),
-          radial-gradient(circle at 10% 70%, rgba(50, 50, 60, 0.4), transparent 50%),
-          #050505;
-        color: var(--text);
         font-family: 'Sora', sans-serif;
-        min-height: 100dvh;
-        display: flex;
-        align-items: stretch;
-        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-          env(safe-area-inset-left);
-        -webkit-text-size-adjust: 100%;
-      }
-      .setup-shell {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
-        width: 100%;
-        min-height: 100dvh;
-      }
-      .setup-hero {
-        padding: 54px 8vw;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        position: relative;
-        overflow: hidden;
-      }
-      .setup-hero::before {
-        content: "";
-        position: absolute;
-        inset: 0;
+        color: var(--text);
         background:
-          repeating-linear-gradient(
-            0deg,
-            transparent 0 72px,
-            rgba(190, 214, 240, 0.12) 72px 74px
-          ),
-          repeating-linear-gradient(
-            90deg,
-            transparent 0 72px,
-            rgba(190, 214, 240, 0.12) 72px 74px
-          );
-        opacity: 0.3;
-        pointer-events: none;
+          radial-gradient(circle at top left, rgba(156, 194, 255, 0.18), transparent 35%),
+          radial-gradient(circle at 82% 12%, rgba(67, 97, 238, 0.14), transparent 30%),
+          linear-gradient(180deg, #07101b 0%, #09111d 45%, #050a12 100%);
       }
-      .setup-brand {
-        font-family: 'Space Grotesk', sans-serif;
-        color: var(--gold);
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        font-size: 0.8rem;
+      .page {
+        min-height: 100dvh;
+        padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+        display: grid;
+        gap: 16px;
+      }
+      .intro,
+      .card {
+        width: min(100%, 520px);
+        margin: 0 auto;
+      }
+      .intro {
+        padding-top: 4px;
+      }
+      .brand {
         display: inline-flex;
-        padding: 8px 14px;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
         border-radius: 999px;
-        border: 1px solid rgba(190, 214, 240, 0.35);
-      }
-      .setup-hero h1 {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--line);
         font-family: 'Space Grotesk', sans-serif;
-        font-size: clamp(2rem, 3vw, 2.8rem);
-        margin: 0;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-size: 0.75rem;
       }
-      .setup-hero p {
+      .brand img {
+        width: 20px;
+        height: 20px;
+      }
+      .intro h1 {
+        margin: 16px 0 10px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: clamp(2rem, 7vw, 3rem);
+        line-height: 1.02;
+        letter-spacing: -0.04em;
+      }
+      .intro p {
         margin: 0;
         color: var(--muted);
-        max-width: 520px;
         line-height: 1.6;
       }
-      .stepper {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-      }
-      .step {
-        padding: 10px 14px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(190, 214, 240, 0.2);
-        font-size: 0.8rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--gold);
-      }
-      .step-muted {
-        color: var(--muted);
-        border-color: rgba(255, 255, 255, 0.1);
-      }
-      .requirements {
+      .progress {
+        margin-top: 18px;
         display: grid;
         gap: 12px;
       }
-      .req-item {
-        padding: 14px;
-        border-radius: 14px;
-        background: rgba(12, 12, 15, 0.78);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+      .progress-track {
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        overflow: hidden;
       }
-      .req-item h5 {
-        margin: 0 0 6px;
-        font-size: 0.85rem;
-        color: var(--gold);
+      .progress-bar {
+        width: 50%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #dce9ff, #9cc2ff);
+        transition: width 0.24s ease;
+      }
+      .progress-steps {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .progress-step {
+        padding: 12px 14px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .progress-step.is-active {
+        border-color: rgba(156, 194, 255, 0.42);
+        background: rgba(156, 194, 255, 0.08);
+      }
+      .progress-step strong {
+        display: block;
+        font-size: 0.94rem;
+      }
+      .progress-step span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.45;
+      }
+      .card {
+        background:
+          linear-gradient(180deg, rgba(18, 27, 46, 0.98), rgba(11, 18, 32, 0.96));
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        padding: 20px;
+        box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+      }
+      .card-head {
+        display: grid;
+        gap: 8px;
+      }
+      .eyebrow {
+        font-size: 0.72rem;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
-        letter-spacing: 0.12em;
+        color: var(--accent);
       }
-      .req-item span {
+      .card-head h2 {
+        margin: 0;
+        font-size: 1.28rem;
+      }
+      .card-head p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .flash {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(254, 202, 202, 0.26);
+        background: rgba(127, 29, 29, 0.22);
+        color: var(--danger);
+        line-height: 1.5;
+      }
+      form {
+        margin-top: 18px;
+        display: grid;
+        gap: 18px;
+      }
+      .step-panel {
+        display: none;
+        gap: 14px;
+      }
+      .step-panel.is-active {
+        display: grid;
+      }
+      .field {
+        display: grid;
+        gap: 7px;
+      }
+      .field label {
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .field input,
+      .field select {
+        width: 100%;
+        min-height: 54px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(6, 11, 20, 0.7);
         color: var(--text);
-        font-size: 0.9rem;
+        padding: 0 16px;
+        font: inherit;
+        font-size: 1rem;
       }
-      .setup-panel {
-        padding: 48px 8vw;
+      .field input:focus,
+      .field select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(156, 194, 255, 0.12);
+      }
+      .field-help {
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.5;
+      }
+      .field-grid {
+        display: grid;
+        gap: 14px;
+      }
+      .summary {
+        padding: 14px;
+        border-radius: 18px;
+        background: rgba(156, 194, 255, 0.08);
+        border: 1px solid rgba(156, 194, 255, 0.16);
+      }
+      .summary strong {
+        display: block;
+        font-size: 0.94rem;
+      }
+      .summary span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.5;
+      }
+      .color-group {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .color-option {
+        position: relative;
+      }
+      .color-option input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .color-chip {
+        min-height: 62px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 10px 12px;
         display: flex;
         align-items: center;
-        justify-content: center;
-        background: rgba(5, 5, 6, 0.96);
-        border-left: 1px solid rgba(255, 255, 255, 0.05);
+        gap: 12px;
+        cursor: pointer;
       }
-      .panel-card {
-        width: min(420px, 100%);
-        background: var(--panel);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 22px;
-        padding: 32px;
-        box-shadow: 0 22px 40px rgba(0, 0, 0, 0.5);
+      .color-chip-swatch {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        flex: 0 0 auto;
       }
-      .panel-title {
-        font-size: 1.4rem;
-        margin-bottom: 6px;
+      .color-chip-text {
+        display: grid;
+        gap: 2px;
       }
-      .panel-sub {
+      .color-chip-text strong {
+        font-size: 0.92rem;
+      }
+      .color-chip-text span {
         color: var(--muted);
-        margin-bottom: 22px;
+        font-size: 0.78rem;
       }
-      .alert-luxe {
-        background: rgba(29, 23, 16, 0.9);
-        border: 1px solid rgba(190, 214, 240, 0.35);
-        color: #f6d98c;
+      .color-option input:checked + label {
+        border-color: rgba(156, 194, 255, 0.48);
+        background: rgba(156, 194, 255, 0.12);
+        box-shadow: 0 0 0 3px rgba(156, 194, 255, 0.08);
       }
-      .form-label {
-        font-size: 0.85rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(190, 214, 240, 0.7);
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
       }
-      .form-control {
-        background: #0f0f11;
-        border: 1px solid #2c2d33;
-        color: var(--text);
-        padding: 12px;
-        border-radius: 12px;
-        font-size: 1rem;
-        min-height: 48px;
-      }
-      .form-control:focus {
-        border-color: var(--gold);
-        box-shadow: 0 0 0 0.2rem rgba(190, 214, 240, 0.2);
-      }
-      .form-select {
-        background-color: #0f0f11;
-        border: 1px solid #2c2d33;
-        color: var(--text);
-        padding: 12px;
-        border-radius: 12px;
-        font-size: 1rem;
-        min-height: 48px;
-      }
-      .form-select:focus {
-        border-color: var(--gold);
-        box-shadow: 0 0 0 0.2rem rgba(190, 214, 240, 0.2);
-      }
-      .btn-gold {
-        background: linear-gradient(90deg, #bed6f0, #c0daf5);
+      .btn {
+        min-height: 56px;
+        border-radius: 18px;
         border: none;
-        border-radius: 12px;
-        padding: 12px;
+        font: inherit;
+        font-size: 1rem;
         font-weight: 700;
-        color: #1a1406;
-        box-shadow: 0 12px 30px rgba(190, 214, 240, 0.25);
-        min-height: 48px;
+        cursor: pointer;
       }
-      .panel-footnote {
-        margin-top: 16px;
-        font-size: 0.85rem;
-        color: var(--muted);
+      .btn-primary {
+        background: linear-gradient(135deg, #dce9ff, #9cc2ff);
+        color: #08111e;
       }
-      @media (max-width: 960px) {
-        .setup-shell {
-          grid-template-columns: 1fr;
-        }
-        .setup-hero {
-          padding: 40px 8vw 10px;
-        }
-        .setup-panel {
-          border-left: none;
-          padding: 20px 8vw 60px;
-        }
-      }
-      @media (max-width: 640px) {
-        body {
-          align-items: flex-start;
-        }
-        .setup-shell {
-          display: flex;
-          flex-direction: column;
-        }
-        .setup-panel {
-          order: 1;
-          padding: 20px 6vw 18px;
-          align-items: flex-start;
-        }
-        .setup-hero {
-          order: -1;
-          padding: 12px 6vw 32px;
-        }
-        .setup-hero h1 {
-          font-size: 1.7rem;
-        }
-        .requirements {
-          grid-template-columns: 1fr;
-        }
-        .panel-card {
-          padding: 22px;
-          border-radius: 16px;
-          width: 100%;
-        }
-        .btn-gold {
-          padding: 14px;
-          font-size: 1.02rem;
-        }
-      }
-      @media (max-width: 480px) {
-        body {
-          min-height: 100svh;
-        }
-        .setup-panel {
-          padding: 16px 5vw 12px;
-        }
-        .panel-card {
-          padding: 18px;
-          border-radius: 14px;
-          box-shadow: 0 18px 26px rgba(0, 0, 0, 0.45);
-        }
-        .panel-title {
-          font-size: 1.15rem;
-        }
-        .panel-sub {
-          font-size: 0.9rem;
-        }
-        .form-control {
-          padding: 12px 14px;
-          font-size: 1rem;
-        }
-        .form-select {
-          padding: 12px 14px;
-          font-size: 1rem;
-        }
-        .btn-gold {
-          padding: 14px;
-          font-size: 1.05rem;
-        }
-        .setup-hero {
-          padding: 8px 5vw 24px;
-        }
-        .requirements {
-          display: none;
-        }
-        .setup-hero p {
-          display: none;
-        }
-        .setup-brand {
-          font-size: 0.7rem;
-          letter-spacing: 0.16em;
-        }
-        .setup-hero::before {
-          opacity: 0.18;
-        }
-      }
-      @supports (-webkit-touch-callout: none) {
-        body {
-          min-height: 100svh;
-        }
-      }
-      /* Clean minimal theme overrides */
-      :root {
-        --bg: #0b0d10;
-        --panel: rgba(22, 24, 28, 0.95);
-        --panel-strong: #1a1d22;
-        --gold: #7ea6e3;
-        --gold-2: #9aa3ad;
-        --text: #f4f6f8;
-        --muted: #9aa3ad;
-        --stroke: rgba(255, 255, 255, 0.08);
-      }
-      body {
-        background: radial-gradient(circle at 20% 15%, rgba(126, 166, 227, 0.12), transparent 40%),
-          radial-gradient(circle at 85% 70%, rgba(159, 190, 234, 0.12), transparent 45%),
-          #0b0d10;
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--line);
         color: var(--text);
       }
-      .setup-hero::before {
-        opacity: 0.12;
-      }
-      .setup-brand {
-        border-color: var(--stroke);
+      .footnote {
+        margin-top: 14px;
         color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
       }
-      .step {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--stroke);
-        color: var(--muted);
-      }
-      .step:not(.step-muted) {
-        color: var(--gold);
-      }
-      .req-item {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--stroke);
-      }
-      .req-item h5 {
-        color: var(--muted);
-      }
-      .panel-card {
-        background: var(--panel);
-        border: 1px solid var(--stroke);
-        box-shadow: 0 18px 32px rgba(0, 0, 0, 0.45);
-      }
-      .alert-luxe {
-        background: rgba(126, 166, 227, 0.16);
-        border-color: rgba(126, 166, 227, 0.35);
-        color: #dff7ee;
-      }
-      .form-label {
-        color: var(--muted);
-        letter-spacing: 0.08em;
-      }
-      .form-control,
-      .form-select {
-        background: #12141a;
-        border: 1px solid var(--stroke);
-      }
-      .form-control:focus,
-      .form-select:focus {
-        border-color: var(--gold);
-        box-shadow: 0 0 0 0.2rem rgba(126, 166, 227, 0.25);
-      }
-      .btn-gold {
-        background: var(--gold);
-        color: #06110c;
-        box-shadow: 0 12px 24px rgba(126, 166, 227, 0.25);
+      @media (min-width: 720px) {
+        .field-grid.two {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .actions {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
       }
     </style>
   </head>
   <body>
-    <div class="setup-shell">
-      <section class="setup-hero">
-        <div class="setup-brand">Activacion de Conductor</div>
-        <h1>Configura tu perfil premium</h1>
-        <p>Antes de recibir servicios, necesitamos confirmar tus datos y el vehiculo en el que prestas el servicio.</p>
-        <div class="stepper">
-          <div class="step">Paso 1 - Datos</div>
-          <div class="step step-muted">Paso 2 - Vehiculo</div>
+    <main class="page">
+      <section class="intro">
+        <div class="brand">
+          <img src="{{ url_for('static', filename='zipp-icon.png') }}" alt="Zipp" />
+          <span>Activacion conductor</span>
         </div>
-        <div class="requirements">
-          <div class="req-item">
-            <h5>Identidad</h5>
-            <span>Nombre completo del conductor para validar la asignacion.</span>
-          </div>
-          <div class="req-item">
-            <h5>Vehiculo</h5>
-            <span>Marca, modelo y placa para presentar al cliente.</span>
-          </div>
-          <div class="req-item">
-            <h5>Seguridad</h5>
-            <span>La informacion se mantiene privada y segura.</span>
-          </div>
-        </div>
-      </section>
-      <section class="setup-panel">
-        <div class="panel-card">
-          <div class="setup-brand mb-3">Perfil conductor</div>
-          <div class="panel-title">Completa tu activacion</div>
-          <p class="panel-sub">Es un solo paso. Luego entras directo al panel principal.</p>
+        <h1>Completemos tu perfil sin vueltas.</h1>
+        <p>Solo vamos a pedir lo necesario para que el cliente te identifique facil: tu nombre, la placa, el carro y el color. Lo dejamos listo en dos pasos cortos para que en celular sea rapido y entendible.</p>
 
-          {% with messages = get_flashed_messages() %}
-            {% if messages %}
-              <div class="alert alert-luxe">{{ messages[0] }}</div>
-            {% endif %}
-          {% endwith %}
-
-          <form method="post" action="{{ url_for('perfil') }}">
-            <div class="mb-3">
-              <label class="form-label">Nombre real</label>
-              <input type="text" name="nombre_real" class="form-control" placeholder="Ej: Juan Perez" required />
+        <div class="progress">
+          <div class="progress-track" aria-hidden="true">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+          <div class="progress-steps">
+            <div class="progress-step is-active" id="progress-step-1">
+              <strong>Paso 1</strong>
+              <span>Tus datos basicos como conductor.</span>
             </div>
-            <div class="mb-3">
-              <label class="form-label">Placa del vehiculo</label>
-              <input type="text" name="placa" class="form-control" placeholder="Ej: ABC123" required />
+            <div class="progress-step" id="progress-step-2">
+              <strong>Paso 2</strong>
+              <span>Informacion clara del carro para el cliente.</span>
             </div>
-            <div class="mb-4">
-              <label class="form-label">Marca y modelo</label>
-              <input type="text" name="vehiculo" class="form-control" placeholder="Ej: Toyota Corolla" required />
-            </div>
-            <div class="mb-4">
-              <label class="form-label">Modelo (Ano)</label>
-              <select name="modelo" id="modelo-select" class="form-select" required>
-                <option value="" disabled selected>Selecciona el ano</option>
-              </select>
-            </div>
-            <button type="submit" class="btn btn-gold w-100">Activar conductor</button>
-          </form>
-
-          <div class="panel-footnote">Estos datos apareceran en la ficha del cliente cuando tomes un servicio.</div>
+          </div>
         </div>
       </section>
-    </div>
+
+      <section class="card">
+        <div class="card-head">
+          <span class="eyebrow">Onboarding movil</span>
+          <h2 id="step-title">Paso 1: quien conduce</h2>
+          <p id="step-copy">Empezamos con los datos que te identifican rapido y sin enredos.</p>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="flash">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
+
+        <form method="post" action="{{ url_for('perfil') }}" id="profile-form">
+          <section class="step-panel is-active" data-step="1">
+            <div class="summary">
+              <strong>Lo bueno:</strong>
+              <span>Si llegaste por Google, ya aprovechamos ese acceso para adelantarte parte del registro.</span>
+            </div>
+
+            <div class="field-grid">
+              <div class="field">
+                <label for="nombre_real">Como te llamas</label>
+                <input id="nombre_real" type="text" name="nombre_real" value="{{ profile_data.nombre_real }}" placeholder="Ej: Juan Pablo Perez" required />
+                <div class="field-help">Este nombre es el que usaremos para identificarte dentro del sistema.</div>
+              </div>
+
+              <div class="field">
+                <label for="placa">Placa del vehiculo</label>
+                <input id="placa" type="text" name="placa" value="{{ profile_data.placa }}" placeholder="Ej: ABC123" maxlength="10" required />
+                <div class="field-help">La mostramos para que el cliente reconozca el carro correcto.</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="step-panel" data-step="2">
+            <div class="field-grid two">
+              <div class="field">
+                <label for="marca_vehiculo">Marca del carro</label>
+                <input id="marca_vehiculo" type="text" name="marca_vehiculo" value="{{ profile_data.marca_vehiculo }}" placeholder="Ej: Toyota" required />
+              </div>
+
+              <div class="field">
+                <label for="linea_vehiculo">Linea o referencia</label>
+                <input id="linea_vehiculo" type="text" name="linea_vehiculo" value="{{ profile_data.linea_vehiculo }}" placeholder="Ej: Corolla" required />
+              </div>
+            </div>
+
+            <div class="field-grid two">
+              <div class="field">
+                <label for="modelo-select">Ano del carro</label>
+                <select id="modelo-select" name="modelo" data-selected="{{ profile_data.modelo }}" required>
+                  <option value="">Selecciona el ano</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Color del carro</label>
+                <div class="color-group" role="radiogroup" aria-label="Color del carro">
+                  {% for option in car_color_options %}
+                    <div class="color-option">
+                      <input
+                        type="radio"
+                        id="carro-color-{{ option.value }}"
+                        name="carro_color"
+                        value="{{ option.value }}"
+                        {% if profile_data.carro_color == option.value %}checked{% endif %}
+                        required
+                      />
+                      <label class="color-chip" for="carro-color-{{ option.value }}">
+                        <span class="color-chip-swatch" style="background: {{ option.swatch }};"></span>
+                        <span class="color-chip-text">
+                          <strong>{{ option.label }}</strong>
+                          <span>Elegir color</span>
+                        </span>
+                      </label>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+
+            <div class="summary">
+              <strong>Asi te vera el cliente:</strong>
+              <span id="vehicle-preview">Tu nombre, placa, carro y color apareceran de forma clara cuando tomes un servicio.</span>
+            </div>
+          </section>
+
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" id="back-btn" hidden>Atras</button>
+            <button type="button" class="btn btn-primary" id="next-btn">Continuar</button>
+            <button type="submit" class="btn btn-primary" id="submit-btn" hidden>Activar conductor</button>
+          </div>
+        </form>
+
+        <div class="footnote">Tu informacion se usa para operar los servicios y ayudar a que el cliente te identifique mejor.</div>
+      </section>
+    </main>
+
     <script>
       (function () {
-        const select = document.getElementById("modelo-select");
-        if (!select) return;
+        const form = document.getElementById('profile-form');
+        const progressBar = document.getElementById('progress-bar');
+        const progressStep1 = document.getElementById('progress-step-1');
+        const progressStep2 = document.getElementById('progress-step-2');
+        const stepTitle = document.getElementById('step-title');
+        const stepCopy = document.getElementById('step-copy');
+        const panels = Array.from(document.querySelectorAll('.step-panel'));
+        const backBtn = document.getElementById('back-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const modelSelect = document.getElementById('modelo-select');
+        const selectedModel = modelSelect.dataset.selected;
+        const preview = document.getElementById('vehicle-preview');
+        const plateInput = document.getElementById('placa');
+        const nameInput = document.getElementById('nombre_real');
+        const makeInput = document.getElementById('marca_vehiculo');
+        const lineInput = document.getElementById('linea_vehiculo');
+        let currentStep = 1;
+
+        const steps = {
+          1: {
+            title: 'Paso 1: quien conduce',
+            copy: 'Empezamos con los datos que te identifican rapido y sin enredos.',
+            progress: '50%'
+          },
+          2: {
+            title: 'Paso 2: tu carro',
+            copy: 'Ahora dejamos listo el vehiculo para que el cliente te reconozca facilmente.',
+            progress: '100%'
+          }
+        };
+
         const currentYear = new Date().getFullYear();
         for (let year = currentYear; year >= 2005; year -= 1) {
-          const opt = document.createElement("option");
-          opt.value = String(year);
-          opt.textContent = String(year);
-          select.appendChild(opt);
+          const option = document.createElement('option');
+          option.value = String(year);
+          option.textContent = String(year);
+          if (String(year) === String(selectedModel)) {
+            option.selected = true;
+          }
+          modelSelect.appendChild(option);
         }
+
+        function updatePreview() {
+          const checkedColor = form.querySelector('input[name="carro_color"]:checked');
+          const pieces = [
+            nameInput.value.trim() || 'Tu nombre',
+            plateInput.value.trim().toUpperCase() || 'tu placa',
+            [makeInput.value.trim(), lineInput.value.trim()].filter(Boolean).join(' ') || 'tu carro',
+            checkedColor ? checkedColor.value : 'el color'
+          ];
+          preview.textContent = `${pieces[0]}, ${pieces[1]}, ${pieces[2]} y ${pieces[3]} apareceran de forma clara cuando tomes un servicio.`;
+        }
+
+        function setStep(step) {
+          currentStep = step;
+          panels.forEach((panel) => panel.classList.toggle('is-active', Number(panel.dataset.step) === step));
+          progressBar.style.width = steps[step].progress;
+          stepTitle.textContent = steps[step].title;
+          stepCopy.textContent = steps[step].copy;
+          progressStep1.classList.toggle('is-active', step === 1);
+          progressStep2.classList.toggle('is-active', step === 2);
+          backBtn.hidden = step === 1;
+          nextBtn.hidden = step === 2;
+          submitBtn.hidden = step !== 2;
+        }
+
+        function validateStep(step) {
+          const panel = form.querySelector(`.step-panel[data-step="${step}"]`);
+          if (!panel) return true;
+          const fields = Array.from(panel.querySelectorAll('input, select'));
+          const invalidField = fields.find((field) => !field.checkValidity());
+          if (invalidField) {
+            invalidField.reportValidity();
+            invalidField.focus();
+            return false;
+          }
+          return true;
+        }
+
+        plateInput.addEventListener('input', function () {
+          this.value = this.value.toUpperCase().replace(/\s+/g, '');
+          updatePreview();
+        });
+        [nameInput, makeInput, lineInput].forEach((input) => input.addEventListener('input', updatePreview));
+        form.querySelectorAll('input[name="carro_color"]').forEach((input) => {
+          input.addEventListener('change', updatePreview);
+        });
+
+        nextBtn.addEventListener('click', function () {
+          if (!validateStep(1)) return;
+          setStep(2);
+          updatePreview();
+        });
+
+        backBtn.addEventListener('click', function () {
+          setStep(1);
+        });
+
+        form.addEventListener('submit', function (event) {
+          if (!validateStep(2)) {
+            event.preventDefault();
+          }
+        });
+
+        updatePreview();
+        setStep(1);
       })();
     </script>
   </body>
 </html>
-
-
-
-

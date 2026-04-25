@@ -3626,10 +3626,6 @@
               <span>Cliente</span>
               <strong id="priorityCliente">-</strong>
             </div>
-            <div class="priority-row">
-              <span>Telefono</span>
-              <strong id="priorityTelefono">-</strong>
-            </div>
             <div class="servicios-actions">
               <button type="button" class="servicios-detail js-detail" id="priorityDetailBtn">Ver detalle</button>
               <form method="post" action="/tomar" id="priorityForm">
@@ -3710,7 +3706,7 @@
                   <div class="trip-icon">TR</div>
                   <div>
                     <div class="trip-title">{{ ultimo.detalles.get('Direccion', ultimo.mensaje_cliente) }}</div>
-                    <div class="trip-meta">{{ ultimo.hora }}  -  {{ ultimo.cliente_telefono }}</div>
+                    <div class="trip-meta">{{ ultimo.hora }}</div>
                   </div>
                 </div>
                 <div class="trip-meta">Estandar  -  Efectivo</div>
@@ -3873,10 +3869,6 @@
                             <span>Cliente</span>
                             <strong>{{ pedido.detalles.get('Nombre', 'Cliente') }} (WhatsApp)</strong>
                           </div>
-                          <div class="servicios-row">
-                            <span>Telefono</span>
-                            <strong>{{ pedido.cliente_telefono }}</strong>
-                          </div>
                           <div class="servicios-actions">
                             <button type="button" class="servicios-detail js-detail"
                               data-origen="{{ pedido.detalles.get('Direccion', pedido.mensaje_cliente) }}"
@@ -3944,7 +3936,6 @@
                           {% endif %}
                           <div class="te-active-chip-row">
                             <span class="te-active-chip">{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</span>
-                            <span class="te-active-chip">{{ active_pedido.cliente_telefono }}</span>
                             <span class="te-active-chip te-active-chip-status">Listo para navegar</span>
                           </div>
                         </div>
@@ -3981,10 +3972,6 @@
                             <div class="te-service-summary-item">
                               <span>Cliente</span>
                               <strong>{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</strong>
-                            </div>
-                            <div class="te-service-summary-item">
-                              <span>Telefono</span>
-                              <strong>{{ active_pedido.cliente_telefono }}</strong>
                             </div>
                           </div>
                           <div class="te-active-actions">
@@ -4151,7 +4138,6 @@
                         <div class="viaje-meta">
                           <span>{{ pedido.hora }}</span>
                           <span>{{ pedido.timestamp[:10] if pedido.timestamp else '--' }}</span>
-                          <span>{{ pedido.cliente_telefono }}</span>
                         </div>
                         <div class="viaje-chips">
                           <span class="viaje-chip highlight">{{ pedido.estado }}</span>
@@ -4482,7 +4468,6 @@
       const priorityOverlay = document.getElementById('priorityOverlay');
       const priorityOrigen = document.getElementById('priorityOrigen');
       const priorityCliente = document.getElementById('priorityCliente');
-      const priorityTelefono = document.getElementById('priorityTelefono');
       const priorityId = document.getElementById('priorityId');
       const priorityDetailBtn = document.getElementById('priorityDetailBtn');
       const priorityProgress = document.getElementById('priorityProgress');
@@ -5211,10 +5196,6 @@
                 <strong>${escapeHtml(tripClient)}</strong>
               </div>
               <div class="modal-metric">
-                <span>Telefono</span>
-                <strong>${escapeHtml(trip.cliente_telefono || '-')}</strong>
-              </div>
-              <div class="modal-metric">
                 <span>Hora</span>
                 <strong>${escapeHtml(trip.hora || '--')}</strong>
               </div>
@@ -5377,7 +5358,6 @@
         if (!detailModal || !detailContent) return;
         const origen = trip.origen || '-';
         const cliente = trip.cliente || '-';
-        const telefono = trip.telefono || '-';
         const hora = trip.hora || '-';
         const timestamp = trip.timestamp || '';
         const lat = parseCoord(trip.lat);
@@ -5386,7 +5366,6 @@
         detailContent.innerHTML = `
           <div><strong>Origen:</strong> ${escapeHtml(origen)}</div>
           <div><strong>Cliente:</strong> ${escapeHtml(cliente)}</div>
-          <div><strong>Telefono:</strong> ${escapeHtml(telefono)}</div>
           <div><strong>Hora:</strong> ${escapeHtml(hora)}</div>
           ${timestamp ? `<div><strong>Fecha:</strong> ${escapeHtml(formatDateLabel(timestamp))}</div>` : ''}
         `;
@@ -5449,10 +5428,6 @@
               <div class="modal-metric">
                 <span>Cliente</span>
                 <strong>${escapeHtml(trip.cliente || 'Cliente')}</strong>
-              </div>
-              <div class="modal-metric">
-                <span>Telefono</span>
-                <strong>${escapeHtml(trip.telefono || '-')}</strong>
               </div>
               <div class="modal-metric">
                 <span>Hora</span>
@@ -6883,7 +6858,6 @@
             <div class="te-compact-meta">
               ${renderServiceBadge(service.tipo)}
               <span class="te-compact-chip">${escapeHtml(service.nombre || 'Cliente')}</span>
-              <span class="te-compact-chip">${escapeHtml(service.telefono || '')}</span>
             </div>
             <div class="servicios-actions">
               <form method="post" action="/tomar">
@@ -7262,10 +7236,6 @@
                 <span>Cliente</span>
                 <strong>${escapeHtml(servicio.nombre || 'Cliente')} (WhatsApp)</strong>
               </div>
-              <div class="servicios-row">
-                <span>Telefono</span>
-                <strong>${escapeHtml(servicio.telefono || '')}</strong>
-              </div>
               <div class="servicios-actions">
                 <button type="button" class="servicios-detail js-detail"
                   data-origen="${escapeHtml(servicio.direccion || '')}"
@@ -7332,7 +7302,6 @@
         if (!service || !driverOnline) return;
         priorityOrigen.textContent = service.direccion || '-';
         priorityCliente.textContent = `${service.nombre || 'Cliente'} (WhatsApp)`;
-        priorityTelefono.textContent = service.telefono || '-';
         priorityId.value = service.id;
         if (!hasActiveService) {
           const normalizedService = normalizeService(service);

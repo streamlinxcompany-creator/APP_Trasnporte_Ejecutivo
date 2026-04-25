@@ -3,719 +3,469 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b2540" />
+    <meta name="theme-color" content="#0b1220" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='zipp-icon.png') }}" />
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='zipp-icon.png') }}" />
     <title>Ingreso | Zipp</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg: #071f3b;
-        --panel: rgba(12, 31, 57, 0.92);
-        --panel-strong: rgba(11, 37, 64, 0.98);
-        --gold: #bed6f0;
-        --gold-2: #6f8fb8;
-        --text: #eef4fb;
-        --muted: #a6b6cc;
+        --bg: #09111d;
+        --panel: rgba(12, 19, 33, 0.94);
+        --panel-soft: rgba(20, 31, 52, 0.84);
+        --line: rgba(169, 188, 219, 0.18);
+        --line-strong: rgba(169, 188, 219, 0.34);
+        --text: #edf4ff;
+        --muted: #98a8c0;
+        --accent: #9cc2ff;
+        --accent-strong: #dce9ff;
+        --ok: #b7f0d0;
+        --danger: #fecaca;
       }
       * {
         box-sizing: border-box;
       }
+      html,
+      body {
+        min-height: 100%;
+      }
       body {
         margin: 0;
-        background:
-          radial-gradient(circle at 15% 20%, rgba(190, 214, 240, 0.14), transparent 38%),
-          radial-gradient(circle at 85% 0%, rgba(96, 126, 164, 0.35), transparent 45%),
-          radial-gradient(circle at 70% 80%, rgba(126, 166, 227, 0.1), transparent 45%),
-          #041427;
-        color: var(--text);
         font-family: 'Sora', sans-serif;
-        min-height: 100dvh;
-        display: flex;
-        align-items: stretch;
-        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-          env(safe-area-inset-left);
-        -webkit-text-size-adjust: 100%;
-      }
-      .auth-shell {
-        display: grid;
-        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-        width: 100%;
-        min-height: 100dvh;
-      }
-      .auth-hero {
-        padding: 56px 8vw;
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        gap: 26px;
-      }
-      .auth-hero::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          repeating-linear-gradient(
-            0deg,
-            transparent 0 70px,
-            rgba(190, 214, 240, 0.12) 70px 72px
-          ),
-          repeating-linear-gradient(
-            90deg,
-            transparent 0 70px,
-            rgba(190, 214, 240, 0.12) 70px 72px
-          );
-        opacity: 0.35;
-        pointer-events: none;
-      }
-      .auth-hero::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          radial-gradient(circle at 20% 10%, rgba(190, 214, 240, 0.2), transparent 40%),
-          radial-gradient(circle at 80% 80%, rgba(60, 60, 70, 0.5), transparent 45%);
-        opacity: 0.35;
-        mix-blend-mode: screen;
-        pointer-events: none;
-      }
-      .hero-fade {
-        display: none;
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: -36px;
-        height: 60px;
-        background: linear-gradient(
-          180deg,
-          rgba(3, 3, 4, 0) 0%,
-          rgba(3, 3, 4, 0.75) 55%,
-          rgba(3, 3, 4, 0.95) 100%
-        );
-        pointer-events: none;
-        z-index: 2;
-      }
-      .hero-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        position: relative;
-        z-index: 1;
-      }
-      .hero-signal {
-        font-size: 0.72rem;
-        letter-spacing: 0.28em;
-        text-transform: uppercase;
-        color: rgba(190, 214, 240, 0.65);
-      }
-      .hero-title {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .hero-kicker {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        border-radius: 999px;
-        background: rgba(190, 214, 240, 0.12);
-        border: 1px solid rgba(190, 214, 240, 0.4);
-        color: var(--gold);
-        font-size: 0.72rem;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        width: fit-content;
-      }
-      .brand-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 14px;
-        border-radius: 999px;
-        border: 1px solid rgba(190, 214, 240, 0.35);
-        color: var(--gold);
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 0.75rem;
-      }
-      .auth-hero h1 {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: clamp(2.2rem, 3.5vw, 3.2rem);
-        margin: 0;
-        letter-spacing: 0.04em;
-      }
-      .auth-hero p {
-        margin: 0;
-        color: var(--muted);
-        max-width: 520px;
-        line-height: 1.6;
-        position: relative;
-        z-index: 1;
-      }
-      .hero-chip-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        position: relative;
-        z-index: 1;
-      }
-      .hero-chip {
-        padding: 8px 14px;
-        border-radius: 999px;
-        border: 1px solid rgba(190, 214, 240, 0.25);
-        color: rgba(190, 214, 240, 0.85);
-        background: rgba(12, 12, 14, 0.8);
-        font-size: 0.78rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      }
-      .hero-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 18px;
-        position: relative;
-        z-index: 1;
-      }
-      .hero-card {
-        padding: 18px;
-        border-radius: 18px;
-        background: linear-gradient(135deg, rgba(12, 12, 15, 0.92), rgba(20, 20, 24, 0.75));
-        border: 1px solid rgba(190, 214, 240, 0.18);
-        box-shadow: 0 20px 36px rgba(0, 0, 0, 0.45);
-        position: relative;
-        overflow: hidden;
-      }
-      .hero-card::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 2px;
-        background: linear-gradient(90deg, rgba(190, 214, 240, 0.7), transparent 70%);
-        opacity: 0.8;
-      }
-      .hero-card-tag {
-        font-size: 0.7rem;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        color: rgba(190, 214, 240, 0.7);
-        margin-bottom: 8px;
-      }
-      .hero-card h5 {
-        margin: 0 0 6px;
-        font-size: 1rem;
         color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(156, 194, 255, 0.18), transparent 34%),
+          radial-gradient(circle at 85% 10%, rgba(67, 97, 238, 0.15), transparent 28%),
+          linear-gradient(180deg, #07101b 0%, #09111d 45%, #050a12 100%);
       }
-      .hero-card span {
-        font-size: 0.9rem;
-        color: rgba(245, 245, 245, 0.7);
-      }
-      .hero-runway {
+      .page {
+        min-height: 100dvh;
+        padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
         display: grid;
-        gap: 12px;
-        position: relative;
-        z-index: 1;
+        gap: 16px;
       }
-      .hero-runway-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 12px 16px;
-        border-radius: 14px;
-        background: rgba(12, 12, 14, 0.8);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+      .hero,
+      .card {
+        width: min(100%, 460px);
+        margin: 0 auto;
       }
-      .runway-index {
-        font-family: 'Space Grotesk', sans-serif;
-        color: var(--gold);
-        letter-spacing: 0.14em;
-        font-size: 0.8rem;
-        min-width: 32px;
+      .hero {
+        padding: 10px 4px 0;
       }
-      .hero-runway-item strong {
-        display: block;
-        font-size: 0.95rem;
-        margin-bottom: 4px;
-      }
-      .hero-runway-item p {
-        margin: 0;
-        font-size: 0.85rem;
-        color: var(--muted);
-      }
-      .auth-panel {
-        padding: 48px 8vw;
-        display: flex;
+      .brand {
+        display: inline-flex;
         align-items: center;
-        justify-content: center;
-        background: rgba(3, 3, 4, 0.94);
-        border-left: 1px solid rgba(255, 255, 255, 0.05);
-      }
-      .panel-card {
-        width: min(420px, 100%);
-        background: var(--panel);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 22px;
-        padding: 32px;
-        box-shadow: 0 22px 40px rgba(0, 0, 0, 0.5);
-        position: relative;
-        overflow: hidden;
-      }
-      .panel-card::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, rgba(190, 214, 240, 0.9), transparent 70%);
-      }
-      .panel-title {
-        font-size: 1.4rem;
-        margin-bottom: 6px;
-      }
-      .panel-sub {
-        color: var(--muted);
-        margin-bottom: 22px;
-      }
-      .auth-toggle {
-        display: flex;
-        gap: 6px;
-        padding: 6px;
-        border-radius: 999px;
-        border: 1px solid rgba(190, 214, 240, 0.25);
-        background: rgba(12, 12, 14, 0.85);
-        margin-bottom: 18px;
-      }
-      .toggle-btn {
-        flex: 1;
-        border: none;
-        background: transparent;
-        color: rgba(190, 214, 240, 0.7);
+        gap: 10px;
         padding: 8px 12px;
         border-radius: 999px;
-        font-size: 0.72rem;
-        letter-spacing: 0.2em;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--line);
+        font-family: 'Space Grotesk', sans-serif;
+        letter-spacing: 0.18em;
         text-transform: uppercase;
-        font-weight: 700;
-        transition: background 0.2s ease, color 0.2s ease;
+        font-size: 0.75rem;
       }
-      .toggle-btn.is-active {
-        background: linear-gradient(90deg, #bed6f0, #c0daf5);
-        color: #1a1406;
-        box-shadow: 0 10px 20px rgba(190, 214, 240, 0.25);
+      .brand img {
+        width: 20px;
+        height: 20px;
+      }
+      .hero h1 {
+        margin: 16px 0 10px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: clamp(2rem, 7vw, 3.1rem);
+        line-height: 1.02;
+        letter-spacing: -0.04em;
+      }
+      .hero p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+        max-width: 36rem;
+      }
+      .hero-points {
+        margin-top: 18px;
+        display: grid;
+        gap: 10px;
+      }
+      .hero-point {
+        padding: 13px 14px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--line);
+      }
+      .hero-point strong {
+        display: block;
+        font-size: 0.94rem;
+      }
+      .hero-point span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.5;
+      }
+      .card {
+        background:
+          linear-gradient(180deg, rgba(18, 27, 46, 0.98), rgba(11, 18, 32, 0.96));
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        padding: 20px;
+        box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+      }
+      .card-top {
+        display: grid;
+        gap: 8px;
+      }
+      .eyebrow {
+        font-size: 0.72rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .card h2 {
+        margin: 0;
+        font-size: 1.28rem;
+      }
+      .card-sub {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .toggle {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        padding: 6px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--line);
+      }
+      .toggle button {
+        min-height: 46px;
+        border: none;
+        border-radius: 14px;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .toggle button.is-active {
+        background: linear-gradient(135deg, #dce9ff, #9cc2ff);
+        color: #08111e;
+      }
+      .flash {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(254, 202, 202, 0.26);
+        background: rgba(127, 29, 29, 0.22);
+        color: var(--danger);
+        line-height: 1.5;
+      }
+      .oauth-block {
+        margin-top: 18px;
+        display: grid;
+        gap: 12px;
+      }
+      .oauth-note {
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(156, 194, 255, 0.08);
+        border: 1px solid rgba(156, 194, 255, 0.18);
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+      .oauth-note strong {
+        color: var(--accent-strong);
+      }
+      .google-slot {
+        min-height: 44px;
+        display: grid;
+        place-items: center;
+      }
+      .google-slot.is-disabled {
+        padding: 0;
+      }
+      .google-disabled {
+        width: 100%;
+        min-height: 52px;
+        border-radius: 16px;
+        border: 1px dashed var(--line-strong);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted);
+        padding: 0 14px;
+        font: inherit;
+      }
+      .divider {
+        margin: 18px 0 14px;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 12px;
+        align-items: center;
+        color: rgba(152, 168, 192, 0.74);
+        font-size: 0.78rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .divider::before,
+      .divider::after {
+        content: "";
+        height: 1px;
+        background: var(--line);
+      }
+      form {
+        display: grid;
+        gap: 14px;
+      }
+      .field {
+        display: grid;
+        gap: 7px;
+      }
+      .field label {
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .field input {
+        width: 100%;
+        min-height: 54px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(6, 11, 20, 0.7);
+        color: var(--text);
+        padding: 0 16px;
+        font: inherit;
+        font-size: 1rem;
+      }
+      .field input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(156, 194, 255, 0.12);
+      }
+      .field-help {
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.5;
       }
       .register-only {
         display: none;
       }
       .mode-register .register-only {
-        display: block;
+        display: grid;
       }
-      .alert-luxe {
-        background: rgba(29, 23, 16, 0.9);
-        border: 1px solid rgba(190, 214, 240, 0.35);
-        color: #f6d98c;
-      }
-      .form-label {
-        font-size: 0.85rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(190, 214, 240, 0.7);
-      }
-      .form-control {
-        background: #0f0f11;
-        border: 1px solid #2c2d33;
-        color: var(--text);
-        padding: 12px;
-        border-radius: 12px;
-        font-size: 1rem;
-        min-height: 48px;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      }
-      .form-control:focus {
-        border-color: var(--gold);
-        box-shadow: 0 0 0 0.2rem rgba(190, 214, 240, 0.2);
-      }
-      .btn-gold {
-        background: linear-gradient(90deg, #bed6f0, #c0daf5);
+      .submit {
+        margin-top: 4px;
+        min-height: 56px;
         border: none;
-        border-radius: 12px;
-        padding: 12px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #dce9ff, #9cc2ff);
+        color: #08111e;
+        font: inherit;
+        font-size: 1rem;
         font-weight: 700;
-        color: #1a1406;
-        box-shadow: 0 12px 30px rgba(190, 214, 240, 0.25);
-        min-height: 48px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
       }
-      .btn-gold:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 16px 36px rgba(190, 214, 240, 0.35);
-      }
-      .panel-footnote {
+      .footnote {
         margin-top: 16px;
-        font-size: 0.85rem;
         color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
       }
-      .auth-seal {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: calc(10px + env(safe-area-inset-bottom));
+      .seal {
+        width: min(100%, 460px);
+        margin: 0 auto;
         text-align: center;
-        font-size: 0.7rem;
+        color: rgba(152, 168, 192, 0.62);
+        font-size: 0.72rem;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: rgba(190, 214, 240, 0.65);
-        pointer-events: none;
-        z-index: 5;
+        padding-bottom: 6px;
       }
-      @media (max-width: 960px) {
-        .auth-shell {
-          grid-template-columns: 1fr;
+      @media (min-width: 900px) {
+        .page {
+          grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+          align-items: center;
+          gap: 34px;
+          padding-inline: 28px;
         }
-        .auth-hero {
-          padding: 40px 8vw 10px;
-        }
-        .auth-panel {
-          border-left: none;
-          padding: 20px 8vw 60px;
-        }
-      }
-      @media (max-width: 640px) {
-        body {
-          align-items: flex-start;
-        }
-        .auth-shell {
-          display: flex;
-          flex-direction: column;
-        }
-        .auth-panel {
-          order: 1;
-          padding: 20px 6vw 18px;
-          align-items: flex-start;
-        }
-        .auth-hero {
-          order: -1;
-          padding: 12px 6vw 32px;
-        }
-        .auth-hero h1 {
-          font-size: 1.7rem;
-        }
-        .hero-fade {
-          display: block;
-        }
-        .hero-top {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 8px;
-        }
-        .hero-grid {
-          grid-template-columns: 1fr;
-        }
-        .hero-runway {
-          gap: 10px;
-        }
-        .panel-card {
-          padding: 22px;
-          border-radius: 16px;
+        .hero,
+        .card,
+        .seal {
           width: 100%;
         }
-        .btn-gold {
-          padding: 14px;
-          font-size: 1.02rem;
+        .seal {
+          grid-column: 1 / -1;
         }
-      }
-      @media (max-width: 480px) {
-        body {
-          min-height: 100svh;
-        }
-        .auth-panel {
-          padding: 16px 5vw 12px;
-        }
-        .panel-card {
-          padding: 18px;
-          border-radius: 14px;
-          box-shadow: 0 18px 26px rgba(0, 0, 0, 0.45);
-        }
-        .panel-title {
-          font-size: 1.15rem;
-        }
-        .panel-sub {
-          font-size: 0.9rem;
-        }
-        .form-control {
-          padding: 12px 14px;
-          font-size: 1rem;
-        }
-        .btn-gold {
-          padding: 14px;
-          font-size: 1.05rem;
-        }
-        .auth-hero {
-          padding: 8px 5vw 24px;
-        }
-        .hero-grid,
-        .hero-runway,
-        .hero-chip-row {
-          display: none;
-        }
-        .auth-hero p {
-          display: none;
-        }
-        .brand-pill {
-          font-size: 0.7rem;
-          letter-spacing: 0.16em;
-        }
-        .auth-hero::before {
-          opacity: 0.18;
-        }
-      }
-      @supports (-webkit-touch-callout: none) {
-        body {
-          min-height: 100svh;
-        }
-      }
-      /* Clean minimal theme overrides */
-      :root {
-        --bg: #0b0d10;
-        --panel: rgba(22, 24, 28, 0.95);
-        --panel-strong: #1a1d22;
-        --gold: #7ea6e3;
-        --gold-2: #9aa3ad;
-        --text: #f4f6f8;
-        --muted: #9aa3ad;
-        --stroke: rgba(255, 255, 255, 0.08);
-      }
-      body {
-        background: radial-gradient(circle at 15% 10%, rgba(126, 166, 227, 0.12), transparent 40%),
-          radial-gradient(circle at 85% 15%, rgba(159, 190, 234, 0.12), transparent 45%),
-          #0b0d10;
-        color: var(--text);
-      }
-      .auth-hero::before,
-      .auth-hero::after {
-        opacity: 0.12;
-      }
-      .brand-pill,
-      .hero-kicker,
-      .hero-chip {
-        border-color: var(--stroke);
-        color: var(--muted);
-        background: rgba(255, 255, 255, 0.04);
-      }
-      .hero-kicker {
-        color: var(--gold);
-      }
-      .hero-card,
-      .hero-runway-item {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--stroke);
-        box-shadow: none;
-      }
-      .hero-card::before {
-        display: none;
-      }
-      .hero-card-tag {
-        color: var(--muted);
-      }
-      .panel-card {
-        background: var(--panel);
-        border: 1px solid var(--stroke);
-        box-shadow: 0 18px 32px rgba(0, 0, 0, 0.45);
-      }
-      .auth-toggle {
-        border-color: var(--stroke);
-        background: rgba(255, 255, 255, 0.03);
-      }
-      .toggle-btn {
-        color: var(--muted);
-      }
-      .toggle-btn.is-active {
-        background: var(--gold);
-        color: #06110c;
-        box-shadow: 0 12px 24px rgba(126, 166, 227, 0.25);
-      }
-      .alert-luxe {
-        background: rgba(126, 166, 227, 0.16);
-        border-color: rgba(126, 166, 227, 0.35);
-        color: #dff7ee;
-      }
-      .form-label {
-        color: var(--muted);
-        letter-spacing: 0.08em;
-      }
-      .form-control {
-        background: #12141a;
-        border: 1px solid var(--stroke);
-      }
-      .form-control:focus {
-        border-color: var(--gold);
-        box-shadow: 0 0 0 0.2rem rgba(126, 166, 227, 0.25);
-      }
-      .btn-gold {
-        background: var(--gold);
-        color: #06110c;
-        box-shadow: 0 12px 24px rgba(126, 166, 227, 0.25);
-      }
-      .auth-seal {
-        color: rgba(255, 255, 255, 0.5);
       }
     </style>
   </head>
   <body>
-    <div class="auth-shell">
-      <section class="auth-hero">
-        <div class="hero-top">
-          <div class="brand-pill">Zipp</div>
+    <main class="page">
+      <section class="hero">
+        <div class="brand">
+          <img src="{{ url_for('static', filename='zipp-icon.png') }}" alt="Zipp" />
+          <span>Zipp conductores</span>
         </div>
-        <div class="hero-title">
-          <span class="hero-kicker">Modo Zipp</span>
-          <h1>Conduce con presencia ejecutiva</h1>
-        </div>
-        <p>Accede al panel premium de servicios. Flujo rapido, alertas en tiempo real y control total desde tu movil.</p>
-        <div class="hero-chip-row">
-          <div class="hero-chip">Asignacion instantanea</div>
-          <div class="hero-chip">Prioridad VIP</div>
-          <div class="hero-chip">Ruta inteligente</div>
-        </div>
-        <div class="hero-grid">
-          <div class="hero-card">
-            <div class="hero-card-tag">Servicio premium</div>
-            <h5>Clientes Zipp</h5>
-            <span>Rutas claras y pago puntual con prioridad real.</span>
+        <h1>Entrar rapido, registrar mejor.</h1>
+        <p>La idea es que el acceso y el onboarding se entiendan al instante desde el celular. Si usas Google, continuas en segundos; si eres nuevo, completamos tu perfil paso a paso.</p>
+        <div class="hero-points">
+          <div class="hero-point">
+            <strong>Inicio con Google</strong>
+            <span>Si tu cuenta es nueva, despues del acceso te llevamos directo al registro del conductor.</span>
           </div>
-          <div class="hero-card">
-            <div class="hero-card-tag">Tiempo real</div>
-            <h5>Alertas visibles</h5>
-            <span>Recibe pedidos destacados y desliza para aceptar.</span>
+          <div class="hero-point">
+            <strong>Registro pensado para movil</strong>
+            <span>Campos claros, menos friccion y una estructura por pasos para que no se sienta pesado.</span>
           </div>
-          <div class="hero-card">
-            <div class="hero-card-tag">Ruta inteligente</div>
-            <h5>Mini mapa</h5>
-            <span>Visualiza puntos clave con estilo oscuro premium.</span>
-          </div>
-          <div class="hero-card">
-            <div class="hero-card-tag">Soporte</div>
-            <h5>Central 24/7</h5>
-            <span>Siempre hay un coordinador respaldando tu turno.</span>
+          <div class="hero-point">
+            <strong>Datos utiles para el cliente</strong>
+            <span>Tu nombre, placa, carro y color quedan listos para mostrar una experiencia mas confiable.</span>
           </div>
         </div>
-        <div class="hero-runway">
-          <div class="hero-runway-item">
-            <div class="runway-index">01</div>
-            <div>
-              <strong>Recibe solicitudes</strong>
-              <p>Alertas visibles con enfoque inmediato.</p>
-            </div>
-          </div>
-          <div class="hero-runway-item">
-            <div class="runway-index">02</div>
-            <div>
-              <strong>Confirma rapido</strong>
-              <p>Desliza para aceptar y ve el detalle completo.</p>
-            </div>
-          </div>
-          <div class="hero-runway-item">
-            <div class="runway-index">03</div>
-            <div>
-              <strong>Conduce con control</strong>
-              <p>Panel premium con seguimiento y estado en vivo.</p>
-            </div>
-          </div>
-        </div>
-        <div class="hero-fade"></div>
       </section>
-      <section class="auth-panel">
-        <div class="panel-card">
-          <div class="brand-pill mb-3">Ingreso</div>
-          <div class="panel-title">Acceso seguro</div>
-          <p class="panel-sub" id="auth-subtitle">Ingresa para ver servicios disponibles y gestionar tus viajes.</p>
 
-          <div class="auth-toggle" role="tablist" aria-label="Acceso">
-            <button class="toggle-btn is-active" type="button" id="toggle-login">Iniciar sesion</button>
-            <button class="toggle-btn" type="button" id="toggle-register">Registrarse</button>
+      <section class="card">
+        <div class="card-top">
+          <span class="eyebrow">Acceso seguro</span>
+          <h2>Ingresa a tu panel</h2>
+          <p class="card-sub" id="auth-subtitle">Entra para ver viajes disponibles y manejar tu turno sin enredos.</p>
+        </div>
+
+        <div class="toggle" role="tablist" aria-label="Acceso">
+          <button type="button" class="is-active" id="toggle-login">Iniciar sesion</button>
+          <button type="button" id="toggle-register">Registrarme</button>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="flash">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
+
+        <div class="oauth-block">
+          <div class="oauth-note">
+            <strong>Continuar con Google.</strong>
+            Si tu cuenta no existe, empezamos el registro apenas confirmes tu correo.
           </div>
-
-          {% with messages = get_flashed_messages() %}
-            {% if messages %}
-              <div class="alert alert-luxe">{{ messages[0] }}</div>
+          <div class="google-slot {% if not google_client_id %}is-disabled{% endif %}" id="google-button-slot">
+            {% if not google_client_id %}
+              <button type="button" class="google-disabled" disabled>Google Sign-In pendiente de configurar</button>
             {% endif %}
-          {% endwith %}
-
-          <form method="post" action="{{ url_for('login') }}" id="auth-form" data-mode="login">
-            <input type="hidden" name="action" id="auth-action" value="login" />
-            <div class="mb-3">
-              <label class="form-label">Usuario</label>
-              <input type="text" name="usuario" class="form-control" required />
-            </div>
-            <div class="mb-4">
-              <label class="form-label">Contrasena</label>
-              <input type="password" name="password" class="form-control" required />
-            </div>
-            <div class="mb-4 register-only" id="confirm-wrap">
-              <label class="form-label">Confirmar contrasena</label>
-              <input type="password" name="confirm_password" id="confirm-password" class="form-control" />
-            </div>
-            <button type="submit" class="btn btn-gold w-100" id="auth-submit">Entrar</button>
-          </form>
-
-          <div class="panel-footnote" id="auth-footnote">
-            Si no tienes cuenta, usa el boton Registrarse.
           </div>
+          <form method="post" action="{{ url_for('google_auth') }}" id="google-auth-form" hidden>
+            <input type="hidden" name="credential" id="google-credential" />
+          </form>
+        </div>
+
+        <div class="divider">o sigue con tu cuenta</div>
+
+        <form method="post" action="{{ url_for('login') }}" id="auth-form" class="mode-login" data-mode="login">
+          <input type="hidden" name="action" id="auth-action" value="login" />
+
+          <div class="field">
+            <label for="usuario">Usuario o correo</label>
+            <input id="usuario" type="text" name="usuario" autocomplete="username" placeholder="Ej: juanperez o correo@gmail.com" required />
+            <div class="field-help register-only" id="register-user-help">Puedes usar tu correo para que luego te sea mas facil entrar tambien con Google.</div>
+          </div>
+
+          <div class="field">
+            <label for="password">Contrasena</label>
+            <input id="password" type="password" name="password" autocomplete="current-password" placeholder="Tu contrasena" required />
+          </div>
+
+          <div class="field register-only" id="confirm-wrap">
+            <label for="confirm-password">Confirmar contrasena</label>
+            <input id="confirm-password" type="password" name="confirm_password" autocomplete="new-password" placeholder="Repite tu contrasena" />
+            <div class="field-help">Despues del registro te llevamos a completar tus datos del conductor.</div>
+          </div>
+
+          <button type="submit" class="submit" id="auth-submit">Entrar</button>
+        </form>
+
+        <div class="footnote" id="auth-footnote">
+          Si todavia no tienes cuenta, usa Registrarme o entra con Google para empezar mas rapido.
         </div>
       </section>
-    </div>
-    <div class="auth-seal">StreamLinx - Protegido por el protocolo de seguridad Maicol v1.0</div>
+
+      <div class="seal">StreamLinx - Protocolo de seguridad Maicol v1.0</div>
+    </main>
+
+    {% if google_client_id %}
+      <script src="https://accounts.google.com/gsi/client" async defer></script>
+    {% endif %}
     <script>
       (function () {
-        const form = document.getElementById("auth-form");
-        const actionInput = document.getElementById("auth-action");
-        const submitBtn = document.getElementById("auth-submit");
-        const subtitle = document.getElementById("auth-subtitle");
-        const footnote = document.getElementById("auth-footnote");
-        const loginBtn = document.getElementById("toggle-login");
-        const registerBtn = document.getElementById("toggle-register");
-        const confirmWrap = document.getElementById("confirm-wrap");
-        const confirmInput = document.getElementById("confirm-password");
+        const form = document.getElementById('auth-form');
+        const actionInput = document.getElementById('auth-action');
+        const submitBtn = document.getElementById('auth-submit');
+        const subtitle = document.getElementById('auth-subtitle');
+        const footnote = document.getElementById('auth-footnote');
+        const loginBtn = document.getElementById('toggle-login');
+        const registerBtn = document.getElementById('toggle-register');
+        const confirmWrap = document.getElementById('confirm-wrap');
+        const confirmInput = document.getElementById('confirm-password');
+        const passwordInput = document.getElementById('password');
 
         function setMode(mode) {
+          const isRegister = mode === 'register';
           form.dataset.mode = mode;
+          form.classList.toggle('mode-register', isRegister);
           actionInput.value = mode;
-          const isRegister = mode === "register";
-          confirmWrap.style.display = isRegister ? "block" : "none";
+          confirmWrap.style.display = isRegister ? 'grid' : 'none';
           confirmInput.required = isRegister;
           confirmInput.disabled = !isRegister;
-          submitBtn.textContent = isRegister ? "Registrarme" : "Entrar";
+          passwordInput.setAttribute('autocomplete', isRegister ? 'new-password' : 'current-password');
+          submitBtn.textContent = isRegister ? 'Crear cuenta y continuar' : 'Entrar';
           subtitle.textContent = isRegister
-            ? "Crea tu cuenta para activar tu perfil de conductor."
-            : "Ingresa para ver servicios disponibles y gestionar tus viajes.";
+            ? 'Crea tu cuenta y en el siguiente paso completamos tu perfil del vehiculo.'
+            : 'Entra para ver viajes disponibles y manejar tu turno sin enredos.';
           footnote.textContent = isRegister
-            ? "Si ya tienes cuenta, vuelve a Iniciar sesion."
-            : "Si no tienes cuenta, usa el boton Registrarse.";
-          loginBtn.classList.toggle("is-active", !isRegister);
-          registerBtn.classList.toggle("is-active", isRegister);
+            ? 'Si ya tienes cuenta, vuelve a Iniciar sesion. Si prefieres, tambien puedes arrancar con Google.'
+            : 'Si todavia no tienes cuenta, usa Registrarme o entra con Google para empezar mas rapido.';
+          loginBtn.classList.toggle('is-active', !isRegister);
+          registerBtn.classList.toggle('is-active', isRegister);
         }
 
-        loginBtn.addEventListener("click", () => setMode("login"));
-        registerBtn.addEventListener("click", () => setMode("register"));
-        setMode("login");
+        loginBtn.addEventListener('click', () => setMode('login'));
+        registerBtn.addEventListener('click', () => setMode('register'));
+        setMode('login');
       })();
+
+      {% if google_client_id %}
+        window.addEventListener('load', function () {
+          const credentialInput = document.getElementById('google-credential');
+          const googleForm = document.getElementById('google-auth-form');
+          const slot = document.getElementById('google-button-slot');
+          if (!window.google || !slot || !credentialInput || !googleForm) return;
+
+          google.accounts.id.initialize({
+            client_id: {{ google_client_id|tojson }},
+            callback: function (response) {
+              if (!response || !response.credential) return;
+              credentialInput.value = response.credential;
+              googleForm.submit();
+            }
+          });
+
+          google.accounts.id.renderButton(slot, {
+            theme: 'outline',
+            size: 'large',
+            text: 'continue_with',
+            shape: 'pill',
+            width: Math.min(slot.clientWidth || 340, 360)
+          });
+        });
+      {% endif %}
     </script>
   </body>
 </html>
-
-
-
-
-

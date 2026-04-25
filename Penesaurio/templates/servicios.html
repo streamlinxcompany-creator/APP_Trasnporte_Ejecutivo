@@ -261,10 +261,6 @@
               <span>Cliente</span>
               <strong>{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</strong>
             </div>
-            <div class="service-row">
-              <span>Telefono</span>
-              <strong>{{ active_pedido.cliente_telefono }}</strong>
-            </div>
             <form method="post" action="{{ url_for('finalizar_servicio') }}">
               <button class="finish-btn" type="submit">Servicio finalizado</button>
             </form>
@@ -282,10 +278,6 @@
               <div class="service-row">
                 <span>Cliente</span>
                 <strong>{{ pedido.detalles.get('Nombre', 'Cliente') }} (WhatsApp)</strong>
-              </div>
-              <div class="service-row">
-                <span>Telefono</span>
-                <strong>{{ pedido.cliente_telefono }}</strong>
               </div>
               <div class="service-actions">
                 <a class="detail-btn" href="{{ url_for('servicio_detalle', pedido_id=pedido.id) }}">Ver detalle</a>
