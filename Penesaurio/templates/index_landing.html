@@ -13,179 +13,356 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg: #07111e;
-        --panel: rgba(9, 19, 35, 0.82);
-        --line: rgba(184, 216, 255, 0.15);
-        --text: #edf4ff;
-        --muted: #96a9c7;
-        --sky: #93c5fd;
-        --teal: #67e8f9;
-        --amber: #fb923c;
+        --bg: #050b14;
+        --surface: rgba(8, 18, 33, 0.68);
+        --surface-strong: rgba(9, 21, 38, 0.82);
+        --line: rgba(180, 213, 255, 0.14);
+        --line-strong: rgba(180, 213, 255, 0.28);
+        --text: #eef5ff;
+        --muted: #9db0cb;
+        --sky: #8ed8ff;
+        --teal: #4ee3d2;
+        --blue: #6ea8ff;
+        --amber: #ffb466;
+        --shadow: 0 28px 90px rgba(0, 0, 0, 0.36);
+        --radius-xl: 28px;
+        --radius-lg: 22px;
+        --radius-md: 20px;
       }
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        min-height: 100%;
+      }
       body {
         margin: 0;
-        min-height: 100dvh;
         font-family: 'Sora', sans-serif;
         color: var(--text);
         background:
-          radial-gradient(circle at top left, rgba(103, 232, 249, 0.16), transparent 28%),
-          radial-gradient(circle at 100% 5%, rgba(251, 146, 60, 0.18), transparent 24%),
-          linear-gradient(180deg, #050d18 0%, #07111e 46%, #020711 100%);
+          radial-gradient(circle at 0% 0%, rgba(78, 227, 210, 0.18), transparent 26%),
+          radial-gradient(circle at 100% 0%, rgba(110, 168, 255, 0.22), transparent 28%),
+          radial-gradient(circle at 50% 120%, rgba(255, 180, 102, 0.12), transparent 26%),
+          linear-gradient(180deg, #040913 0%, #07111e 45%, #02060d 100%);
+        overflow-x: hidden;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+        background-size: 34px 34px;
+        mask-image: radial-gradient(circle at center, black 45%, transparent 90%);
+        pointer-events: none;
+        opacity: 0.45;
       }
       .page {
-        padding: max(18px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+        position: relative;
+        min-height: 100dvh;
+        padding: max(18px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+        display: grid;
+        place-items: center;
+      }
+      .shell {
+        width: min(100%, 1120px);
         display: grid;
         gap: 18px;
+      }
+      .hero,
+      .side-card {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: var(--shadow);
       }
       .hero {
         position: relative;
         overflow: hidden;
-        border-radius: 32px;
+        border-radius: 34px;
         padding: 22px;
-        background:
-          radial-gradient(circle at 80% 10%, rgba(103, 232, 249, 0.18), transparent 24%),
-          radial-gradient(circle at 12% 90%, rgba(59, 130, 246, 0.16), transparent 26%),
-          linear-gradient(160deg, rgba(8, 18, 33, 0.98), rgba(9, 20, 36, 0.92));
-        border: 1px solid var(--line);
-        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
+      }
+      .hero::before,
+      .hero::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        filter: blur(8px);
+        opacity: 0.8;
+        pointer-events: none;
+      }
+      .hero::before {
+        width: 220px;
+        height: 220px;
+        right: -40px;
+        top: -40px;
+        background: radial-gradient(circle, rgba(78, 227, 210, 0.28), transparent 65%);
+      }
+      .hero::after {
+        width: 220px;
+        height: 220px;
+        left: -40px;
+        bottom: -60px;
+        background: radial-gradient(circle, rgba(110, 168, 255, 0.24), transparent 65%);
+      }
+      .hero-inner {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        gap: 18px;
+      }
+      .reveal {
+        opacity: 0;
+        transform: translateY(26px);
+        animation: fade-up 0.85s ease forwards;
+      }
+      .delay-1 { animation-delay: 0.08s; }
+      .delay-2 { animation-delay: 0.16s; }
+      .delay-3 { animation-delay: 0.24s; }
+      .delay-4 { animation-delay: 0.32s; }
+      @keyframes fade-up {
+        from {
+          opacity: 0;
+          transform: translateY(26px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
       }
       .brand {
         display: inline-flex;
         align-items: center;
         gap: 10px;
-        padding: 8px 12px;
+        padding: 10px 14px;
         border-radius: 999px;
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.04);
         font-family: 'Space Grotesk', sans-serif;
-        letter-spacing: 0.18em;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
         font-size: 0.74rem;
       }
-      .brand img { width: 20px; height: 20px; }
-      .city-pill {
-        margin-top: 16px;
+      .brand img {
+        width: 20px;
+        height: 20px;
+      }
+      .city-badge {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 12px;
+        padding: 10px 14px;
         border-radius: 999px;
-        background: rgba(251, 146, 60, 0.1);
-        border: 1px solid rgba(251, 146, 60, 0.24);
-        color: #ffd2ae;
-        font-size: 0.78rem;
+        color: #ffd6af;
+        background: rgba(255, 180, 102, 0.1);
+        border: 1px solid rgba(255, 180, 102, 0.22);
+        font-size: 0.8rem;
+        width: fit-content;
       }
       h1 {
-        margin: 16px 0 10px;
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: clamp(2.5rem, 11vw, 5rem);
-        line-height: 0.95;
-        letter-spacing: -0.06em;
-      }
-      .hero p {
         margin: 0;
-        max-width: 40rem;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: clamp(2.8rem, 10vw, 5.9rem);
+        line-height: 0.92;
+        letter-spacing: -0.07em;
+        max-width: 8.5ch;
+      }
+      .lead {
+        margin: 0;
+        max-width: 42rem;
         color: var(--muted);
-        line-height: 1.65;
+        line-height: 1.7;
         font-size: 1rem;
       }
-      .cta-row {
-        margin-top: 22px;
+      .lead strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .cta-stack {
         display: grid;
         gap: 12px;
       }
       .cta {
         min-height: 58px;
-        border-radius: 18px;
+        width: 100%;
+        border-radius: 20px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        padding: 0 18px;
         text-decoration: none;
         font-weight: 700;
         font-size: 1rem;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
       }
-      .cta.primary {
-        background: linear-gradient(135deg, #dbeafe, #93c5fd);
-        color: #07111e;
+      .cta:hover {
+        transform: translateY(-1px);
       }
-      .cta.secondary {
-        background: rgba(255, 255, 255, 0.04);
+      .cta-register {
+        background: linear-gradient(135deg, #79d8ff 0%, #61b6ff 42%, #4ee3d2 100%);
+        color: #04111f;
+        box-shadow: 0 18px 40px rgba(78, 227, 210, 0.24);
+      }
+      .cta-login {
         color: var(--text);
-        border: 1px solid var(--line);
+        border: 1px solid var(--line-strong);
+        background: rgba(255, 255, 255, 0.04);
       }
-      .stack {
+      .alt-divider {
         display: grid;
-        gap: 14px;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 12px;
+        align-items: center;
+        color: rgba(157, 176, 203, 0.9);
+        font-size: 0.86rem;
       }
-      .card {
-        border-radius: 24px;
-        padding: 18px;
+      .alt-divider::before,
+      .alt-divider::after {
+        content: "";
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--line), transparent);
+      }
+      .google-wrap {
+        min-height: 46px;
+        display: grid;
+        place-items: center;
+      }
+      .google-disabled {
+        width: 100%;
+        min-height: 54px;
+        border-radius: 20px;
+        border: 1px dashed var(--line-strong);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted);
+        font: inherit;
+      }
+      .benefits {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .benefit,
+      .side-card {
+        border-radius: var(--radius-lg);
+      }
+      .benefit {
+        padding: 16px 14px;
         border: 1px solid var(--line);
-        background: var(--panel);
-        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.03);
+        display: grid;
+        gap: 10px;
       }
-      .card h2,
-      .card h3 {
+      .benefit-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--line);
+      }
+      .benefit-icon svg {
+        width: 22px;
+        height: 22px;
+      }
+      .benefit strong {
+        font-size: 0.96rem;
+      }
+      .benefit span {
+        color: var(--muted);
+        font-size: 0.82rem;
+        line-height: 1.45;
+      }
+      .side-stack {
+        display: grid;
+        gap: 16px;
+      }
+      .side-card {
+        padding: 18px;
+      }
+      .side-card h2,
+      .side-card h3 {
         margin: 0 0 8px;
         font-family: 'Space Grotesk', sans-serif;
       }
-      .card p {
+      .side-card p {
         margin: 0;
         color: var(--muted);
         line-height: 1.6;
       }
-      .feature-grid {
+      .mini-list {
+        margin-top: 14px;
         display: grid;
-        gap: 12px;
+        gap: 10px;
       }
-      .feature {
-        padding: 16px;
+      .mini-row {
+        padding: 14px;
         border-radius: 20px;
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.03);
       }
-      .feature-tag {
-        display: inline-block;
-        margin-bottom: 8px;
-        color: var(--teal);
-        font-size: 0.76rem;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
+      .mini-row strong {
+        display: block;
+        margin-bottom: 4px;
       }
-      .stats {
+      .mini-row span {
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.45;
+      }
+      .stat-band {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
+        margin-top: 16px;
       }
       .stat {
         padding: 14px 12px;
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.03);
+        border-radius: 20px;
         border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
       }
       .stat strong {
         display: block;
         font-family: 'Space Grotesk', sans-serif;
         font-size: 1.3rem;
+        margin-bottom: 4px;
       }
       .stat span {
         color: var(--muted);
         font-size: 0.8rem;
         line-height: 1.45;
       }
+      @media (max-width: 899px) {
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .benefits,
+        .stat-band {
+          grid-template-columns: 1fr;
+        }
+      }
       @media (min-width: 900px) {
-        .page {
-          max-width: 1180px;
-          margin: 0 auto;
-          grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
-          align-items: start;
-          padding-top: 28px;
+        .shell {
+          grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+          align-items: stretch;
         }
         .hero {
-          min-height: calc(100dvh - 56px);
+          min-height: calc(100dvh - 48px);
           display: flex;
-          flex-direction: column;
+        }
+        .hero-inner {
+          width: 100%;
           justify-content: space-between;
         }
       }
@@ -193,65 +370,151 @@
   </head>
   <body>
     <main class="page">
-      <section class="hero">
-        <div>
-          <div class="brand">
-            <img src="{{ url_for('static', filename='zipp-icon.png') }}" alt="Zipp" />
-            <span>Zipp La Ceja</span>
-          </div>
-          <div class="city-pill">La nueva modalidad de transporte en La Ceja</div>
-          <h1>Muévete con estilo. Llega con Zipp.</h1>
-          <p>Una experiencia pensada para servicio ejecutivo en La Ceja: acceso rápido, conductores identificables, flujo claro desde celular y una imagen de marca mucho más pulida desde el primer toque.</p>
-
-          <div class="cta-row">
-            <a class="cta primary" href="{{ url_for('login', mode='login') }}">Iniciar sesion</a>
-            <a class="cta secondary" href="{{ url_for('login', mode='register') }}">Registrarme</a>
-          </div>
-        </div>
-
-        <div class="stats">
-          <div class="stat">
-            <strong>24/7</strong>
-            <span>Flujo listo para operar desde el celular.</span>
-          </div>
-          <div class="stat">
-            <strong>Zipp</strong>
-            <span>Imagen premium para conductores y clientes.</span>
-          </div>
-          <div class="stat">
-            <strong>Local</strong>
-            <span>Pensado para el movimiento real en La Ceja.</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="stack">
-        <article class="card">
-          <h2>Una entrada mas limpia</h2>
-          <p>Separamos el inicio del acceso para que el login no se vea amontonado ni raro en pantalla pequeña. Primero enamoras, luego haces login.</p>
-        </article>
-
-        <article class="card">
-          <h2>Lo que mejora</h2>
-          <div class="feature-grid">
-            <div class="feature">
-              <span class="feature-tag">Acceso</span>
-              <h3>Login mas simple</h3>
-              <p>Solo lo necesario. Boton principal arriba y Google abajo con su separador claro.</p>
+      <div class="shell">
+        <section class="hero">
+          <div class="hero-inner">
+            <div class="reveal">
+              <div class="topbar">
+                <div class="brand">
+                  <img src="{{ url_for('static', filename='zipp-icon.png') }}" alt="Zipp" />
+                  <span>Zipp La Ceja</span>
+                </div>
+                <div class="city-badge">La nueva modalidad de transporte en La Ceja</div>
+              </div>
             </div>
-            <div class="feature">
-              <span class="feature-tag">Perfil</span>
-              <h3>Registro entendible</h3>
-              <p>Datos por pasos, ejemplos reales y una confirmacion final antes de activar conductor.</p>
+
+            <div class="reveal delay-1">
+              <h1>Muévete con estilo. Llega con Zipp.</h1>
+              <p class="lead">
+                <strong>Zipp</strong> es el servicio ejecutivo que quiere elevar la experiencia de transporte en La Ceja:
+                una entrada clara, imagen premium y un flujo móvil pensado para que conductor y cliente se sientan en una app seria, moderna y confiable.
+              </p>
             </div>
-            <div class="feature">
-              <span class="feature-tag">Marca</span>
-              <h3>Una pagina con actitud</h3>
-              <p>Menos formulario al frente, mas identidad visual para que Zipp se sienta serio y distinto.</p>
+
+            <div class="cta-stack reveal delay-2">
+              <a class="cta cta-register" href="{{ url_for('login', mode='register') }}">Registrarme</a>
+              <a class="cta cta-login" href="{{ url_for('login', mode='login') }}">Iniciar sesion</a>
+
+              <div class="alt-divider">o tambien</div>
+
+              <div class="google-wrap" id="google-button-slot">
+                {% if not google_client_id %}
+                  <button type="button" class="google-disabled" disabled>Continuar con Google no disponible</button>
+                {% endif %}
+              </div>
+
+              <form method="post" action="{{ url_for('google_auth') }}" id="google-auth-form" hidden>
+                <input type="hidden" name="credential" id="google-credential" />
+              </form>
+            </div>
+
+            <div class="benefits reveal delay-3">
+              <article class="benefit">
+                <div class="benefit-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M12 6v6l4 2" />
+                    <circle cx="12" cy="12" r="8" />
+                  </svg>
+                </div>
+                <strong>24/7</strong>
+                <span>Siempre listo para operar desde el celular.</span>
+              </article>
+
+              <article class="benefit">
+                <div class="benefit-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M12 3l7 4v5c0 4.2-2.6 7.2-7 9-4.4-1.8-7-4.8-7-9V7l7-4z" />
+                  </svg>
+                </div>
+                <strong>Seguro</strong>
+                <span>Datos claros para reconocer conductor y carro.</span>
+              </article>
+
+              <article class="benefit">
+                <div class="benefit-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M7 12l3 3 7-7" />
+                    <circle cx="12" cy="12" r="9" />
+                  </svg>
+                </div>
+                <strong>Confianza</strong>
+                <span>Una marca local con presencia más premium.</span>
+              </article>
             </div>
           </div>
-        </article>
-      </section>
+        </section>
+
+        <aside class="side-stack">
+          <section class="side-card reveal delay-2">
+            <h2>Experiencia móvil primero</h2>
+            <p>Todo está planteado para que la primera impresión se sienta como una app de lujo: grandes áreas táctiles, jerarquía visual clara y cero pantallas pesadas.</p>
+
+            <div class="stat-band">
+              <div class="stat">
+                <strong>Zipp</strong>
+                <span>Branding más limpio y elegante.</span>
+              </div>
+              <div class="stat">
+                <strong>Dark</strong>
+                <span>Estética premium con cristal suave.</span>
+              </div>
+              <div class="stat">
+                <strong>Local</strong>
+                <span>Hecho para La Ceja.</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="side-card reveal delay-4">
+            <h3>Lo que transmite esta entrada</h3>
+            <div class="mini-list">
+              <div class="mini-row">
+                <strong>Registro con mejor vibra</strong>
+                <span>El conductor primero siente marca y confianza, luego entra al formulario.</span>
+              </div>
+              <div class="mini-row">
+                <strong>Acceso más ordenado</strong>
+                <span>Botón principal, acceso clásico y Google separados con una jerarquía mucho más entendible.</span>
+              </div>
+              <div class="mini-row">
+                <strong>Más nivel visual</strong>
+                <span>Premium dark, desenfoque de cristal y una entrada animada que se siente más app que página.</span>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
     </main>
+
+    {% if google_client_id %}
+      <script src="https://accounts.google.com/gsi/client" async defer></script>
+    {% endif %}
+    <script>
+      {% if google_client_id %}
+        window.addEventListener('load', function () {
+          const credentialInput = document.getElementById('google-credential');
+          const googleForm = document.getElementById('google-auth-form');
+          const slot = document.getElementById('google-button-slot');
+          if (!window.google || !slot || !credentialInput || !googleForm) return;
+
+          google.accounts.id.initialize({
+            client_id: {{ google_client_id|tojson }},
+            callback: function (response) {
+              if (!response || !response.credential) return;
+              credentialInput.value = response.credential;
+              googleForm.submit();
+            }
+          });
+
+          google.accounts.id.renderButton(slot, {
+            theme: 'outline',
+            size: 'large',
+            text: 'continue_with',
+            shape: 'pill',
+            width: Math.min(slot.clientWidth || 340, 360)
+          });
+        });
+      {% endif %}
+    </script>
   </body>
 </html>

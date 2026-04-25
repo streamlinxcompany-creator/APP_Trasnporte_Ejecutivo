@@ -2190,7 +2190,7 @@ def index_root():
         if row is not None and not get_conductor_subscription_snapshot(row)["suscripcion_activa"]:
             return redirect(url_for("payment_pending"))
         return redirect(url_for("inicio"))
-    return render_template("index_landing.html")
+    return render_template("index_landing.html", google_client_id=GOOGLE_CLIENT_ID)
 
 
 @app.route("/suscripcion/pago-pendiente")
