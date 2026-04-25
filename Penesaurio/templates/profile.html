@@ -227,52 +227,25 @@
         font-size: 0.88rem;
         line-height: 1.5;
       }
-      .color-group {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-      .color-option {
-        position: relative;
-      }
-      .color-option input {
-        position: absolute;
-        opacity: 0;
-        pointer-events: none;
-      }
-      .color-chip {
-        min-height: 62px;
-        border-radius: 18px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.03);
-        padding: 10px 12px;
+      .suggestion-row {
         display: flex;
-        align-items: center;
-        gap: 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .suggestion-chip {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        min-height: 38px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font: inherit;
+        font-size: 0.86rem;
         cursor: pointer;
       }
-      .color-chip-swatch {
-        width: 22px;
-        height: 22px;
-        border-radius: 999px;
-        border: 2px solid rgba(255, 255, 255, 0.5);
-        flex: 0 0 auto;
-      }
-      .color-chip-text {
-        display: grid;
-        gap: 2px;
-      }
-      .color-chip-text strong {
-        font-size: 0.92rem;
-      }
-      .color-chip-text span {
-        color: var(--muted);
-        font-size: 0.78rem;
-      }
-      .color-option input:checked + label {
-        border-color: rgba(156, 194, 255, 0.48);
-        background: rgba(156, 194, 255, 0.12);
-        box-shadow: 0 0 0 3px rgba(156, 194, 255, 0.08);
+      .suggestion-chip:hover {
+        border-color: var(--line-strong);
+        background: rgba(156, 194, 255, 0.1);
       }
       .actions {
         display: grid;
@@ -397,26 +370,26 @@
               </div>
 
               <div class="field">
-                <label>Color del carro</label>
-                <div class="color-group" role="radiogroup" aria-label="Color del carro">
+                <label for="carro_color">Color del carro</label>
+                <input
+                  id="carro_color"
+                  type="text"
+                  name="carro_color"
+                  value="{{ profile_data.carro_color }}"
+                  list="carro-color-suggestions"
+                  placeholder="Ej: rojo vino, gris plata, blanco"
+                  maxlength="40"
+                  required
+                />
+                <datalist id="carro-color-suggestions">
                   {% for option in car_color_options %}
-                    <div class="color-option">
-                      <input
-                        type="radio"
-                        id="carro-color-{{ option.value }}"
-                        name="carro_color"
-                        value="{{ option.value }}"
-                        {% if profile_data.carro_color == option.value %}checked{% endif %}
-                        required
-                      />
-                      <label class="color-chip" for="carro-color-{{ option.value }}">
-                        <span class="color-chip-swatch" style="background: {{ option.swatch }};"></span>
-                        <span class="color-chip-text">
-                          <strong>{{ option.label }}</strong>
-                          <span>Elegir color</span>
-                        </span>
-                      </label>
-                    </div>
+                    <option value="{{ option.label }}"></option>
+                  {% endfor %}
+                </datalist>
+                <div class="field-help">Puedes escribirlo a tu manera o tocar una sugerencia.</div>
+                <div class="suggestion-row" aria-label="Sugerencias de color">
+                  {% for option in car_color_options %}
+                    <button type="button" class="suggestion-chip" data-color-value="{{ option.label }}">{{ option.label }}</button>
                   {% endfor %}
                 </div>
               </div>
@@ -458,6 +431,7 @@
         const nameInput = document.getElementById('nombre_real');
         const makeInput = document.getElementById('marca_vehiculo');
         const lineInput = document.getElementById('linea_vehiculo');
+        const colorInput = document.getElementById('carro_color');
         let currentStep = 1;
 
         const steps = {
@@ -485,12 +459,11 @@
         }
 
         function updatePreview() {
-          const checkedColor = form.querySelector('input[name="carro_color"]:checked');
           const pieces = [
             nameInput.value.trim() || 'Tu nombre',
             plateInput.value.trim().toUpperCase() || 'tu placa',
             [makeInput.value.trim(), lineInput.value.trim()].filter(Boolean).join(' ') || 'tu carro',
-            checkedColor ? checkedColor.value : 'el color'
+            colorInput.value.trim() || 'el color'
           ];
           preview.textContent = `${pieces[0]}, ${pieces[1]}, ${pieces[2]} y ${pieces[3]} apareceran de forma clara cuando tomes un servicio.`;
         }
@@ -525,9 +498,13 @@
           this.value = this.value.toUpperCase().replace(/\s+/g, '');
           updatePreview();
         });
-        [nameInput, makeInput, lineInput].forEach((input) => input.addEventListener('input', updatePreview));
-        form.querySelectorAll('input[name="carro_color"]').forEach((input) => {
-          input.addEventListener('change', updatePreview);
+        [nameInput, makeInput, lineInput, colorInput].forEach((input) => input.addEventListener('input', updatePreview));
+        form.querySelectorAll('[data-color-value]').forEach((button) => {
+          button.addEventListener('click', function () {
+            colorInput.value = this.dataset.colorValue || '';
+            colorInput.focus();
+            updatePreview();
+          });
         });
 
         nextBtn.addEventListener('click', function () {

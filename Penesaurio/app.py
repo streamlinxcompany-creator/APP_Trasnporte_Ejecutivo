@@ -2242,8 +2242,8 @@ def perfil():
         carro_color = request.form.get("carro_color", "").strip().lower()
         vehiculo = " ".join(part for part in [marca, linea] if part)
 
-        valid_colors = {item["value"] for item in CAR_COLOR_OPTIONS}
-        if not nombre or not placa or not marca or not linea or not modelo or carro_color not in valid_colors:
+        carro_color = " ".join(carro_color.split())[:40]
+        if not nombre or not placa or not marca or not linea or not modelo or not carro_color:
             flash("Completa nombre, placa, marca, linea, ano y color del carro.")
             return render_profile_page(row)
 
