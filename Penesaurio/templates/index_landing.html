@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#07111e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='zipp-icon.png') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='zipp-icon.png') }}" />
+    <title>Zipp | Inicio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #07111e;
+        --panel: rgba(9, 19, 35, 0.82);
+        --line: rgba(184, 216, 255, 0.15);
+        --text: #edf4ff;
+        --muted: #96a9c7;
+        --sky: #93c5fd;
+        --teal: #67e8f9;
+        --amber: #fb923c;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        font-family: 'Sora', sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(103, 232, 249, 0.16), transparent 28%),
+          radial-gradient(circle at 100% 5%, rgba(251, 146, 60, 0.18), transparent 24%),
+          linear-gradient(180deg, #050d18 0%, #07111e 46%, #020711 100%);
+      }
+      .page {
+        padding: max(18px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+        display: grid;
+        gap: 18px;
+      }
+      .hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 32px;
+        padding: 22px;
+        background:
+          radial-gradient(circle at 80% 10%, rgba(103, 232, 249, 0.18), transparent 24%),
+          radial-gradient(circle at 12% 90%, rgba(59, 130, 246, 0.16), transparent 26%),
+          linear-gradient(160deg, rgba(8, 18, 33, 0.98), rgba(9, 20, 36, 0.92));
+        border: 1px solid var(--line);
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        font-family: 'Space Grotesk', sans-serif;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-size: 0.74rem;
+      }
+      .brand img { width: 20px; height: 20px; }
+      .city-pill {
+        margin-top: 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(251, 146, 60, 0.1);
+        border: 1px solid rgba(251, 146, 60, 0.24);
+        color: #ffd2ae;
+        font-size: 0.78rem;
+      }
+      h1 {
+        margin: 16px 0 10px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: clamp(2.5rem, 11vw, 5rem);
+        line-height: 0.95;
+        letter-spacing: -0.06em;
+      }
+      .hero p {
+        margin: 0;
+        max-width: 40rem;
+        color: var(--muted);
+        line-height: 1.65;
+        font-size: 1rem;
+      }
+      .cta-row {
+        margin-top: 22px;
+        display: grid;
+        gap: 12px;
+      }
+      .cta {
+        min-height: 58px;
+        border-radius: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 1rem;
+      }
+      .cta.primary {
+        background: linear-gradient(135deg, #dbeafe, #93c5fd);
+        color: #07111e;
+      }
+      .cta.secondary {
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+      .stack {
+        display: grid;
+        gap: 14px;
+      }
+      .card {
+        border-radius: 24px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        backdrop-filter: blur(10px);
+      }
+      .card h2,
+      .card h3 {
+        margin: 0 0 8px;
+        font-family: 'Space Grotesk', sans-serif;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .feature-grid {
+        display: grid;
+        gap: 12px;
+      }
+      .feature {
+        padding: 16px;
+        border-radius: 20px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .feature-tag {
+        display: inline-block;
+        margin-bottom: 8px;
+        color: var(--teal);
+        font-size: 0.76rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .stat {
+        padding: 14px 12px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--line);
+      }
+      .stat strong {
+        display: block;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.3rem;
+      }
+      .stat span {
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
+      @media (min-width: 900px) {
+        .page {
+          max-width: 1180px;
+          margin: 0 auto;
+          grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+          align-items: start;
+          padding-top: 28px;
+        }
+        .hero {
+          min-height: calc(100dvh - 56px);
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div>
+          <div class="brand">
+            <img src="{{ url_for('static', filename='zipp-icon.png') }}" alt="Zipp" />
+            <span>Zipp La Ceja</span>
+          </div>
+          <div class="city-pill">La nueva modalidad de transporte en La Ceja</div>
+          <h1>Muévete con estilo. Llega con Zipp.</h1>
+          <p>Una experiencia pensada para servicio ejecutivo en La Ceja: acceso rápido, conductores identificables, flujo claro desde celular y una imagen de marca mucho más pulida desde el primer toque.</p>
+
+          <div class="cta-row">
+            <a class="cta primary" href="{{ url_for('login', mode='login') }}">Iniciar sesion</a>
+            <a class="cta secondary" href="{{ url_for('login', mode='register') }}">Registrarme</a>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <strong>24/7</strong>
+            <span>Flujo listo para operar desde el celular.</span>
+          </div>
+          <div class="stat">
+            <strong>Zipp</strong>
+            <span>Imagen premium para conductores y clientes.</span>
+          </div>
+          <div class="stat">
+            <strong>Local</strong>
+            <span>Pensado para el movimiento real en La Ceja.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <article class="card">
+          <h2>Una entrada mas limpia</h2>
+          <p>Separamos el inicio del acceso para que el login no se vea amontonado ni raro en pantalla pequeña. Primero enamoras, luego haces login.</p>
+        </article>
+
+        <article class="card">
+          <h2>Lo que mejora</h2>
+          <div class="feature-grid">
+            <div class="feature">
+              <span class="feature-tag">Acceso</span>
+              <h3>Login mas simple</h3>
+              <p>Solo lo necesario. Boton principal arriba y Google abajo con su separador claro.</p>
+            </div>
+            <div class="feature">
+              <span class="feature-tag">Perfil</span>
+              <h3>Registro entendible</h3>
+              <p>Datos por pasos, ejemplos reales y una confirmacion final antes de activar conductor.</p>
+            </div>
+            <div class="feature">
+              <span class="feature-tag">Marca</span>
+              <h3>Una pagina con actitud</h3>
+              <p>Menos formulario al frente, mas identidad visual para que Zipp se sienta serio y distinto.</p>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

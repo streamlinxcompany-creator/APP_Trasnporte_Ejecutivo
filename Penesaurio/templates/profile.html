@@ -276,6 +276,47 @@
         font-size: 0.9rem;
         line-height: 1.5;
       }
+      .confirm-overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: end;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(2, 7, 17, 0.72);
+        backdrop-filter: blur(8px);
+        z-index: 40;
+      }
+      .confirm-overlay.is-open {
+        display: flex;
+      }
+      .confirm-card {
+        width: min(100%, 520px);
+        border-radius: 28px;
+        padding: 20px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(18, 27, 46, 0.98), rgba(11, 18, 32, 0.98));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+      }
+      .confirm-card h3 {
+        margin: 0 0 8px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.3rem;
+      }
+      .confirm-card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      .confirm-preview {
+        margin-top: 14px;
+        padding: 14px;
+        border-radius: 18px;
+        background: rgba(156, 194, 255, 0.08);
+        border: 1px solid rgba(156, 194, 255, 0.18);
+        color: var(--text);
+        line-height: 1.6;
+      }
       @media (min-width: 720px) {
         .field-grid.two {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -342,7 +383,7 @@
 
               <div class="field">
                 <label for="placa">Placa del vehiculo</label>
-                <input id="placa" type="text" name="placa" value="{{ profile_data.placa }}" placeholder="Ej: ABC123" maxlength="10" required />
+                <input id="placa" type="text" name="placa" value="{{ profile_data.placa }}" placeholder="Ej: ABC 123" maxlength="10" required />
                 <div class="field-help">La mostramos para que el cliente reconozca el carro correcto.</div>
               </div>
             </div>
@@ -404,13 +445,25 @@
           <div class="actions">
             <button type="button" class="btn btn-secondary" id="back-btn" hidden>Atras</button>
             <button type="button" class="btn btn-primary" id="next-btn">Continuar</button>
-            <button type="submit" class="btn btn-primary" id="submit-btn" hidden>Activar conductor</button>
+            <button type="button" class="btn btn-primary" id="submit-btn" hidden>Activar conductor</button>
           </div>
         </form>
 
         <div class="footnote">Tu informacion se usa para operar los servicios y ayudar a que el cliente te identifique mejor.</div>
       </section>
     </main>
+
+    <div class="confirm-overlay" id="confirm-overlay" aria-hidden="true">
+      <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <h3 id="confirm-title">Asi se vera tu perfil</h3>
+        <p>Antes de activar conductor, revisa como quedara tu informacion frente al cliente.</p>
+        <div class="confirm-preview" id="confirm-preview"></div>
+        <div class="actions" style="margin-top: 16px;">
+          <button type="button" class="btn btn-secondary" id="confirm-edit-btn">Editar</button>
+          <button type="button" class="btn btn-primary" id="confirm-accept-btn">Aceptar</button>
+        </div>
+      </div>
+    </div>
 
     <script>
       (function () {
@@ -427,6 +480,10 @@
         const modelSelect = document.getElementById('modelo-select');
         const selectedModel = modelSelect.dataset.selected;
         const preview = document.getElementById('vehicle-preview');
+        const confirmOverlay = document.getElementById('confirm-overlay');
+        const confirmPreview = document.getElementById('confirm-preview');
+        const confirmEditBtn = document.getElementById('confirm-edit-btn');
+        const confirmAcceptBtn = document.getElementById('confirm-accept-btn');
         const plateInput = document.getElementById('placa');
         const nameInput = document.getElementById('nombre_real');
         const makeInput = document.getElementById('marca_vehiculo');
@@ -458,14 +515,25 @@
           modelSelect.appendChild(option);
         }
 
-        function updatePreview() {
+        function titleCaseText(value) {
+          return (value || '')
+            .trim()
+            .toLowerCase()
+            .replace(/\b\w/g, function (char) { return char.toUpperCase(); });
+        }
+
+        function getPreviewText() {
           const pieces = [
             nameInput.value.trim() || 'Tu nombre',
             plateInput.value.trim().toUpperCase() || 'tu placa',
             [makeInput.value.trim(), lineInput.value.trim()].filter(Boolean).join(' ') || 'tu carro',
-            colorInput.value.trim() || 'el color'
+            titleCaseText(colorInput.value) || 'el color'
           ];
-          preview.textContent = `${pieces[0]}, ${pieces[1]}, ${pieces[2]} y ${pieces[3]} apareceran de forma clara cuando tomes un servicio.`;
+          return `${pieces[0]}, ${pieces[1]}, ${pieces[2]} y ${pieces[3]} apareceran de forma clara cuando tomes un servicio.`;
+        }
+
+        function updatePreview() {
+          preview.textContent = getPreviewText();
         }
 
         function setStep(step) {
@@ -517,9 +585,30 @@
           setStep(1);
         });
 
-        form.addEventListener('submit', function (event) {
-          if (!validateStep(2)) {
-            event.preventDefault();
+        function closeConfirm() {
+          confirmOverlay.classList.remove('is-open');
+          confirmOverlay.setAttribute('aria-hidden', 'true');
+        }
+
+        submitBtn.addEventListener('click', function () {
+          if (!validateStep(2)) return;
+          confirmPreview.textContent = getPreviewText();
+          confirmOverlay.classList.add('is-open');
+          confirmOverlay.setAttribute('aria-hidden', 'false');
+        });
+
+        confirmEditBtn.addEventListener('click', function () {
+          closeConfirm();
+        });
+
+        confirmAcceptBtn.addEventListener('click', function () {
+          closeConfirm();
+          form.submit();
+        });
+
+        confirmOverlay.addEventListener('click', function (event) {
+          if (event.target === confirmOverlay) {
+            closeConfirm();
           }
         });
 

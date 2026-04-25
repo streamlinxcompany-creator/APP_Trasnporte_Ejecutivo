@@ -3,57 +3,57 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b1220" />
+    <meta name="theme-color" content="#07121f" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='zipp-icon.png') }}" />
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='zipp-icon.png') }}" />
-    <title>Ingreso | Zipp</title>
+    <title>Acceso | Zipp</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg: #09111d;
-        --panel: rgba(12, 19, 33, 0.94);
-        --panel-soft: rgba(20, 31, 52, 0.84);
-        --line: rgba(169, 188, 219, 0.18);
-        --line-strong: rgba(169, 188, 219, 0.34);
+        --bg: #07121f;
+        --panel: rgba(10, 20, 34, 0.94);
+        --line: rgba(182, 210, 255, 0.14);
+        --line-strong: rgba(182, 210, 255, 0.32);
         --text: #edf4ff;
-        --muted: #98a8c0;
+        --muted: #95a7c4;
         --accent: #9cc2ff;
-        --accent-strong: #dce9ff;
-        --ok: #b7f0d0;
         --danger: #fecaca;
       }
-      * {
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        min-height: 100%;
-      }
+      * { box-sizing: border-box; }
       body {
         margin: 0;
+        min-height: 100dvh;
         font-family: 'Sora', sans-serif;
         color: var(--text);
         background:
-          radial-gradient(circle at top left, rgba(156, 194, 255, 0.18), transparent 34%),
-          radial-gradient(circle at 85% 10%, rgba(67, 97, 238, 0.15), transparent 28%),
-          linear-gradient(180deg, #07101b 0%, #09111d 45%, #050a12 100%);
-      }
-      .page {
-        min-height: 100dvh;
-        padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+          radial-gradient(circle at 0% 10%, rgba(14, 165, 233, 0.22), transparent 28%),
+          radial-gradient(circle at 100% 0%, rgba(249, 115, 22, 0.18), transparent 26%),
+          linear-gradient(180deg, #06101b 0%, #07121f 50%, #030814 100%);
         display: grid;
-        gap: 16px;
+        place-items: center;
+        padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
       }
-      .hero,
+      .shell {
+        width: min(100%, 430px);
+        display: grid;
+        gap: 14px;
+      }
+      .top-link {
+        justify-self: start;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.9rem;
+      }
       .card {
-        width: min(100%, 460px);
-        margin: 0 auto;
-      }
-      .hero {
-        padding: 10px 4px 0;
+        background:
+          linear-gradient(180deg, rgba(14, 25, 42, 0.98), rgba(9, 16, 29, 0.96));
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        padding: 22px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.36);
       }
       .brand {
         display: inline-flex;
@@ -61,78 +61,28 @@
         gap: 10px;
         padding: 8px 12px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(255, 255, 255, 0.04);
         border: 1px solid var(--line);
         font-family: 'Space Grotesk', sans-serif;
         letter-spacing: 0.18em;
         text-transform: uppercase;
-        font-size: 0.75rem;
+        font-size: 0.72rem;
       }
       .brand img {
         width: 20px;
         height: 20px;
       }
-      .hero h1 {
-        margin: 16px 0 10px;
+      h1 {
+        margin: 18px 0 8px;
         font-family: 'Space Grotesk', sans-serif;
-        font-size: clamp(2rem, 7vw, 3.1rem);
+        font-size: clamp(1.9rem, 7vw, 2.55rem);
         line-height: 1.02;
         letter-spacing: -0.04em;
       }
-      .hero p {
+      .sub {
         margin: 0;
         color: var(--muted);
-        line-height: 1.6;
-        max-width: 36rem;
-      }
-      .hero-points {
-        margin-top: 18px;
-        display: grid;
-        gap: 10px;
-      }
-      .hero-point {
-        padding: 13px 14px;
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--line);
-      }
-      .hero-point strong {
-        display: block;
-        font-size: 0.94rem;
-      }
-      .hero-point span {
-        display: block;
-        margin-top: 4px;
-        color: var(--muted);
-        font-size: 0.88rem;
-        line-height: 1.5;
-      }
-      .card {
-        background:
-          linear-gradient(180deg, rgba(18, 27, 46, 0.98), rgba(11, 18, 32, 0.96));
-        border: 1px solid var(--line);
-        border-radius: 28px;
-        padding: 20px;
-        box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
-      }
-      .card-top {
-        display: grid;
-        gap: 8px;
-      }
-      .eyebrow {
-        font-size: 0.72rem;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: var(--accent);
-      }
-      .card h2 {
-        margin: 0;
-        font-size: 1.28rem;
-      }
-      .card-sub {
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.5;
+        line-height: 1.55;
       }
       .toggle {
         margin-top: 18px;
@@ -141,8 +91,8 @@
         gap: 8px;
         padding: 6px;
         border-radius: 18px;
-        background: rgba(255, 255, 255, 0.04);
         border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
       }
       .toggle button {
         min-height: 46px;
@@ -158,77 +108,26 @@
         cursor: pointer;
       }
       .toggle button.is-active {
-        background: linear-gradient(135deg, #dce9ff, #9cc2ff);
-        color: #08111e;
+        background: linear-gradient(135deg, #dbeafe, #9cc2ff);
+        color: #07121f;
       }
       .flash {
-        margin-top: 16px;
+        margin-top: 14px;
         padding: 12px 14px;
         border-radius: 16px;
-        border: 1px solid rgba(254, 202, 202, 0.26);
+        border: 1px solid rgba(254, 202, 202, 0.28);
         background: rgba(127, 29, 29, 0.22);
         color: var(--danger);
         line-height: 1.5;
       }
-      .oauth-block {
-        margin-top: 18px;
-        display: grid;
-        gap: 12px;
-      }
-      .oauth-note {
-        padding: 12px 14px;
-        border-radius: 16px;
-        background: rgba(156, 194, 255, 0.08);
-        border: 1px solid rgba(156, 194, 255, 0.18);
-        color: var(--muted);
-        font-size: 0.9rem;
-        line-height: 1.5;
-      }
-      .oauth-note strong {
-        color: var(--accent-strong);
-      }
-      .google-slot {
-        min-height: 44px;
-        display: grid;
-        place-items: center;
-      }
-      .google-slot.is-disabled {
-        padding: 0;
-      }
-      .google-disabled {
-        width: 100%;
-        min-height: 52px;
-        border-radius: 16px;
-        border: 1px dashed var(--line-strong);
-        background: rgba(255, 255, 255, 0.03);
-        color: var(--muted);
-        padding: 0 14px;
-        font: inherit;
-      }
-      .divider {
-        margin: 18px 0 14px;
-        display: grid;
-        grid-template-columns: 1fr auto 1fr;
-        gap: 12px;
-        align-items: center;
-        color: rgba(152, 168, 192, 0.74);
-        font-size: 0.78rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-      .divider::before,
-      .divider::after {
-        content: "";
-        height: 1px;
-        background: var(--line);
-      }
       form {
+        margin-top: 16px;
         display: grid;
         gap: 14px;
       }
       .field {
         display: grid;
-        gap: 7px;
+        gap: 8px;
       }
       .field label {
         font-size: 0.8rem;
@@ -241,7 +140,7 @@
         min-height: 54px;
         border-radius: 16px;
         border: 1px solid var(--line);
-        background: rgba(6, 11, 20, 0.7);
+        background: rgba(3, 9, 18, 0.68);
         color: var(--text);
         padding: 0 16px;
         font: inherit;
@@ -257,92 +156,71 @@
         font-size: 0.84rem;
         line-height: 1.5;
       }
-      .register-only {
-        display: none;
-      }
-      .mode-register .register-only {
-        display: grid;
-      }
+      .register-only { display: none; }
+      .mode-register .register-only { display: grid; }
       .submit {
-        margin-top: 4px;
         min-height: 56px;
         border: none;
         border-radius: 18px;
-        background: linear-gradient(135deg, #dce9ff, #9cc2ff);
-        color: #08111e;
+        background: linear-gradient(135deg, #dbeafe, #9cc2ff);
+        color: #07121f;
         font: inherit;
         font-size: 1rem;
         font-weight: 700;
         cursor: pointer;
       }
+      .divider {
+        margin: 2px 0 0;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 12px;
+        align-items: center;
+        color: rgba(149, 167, 196, 0.8);
+        font-size: 0.8rem;
+      }
+      .divider::before,
+      .divider::after {
+        content: "";
+        height: 1px;
+        background: var(--line);
+      }
+      .google-slot {
+        min-height: 44px;
+        display: grid;
+        place-items: center;
+      }
+      .google-disabled {
+        width: 100%;
+        min-height: 52px;
+        border-radius: 16px;
+        border: 1px dashed var(--line-strong);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted);
+        font: inherit;
+      }
       .footnote {
-        margin-top: 16px;
+        margin-top: 14px;
         color: var(--muted);
         font-size: 0.9rem;
-        line-height: 1.5;
-      }
-      .seal {
-        width: min(100%, 460px);
-        margin: 0 auto;
-        text-align: center;
-        color: rgba(152, 168, 192, 0.62);
-        font-size: 0.72rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        padding-bottom: 6px;
-      }
-      @media (min-width: 900px) {
-        .page {
-          grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
-          align-items: center;
-          gap: 34px;
-          padding-inline: 28px;
-        }
-        .hero,
-        .card,
-        .seal {
-          width: 100%;
-        }
-        .seal {
-          grid-column: 1 / -1;
-        }
+        line-height: 1.55;
       }
     </style>
   </head>
   <body>
-    <main class="page">
-      <section class="hero">
-        <div class="brand">
-          <img src="{{ url_for('static', filename='zipp-icon.png') }}" alt="Zipp" />
-          <span>Zipp conductores</span>
-        </div>
-        <h1>Entrar rapido, registrar mejor.</h1>
-        <p>La idea es que el acceso y el onboarding se entiendan al instante desde el celular. Si usas Google, continuas en segundos; si eres nuevo, completamos tu perfil paso a paso.</p>
-        <div class="hero-points">
-          <div class="hero-point">
-            <strong>Inicio con Google</strong>
-            <span>Si tu cuenta es nueva, despues del acceso te llevamos directo al registro del conductor.</span>
-          </div>
-          <div class="hero-point">
-            <strong>Registro pensado para movil</strong>
-            <span>Campos claros, menos friccion y una estructura por pasos para que no se sienta pesado.</span>
-          </div>
-          <div class="hero-point">
-            <strong>Datos utiles para el cliente</strong>
-            <span>Tu nombre, placa, carro y color quedan listos para mostrar una experiencia mas confiable.</span>
-          </div>
-        </div>
-      </section>
+    <main class="shell">
+      <a class="top-link" href="{{ url_for('index_root') }}">Volver al inicio</a>
 
       <section class="card">
-        <div class="card-top">
-          <span class="eyebrow">Acceso seguro</span>
-          <h2>Ingresa a tu panel</h2>
-          <p class="card-sub" id="auth-subtitle">Entra para ver viajes disponibles y manejar tu turno sin enredos.</p>
+        <div class="brand">
+          <img src="{{ url_for('static', filename='zipp-icon.png') }}" alt="Zipp" />
+          <span>Zipp access</span>
         </div>
 
+        <h1 id="auth-title">Inicia sesion</h1>
+        <p class="sub" id="auth-subtitle">Entra a tu panel de conductor y sigue el proceso sin pantalla recargada ni distracciones.</p>
+
         <div class="toggle" role="tablist" aria-label="Acceso">
-          <button type="button" class="is-active" id="toggle-login">Iniciar sesion</button>
+          <button type="button" id="toggle-login">Iniciar sesion</button>
           <button type="button" id="toggle-register">Registrarme</button>
         </div>
 
@@ -352,30 +230,12 @@
           {% endif %}
         {% endwith %}
 
-        <div class="oauth-block">
-          <div class="oauth-note">
-            <strong>Continuar con Google.</strong>
-            Si tu cuenta no existe, empezamos el registro apenas confirmes tu correo.
-          </div>
-          <div class="google-slot {% if not google_client_id %}is-disabled{% endif %}" id="google-button-slot">
-            {% if not google_client_id %}
-              <button type="button" class="google-disabled" disabled>Google Sign-In pendiente de configurar</button>
-            {% endif %}
-          </div>
-          <form method="post" action="{{ url_for('google_auth') }}" id="google-auth-form" hidden>
-            <input type="hidden" name="credential" id="google-credential" />
-          </form>
-        </div>
-
-        <div class="divider">o sigue con tu cuenta</div>
-
-        <form method="post" action="{{ url_for('login') }}" id="auth-form" class="mode-login" data-mode="login">
+        <form method="post" action="{{ url_for('login') }}" id="auth-form" data-mode="login">
           <input type="hidden" name="action" id="auth-action" value="login" />
 
           <div class="field">
             <label for="usuario">Usuario o correo</label>
-            <input id="usuario" type="text" name="usuario" autocomplete="username" placeholder="Ej: juanperez o correo@gmail.com" required />
-            <div class="field-help register-only" id="register-user-help">Puedes usar tu correo para que luego te sea mas facil entrar tambien con Google.</div>
+            <input id="usuario" type="text" name="usuario" autocomplete="username" placeholder="Ej: nombre@gmail.com" required />
           </div>
 
           <div class="field">
@@ -386,18 +246,28 @@
           <div class="field register-only" id="confirm-wrap">
             <label for="confirm-password">Confirmar contrasena</label>
             <input id="confirm-password" type="password" name="confirm_password" autocomplete="new-password" placeholder="Repite tu contrasena" />
-            <div class="field-help">Despues del registro te llevamos a completar tus datos del conductor.</div>
+            <div class="field-help">Despues te llevamos a completar tu perfil del carro.</div>
           </div>
 
-          <button type="submit" class="submit" id="auth-submit">Entrar</button>
+          <button type="submit" class="submit" id="auth-submit">Iniciar sesion</button>
+
+          <div class="divider">O</div>
+
+          <div class="google-slot" id="google-button-slot">
+            {% if not google_client_id %}
+              <button type="button" class="google-disabled" disabled>Google Sign-In pendiente de configurar</button>
+            {% endif %}
+          </div>
+        </form>
+
+        <form method="post" action="{{ url_for('google_auth') }}" id="google-auth-form" hidden>
+          <input type="hidden" name="credential" id="google-credential" />
         </form>
 
         <div class="footnote" id="auth-footnote">
-          Si todavia no tienes cuenta, usa Registrarme o entra con Google para empezar mas rapido.
+          Si todavia no tienes cuenta, cambia a Registrarme y en el siguiente paso completas tus datos.
         </div>
       </section>
-
-      <div class="seal">StreamLinx - Protocolo de seguridad Maicol v1.0</div>
     </main>
 
     {% if google_client_id %}
@@ -405,9 +275,11 @@
     {% endif %}
     <script>
       (function () {
+        const initialMode = {{ initial_mode|tojson }};
         const form = document.getElementById('auth-form');
         const actionInput = document.getElementById('auth-action');
         const submitBtn = document.getElementById('auth-submit');
+        const title = document.getElementById('auth-title');
         const subtitle = document.getElementById('auth-subtitle');
         const footnote = document.getElementById('auth-footnote');
         const loginBtn = document.getElementById('toggle-login');
@@ -425,20 +297,21 @@
           confirmInput.required = isRegister;
           confirmInput.disabled = !isRegister;
           passwordInput.setAttribute('autocomplete', isRegister ? 'new-password' : 'current-password');
-          submitBtn.textContent = isRegister ? 'Crear cuenta y continuar' : 'Entrar';
+          title.textContent = isRegister ? 'Crea tu cuenta' : 'Inicia sesion';
           subtitle.textContent = isRegister
-            ? 'Crea tu cuenta y en el siguiente paso completamos tu perfil del vehiculo.'
-            : 'Entra para ver viajes disponibles y manejar tu turno sin enredos.';
+            ? 'Haz el registro rapido y luego completas tu perfil como conductor.'
+            : 'Entra a tu panel de conductor y sigue el proceso sin pantalla recargada ni distracciones.';
+          submitBtn.textContent = isRegister ? 'Crear cuenta' : 'Iniciar sesion';
           footnote.textContent = isRegister
-            ? 'Si ya tienes cuenta, vuelve a Iniciar sesion. Si prefieres, tambien puedes arrancar con Google.'
-            : 'Si todavia no tienes cuenta, usa Registrarme o entra con Google para empezar mas rapido.';
+            ? 'Si ya tienes cuenta, vuelve a Iniciar sesion. Tambien puedes entrar con Google.'
+            : 'Si todavia no tienes cuenta, cambia a Registrarme y en el siguiente paso completas tus datos.';
           loginBtn.classList.toggle('is-active', !isRegister);
           registerBtn.classList.toggle('is-active', isRegister);
         }
 
         loginBtn.addEventListener('click', () => setMode('login'));
         registerBtn.addEventListener('click', () => setMode('register'));
-        setMode('login');
+        setMode(initialMode || 'login');
       })();
 
       {% if google_client_id %}

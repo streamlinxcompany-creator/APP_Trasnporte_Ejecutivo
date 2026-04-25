@@ -209,8 +209,15 @@ def hydrate_conductor_session(row):
     session["conductor_carro_color"] = row["carro_color"] if "carro_color" in row.keys() else None
 
 
-def render_login_page():
-    return render_template("login.html", google_client_id=GOOGLE_CLIENT_ID)
+def render_login_page(initial_mode="login"):
+    requested_mode = (initial_mode or request.args.get("mode") or "login").strip().lower()
+    if requested_mode not in ("login", "register"):
+        requested_mode = "login"
+    return render_template(
+        "login.html",
+        google_client_id=GOOGLE_CLIENT_ID,
+        initial_mode=requested_mode,
+    )
 
 
 def render_profile_page(row=None):
@@ -221,14 +228,14 @@ def render_profile_page(row=None):
         car_color_options=CAR_COLOR_OPTIONS,
         google_client_id=GOOGLE_CLIENT_ID,
         profile_data={
-            "nombre_real": row["nombre_real"] if row else "",
-            "placa": row["placa"] if row else "",
+            "nombre_real": (row["nombre_real"] or "") if row else "",
+            "placa": (row["placa"] or "") if row else "",
             "marca_vehiculo": marca,
             "linea_vehiculo": linea,
-            "modelo": row["modelo"] if row else "",
-            "carro_color": row["carro_color"] if row and "carro_color" in row.keys() else "",
-            "usuario": row["usuario"] if row else "",
-            "email": row["email"] if row and "email" in row.keys() else "",
+            "modelo": (row["modelo"] or "") if row else "",
+            "carro_color": (row["carro_color"] or "") if row and "carro_color" in row.keys() else "",
+            "usuario": (row["usuario"] or "") if row else "",
+            "email": (row["email"] or "") if row and "email" in row.keys() else "",
         },
     )
 
@@ -2021,7 +2028,7 @@ def login():
 
         if not usuario or not password:
             flash("Usuario y contrasena son obligatorios.")
-            return render_login_page()
+            return render_login_page(action)
 
         conn = get_conn()
         admin_row = conn.execute(
@@ -2033,7 +2040,7 @@ def login():
             if action == "register":
                 flash("El usuario admin esta reservado. Inicia sesion.")
                 conn.close()
-                return render_login_page()
+                return render_login_page("register")
             if check_password_hash(admin_row["password_hash"], password):
                 conn.close()
                 session.clear()
@@ -2042,7 +2049,7 @@ def login():
                 return redirect(url_for("admin_dashboard"))
             flash("Credenciales invalidas.")
             conn.close()
-            return render_login_page()
+            return render_login_page("login")
 
         row = conn.execute(
             "SELECT * FROM conductores WHERE usuario = ?", (usuario,)
@@ -2052,15 +2059,15 @@ def login():
             if not confirm_password:
                 flash("Confirma la contrasena para registrarte.")
                 conn.close()
-                return render_login_page()
+                return render_login_page("register")
             if password != confirm_password:
                 flash("Las contrasenas no coinciden.")
                 conn.close()
-                return render_login_page()
+                return render_login_page("register")
             if row is not None:
                 flash("El usuario ya existe. Inicia sesion.")
                 conn.close()
-                return render_login_page()
+                return render_login_page("register")
             password_hash = generate_password_hash(password)
             conn.execute(
                 "INSERT INTO conductores (usuario, password_hash, email) VALUES (?, ?, ?)",
@@ -2074,11 +2081,11 @@ def login():
             if row is None:
                 flash("El usuario no existe. Registra una cuenta nueva.")
                 conn.close()
-                return render_login_page()
+                return render_login_page("login")
             if not check_password_hash(row["password_hash"], password):
                 flash("Credenciales invalidas.")
                 conn.close()
-                return render_login_page()
+                return render_login_page("login")
 
         conn.close()
         hydrate_conductor_session(row)
@@ -2089,7 +2096,7 @@ def login():
             return redirect(url_for("payment_pending"))
         return redirect(url_for("inicio"))
 
-    return render_login_page()
+    return render_login_page(request.args.get("mode", "login"))
 
 
 @app.route("/auth/google", methods=["POST"])
@@ -2105,7 +2112,7 @@ def google_auth():
     google_payload, error_message = verify_google_id_token(id_token)
     if google_payload is None:
         flash(error_message)
-        return redirect(url_for("login"))
+        return redirect(url_for("login", mode="login"))
 
     email = (google_payload.get("email") or "").strip().lower()
     google_sub = (google_payload.get("sub") or "").strip()
@@ -2183,7 +2190,7 @@ def index_root():
         if row is not None and not get_conductor_subscription_snapshot(row)["suscripcion_activa"]:
             return redirect(url_for("payment_pending"))
         return redirect(url_for("inicio"))
-    return redirect(url_for("login"))
+    return render_template("index_landing.html")
 
 
 @app.route("/suscripcion/pago-pendiente")
