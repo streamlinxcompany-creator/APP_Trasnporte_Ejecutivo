@@ -240,6 +240,14 @@ def render_profile_page(row=None):
     )
 
 
+def get_static_asset_version(filename):
+    try:
+        path = os.path.join(app.static_folder or "", filename)
+        return int(os.path.getmtime(path))
+    except Exception:
+        return 1
+
+
 def verify_google_id_token(id_token):
     if not GOOGLE_CLIENT_ID:
         return None, "Google Sign-In no esta configurado todavia."
@@ -2190,7 +2198,11 @@ def index_root():
         if row is not None and not get_conductor_subscription_snapshot(row)["suscripcion_activa"]:
             return redirect(url_for("payment_pending"))
         return redirect(url_for("inicio"))
-    return render_template("index_landing.html", google_client_id=GOOGLE_CLIENT_ID)
+    return render_template(
+        "index_landing.html",
+        google_client_id=GOOGLE_CLIENT_ID,
+        streamlinx_version=get_static_asset_version("Streamlinx.png"),
+    )
 
 
 @app.route("/suscripcion/pago-pendiente")
