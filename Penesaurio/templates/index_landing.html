@@ -67,12 +67,11 @@
         place-items: center;
       }
       .shell {
-        width: min(100%, 1120px);
+        width: min(100%, 760px);
         display: grid;
         gap: 18px;
       }
-      .hero,
-      .side-card {
+      .hero {
         border: 1px solid var(--line);
         background: var(--surface);
         backdrop-filter: blur(10px);
@@ -212,11 +211,6 @@
         color: #04111f;
         box-shadow: 0 18px 40px rgba(78, 227, 210, 0.24);
       }
-      .cta-login {
-        color: var(--text);
-        border: 1px solid var(--line-strong);
-        background: rgba(255, 255, 255, 0.04);
-      }
       .alt-divider {
         display: grid;
         grid-template-columns: 1fr auto 1fr;
@@ -250,8 +244,7 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 12px;
       }
-      .benefit,
-      .side-card {
+      .benefit {
         border-radius: var(--radius-lg);
       }
       .benefit {
@@ -282,81 +275,16 @@
         font-size: 0.82rem;
         line-height: 1.45;
       }
-      .side-stack {
-        display: grid;
-        gap: 16px;
-      }
-      .side-card {
-        padding: 18px;
-      }
-      .side-card h2,
-      .side-card h3 {
-        margin: 0 0 8px;
-        font-family: 'Space Grotesk', sans-serif;
-      }
-      .side-card p {
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.6;
-      }
-      .mini-list {
-        margin-top: 14px;
-        display: grid;
-        gap: 10px;
-      }
-      .mini-row {
-        padding: 14px;
-        border-radius: 20px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.03);
-      }
-      .mini-row strong {
-        display: block;
-        margin-bottom: 4px;
-      }
-      .mini-row span {
-        color: var(--muted);
-        font-size: 0.86rem;
-        line-height: 1.45;
-      }
-      .stat-band {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 16px;
-      }
-      .stat {
-        padding: 14px 12px;
-        border-radius: 20px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.03);
-      }
-      .stat strong {
-        display: block;
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.3rem;
-        margin-bottom: 4px;
-      }
-      .stat span {
-        color: var(--muted);
-        font-size: 0.8rem;
-        line-height: 1.45;
-      }
       @media (max-width: 899px) {
         .topbar {
           flex-direction: column;
           align-items: flex-start;
         }
-        .benefits,
-        .stat-band {
+        .benefits {
           grid-template-columns: 1fr;
         }
       }
       @media (min-width: 900px) {
-        .shell {
-          grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
-          align-items: stretch;
-        }
         .hero {
           min-height: calc(100dvh - 48px);
           display: flex;
@@ -393,7 +321,6 @@
 
             <div class="cta-stack reveal delay-2">
               <a class="cta cta-register" href="{{ url_for('login', mode='register') }}">Registrarme</a>
-              <a class="cta cta-login" href="{{ url_for('login', mode='login') }}">Iniciar sesion</a>
 
               <div class="alt-divider">o tambien</div>
 
@@ -443,46 +370,6 @@
             </div>
           </div>
         </section>
-
-        <aside class="side-stack">
-          <section class="side-card reveal delay-2">
-            <h2>Experiencia móvil primero</h2>
-            <p>Todo está planteado para que la primera impresión se sienta como una app de lujo: grandes áreas táctiles, jerarquía visual clara y cero pantallas pesadas.</p>
-
-            <div class="stat-band">
-              <div class="stat">
-                <strong>Zipp</strong>
-                <span>Branding más limpio y elegante.</span>
-              </div>
-              <div class="stat">
-                <strong>Dark</strong>
-                <span>Estética premium con cristal suave.</span>
-              </div>
-              <div class="stat">
-                <strong>Local</strong>
-                <span>Hecho para La Ceja.</span>
-              </div>
-            </div>
-          </section>
-
-          <section class="side-card reveal delay-4">
-            <h3>Lo que transmite esta entrada</h3>
-            <div class="mini-list">
-              <div class="mini-row">
-                <strong>Registro con mejor vibra</strong>
-                <span>El conductor primero siente marca y confianza, luego entra al formulario.</span>
-              </div>
-              <div class="mini-row">
-                <strong>Acceso más ordenado</strong>
-                <span>Botón principal, acceso clásico y Google separados con una jerarquía mucho más entendible.</span>
-              </div>
-              <div class="mini-row">
-                <strong>Más nivel visual</strong>
-                <span>Premium dark, desenfoque de cristal y una entrada animada que se siente más app que página.</span>
-              </div>
-            </div>
-          </section>
-        </aside>
       </div>
     </main>
 
