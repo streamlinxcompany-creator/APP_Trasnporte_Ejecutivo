@@ -1302,7 +1302,7 @@
       .te-bottom-sheet.active-service {
         left: 0;
         right: 0;
-        bottom: 0;
+        bottom: max(10px, calc(var(--nav-height) + env(safe-area-inset-bottom) - 34px));
         padding: 0;
         border-radius: 28px 28px 0 0;
         border: 1px solid rgba(148, 163, 184, 0.2);
@@ -1316,10 +1316,7 @@
         backdrop-filter: blur(18px);
       }
       .te-bottom-sheet.active-service:not(.chat-open) {
-        bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 6px);
-        height: auto !important;
-        max-height: calc(100% - var(--nav-height) - env(safe-area-inset-bottom) - 10px);
-        transform: none !important;
+        max-height: calc(100% - 8px);
       }
       .te-bottom-sheet.active-service.is-dragging {
         transition: none;
@@ -2098,6 +2095,9 @@
       .te-bottom-sheet.active-service.is-collapsed .te-chat-card {
         opacity: 0.98;
       }
+      .te-bottom-sheet.active-service.is-collapsed {
+        box-shadow: 0 -10px 24px rgba(15, 23, 42, 0.16);
+      }
       .te-stage.ui-mode-executive.has-active-service .te-map-shell {
         top: auto;
         bottom: 0;
@@ -2519,17 +2519,14 @@
         .te-bottom-sheet.active-service {
           left: 0;
           right: 0;
-          bottom: 0;
+          bottom: max(8px, calc(var(--nav-height) + env(safe-area-inset-bottom) - 34px));
           padding: 0;
           border-radius: 26px 26px 0 0;
           height: var(--active-sheet-height, 82%);
           max-height: calc(100% - 10px);
         }
         .te-bottom-sheet.active-service:not(.chat-open) {
-          bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 6px);
-          height: auto !important;
-          max-height: calc(100% - var(--nav-height) - env(safe-area-inset-bottom) - 10px);
-          transform: none !important;
+          max-height: calc(100% - 8px);
         }
         .te-stage.ui-mode-executive.has-active-service .te-map-shell {
           height: 39%;
@@ -4836,7 +4833,7 @@
       let safetyMap = null;
       let safetyDriverMarker = null;
       let availabilityRequestInFlight = false;
-      let activeServiceSheetState = hasActiveService ? 'mid' : null;
+      let activeServiceSheetState = hasActiveService ? 'expanded' : null;
       let activeServiceSheetOffset = 0;
       let chatPollTimer = null;
       let chatRequestInFlight = false;
@@ -6282,22 +6279,27 @@
             });
           }
         } else {
-          setActiveServiceSheetState('mid');
+          setActiveServiceSheetState('expanded');
         }
       }
 
       function getActiveServiceSheetMetrics() {
         if (!hasActiveService || !teStage || !serviceBottomSheet) return null;
         const stageRect = teStage.getBoundingClientRect();
-        const maxHeight = Math.max(360, stageRect.height - 14);
-        const collapsedVisible = Math.min(Math.max(220, stageRect.height * 0.3), 280);
-        const midVisible = Math.min(Math.max(330, stageRect.height * 0.52), maxHeight - 18);
+        const stageMaxHeight = Math.max(360, stageRect.height - 12);
+        const grabberHeight = activeServiceGrabber?.offsetHeight || 34;
+        const contentHeight = activeServiceContent?.scrollHeight || serviceBottomSheet.scrollHeight || 360;
+        const naturalHeight = grabberHeight + contentHeight;
+        const sheetHeight = serviceBottomSheet.classList.contains('chat-open')
+          ? stageMaxHeight
+          : Math.min(stageMaxHeight, Math.max(260, naturalHeight));
+        const collapsedVisible = Math.min(Math.max(grabberHeight + 14, 48), 64);
 
         return {
-          maxHeight,
+          maxHeight: sheetHeight,
           expanded: 0,
-          mid: Math.max(0, maxHeight - midVisible),
-          collapsed: Math.max(0, maxHeight - collapsedVisible),
+          mid: 0,
+          collapsed: Math.max(0, sheetHeight - collapsedVisible),
         };
       }
 
@@ -6332,7 +6334,7 @@
         const metrics = getActiveServiceSheetMetrics();
         if (!metrics) return;
 
-        activeServiceSheetState = nextState in metrics ? nextState : 'mid';
+        activeServiceSheetState = nextState in metrics ? nextState : 'expanded';
         applyActiveServiceSheetOffset(metrics[activeServiceSheetState], options);
         serviceBottomSheet.classList.toggle('is-expanded', activeServiceSheetState === 'expanded');
         serviceBottomSheet.classList.toggle('is-collapsed', activeServiceSheetState === 'collapsed');
@@ -6357,7 +6359,7 @@
           return;
         }
 
-        const defaultState = window.innerWidth <= 480 ? 'mid' : 'collapsed';
+        const defaultState = 'expanded';
         setActiveServiceSheetState(defaultState, { animate: false });
         serviceBottomSheet.classList.remove('is-dragging');
 
@@ -6396,7 +6398,7 @@
         activeServiceGrabber.addEventListener('keydown', (event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
-          const nextState = activeServiceSheetState === 'expanded' ? 'mid' : 'expanded';
+          const nextState = activeServiceSheetState === 'collapsed' ? 'expanded' : 'collapsed';
           setActiveServiceSheetState(nextState);
         });
 
