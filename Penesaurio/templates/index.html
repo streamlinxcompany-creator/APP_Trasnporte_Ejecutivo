@@ -1336,16 +1336,16 @@
       .te-sheet-dragger {
         display: grid;
         place-items: center;
-        gap: 8px;
-        padding: 10px 18px 12px;
+        gap: 5px;
+        padding: 7px 18px 6px;
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0));
         cursor: ns-resize;
         touch-action: none;
         user-select: none;
       }
       .te-sheet-grip {
-        width: 54px;
-        height: 6px;
+        width: 50px;
+        height: 5px;
         border-radius: 999px;
         background: rgba(71, 85, 105, 0.24);
       }
@@ -1359,7 +1359,7 @@
       .te-active-scroll {
         flex: 1 1 auto;
         overflow-y: auto;
-        padding: 0 14px calc(var(--nav-height) + env(safe-area-inset-bottom) + 34px);
+        padding: 0 12px calc(var(--nav-height) + env(safe-area-inset-bottom) + 18px);
         overscroll-behavior: contain;
       }
       .te-sheet-head.te-sheet-head-active {
@@ -1735,10 +1735,10 @@
       }
       .te-drive-card {
         display: grid;
-        gap: 14px;
-        margin: 8px 0 12px;
-        padding: 18px;
-        border-radius: 26px;
+        gap: 10px;
+        margin: 2px 0 6px;
+        padding: 12px;
+        border-radius: 22px;
         border: 1px solid rgba(148, 163, 184, 0.22);
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 251, 0.98));
         box-shadow: 0 18px 36px rgba(15, 23, 42, 0.14);
@@ -1747,7 +1747,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 14px;
+        gap: 10px;
       }
       .te-drive-client {
         min-width: 0;
@@ -1764,15 +1764,15 @@
       .te-drive-client strong {
         color: #0f172a;
         font-family: 'Space Grotesk', sans-serif;
-        font-size: clamp(1.45rem, 7vw, 2.35rem);
+        font-size: clamp(1.25rem, 6.2vw, 1.95rem);
         line-height: 1.02;
         letter-spacing: 0;
         overflow-wrap: anywhere;
       }
       .te-drive-client small {
         width: max-content;
-        margin-top: 4px;
-        padding: 6px 10px;
+        margin-top: 2px;
+        padding: 5px 9px;
         border-radius: 999px;
         background: rgba(16, 185, 129, 0.12);
         color: #047857;
@@ -1784,13 +1784,14 @@
       .te-drive-quick-actions {
         flex: 0 0 auto;
         display: grid;
-        grid-template-columns: repeat(2, 58px);
-        gap: 10px;
+        grid-template-columns: 52px 64px;
+        align-items: center;
+        gap: 8px;
       }
       .te-drive-icon-btn {
         position: relative;
-        width: 58px;
-        height: 58px;
+        width: 52px;
+        height: 52px;
         border: 0;
         border-radius: 999px;
         display: inline-flex;
@@ -1802,8 +1803,8 @@
       .te-drive-icon-btn svg {
         position: relative;
         z-index: 1;
-        width: 28px;
-        height: 28px;
+        width: 25px;
+        height: 25px;
         fill: none;
         stroke: currentColor;
         stroke-width: 2;
@@ -1840,23 +1841,52 @@
         box-shadow: 0 12px 24px rgba(234, 88, 12, 0.24);
       }
       .te-drive-message {
+        width: 64px;
+        height: 64px;
         background: #b8ff1a;
         color: #102006;
         box-shadow: 0 14px 26px rgba(101, 163, 13, 0.28);
       }
+      .te-drive-message svg {
+        width: 31px;
+        height: 31px;
+      }
+      .te-chat-unread-badge {
+        position: absolute;
+        top: -5px;
+        right: -4px;
+        z-index: 2;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 6px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #f8fafc;
+        background: #ef4444;
+        color: #ffffff;
+        font-size: 0.68rem;
+        font-weight: 900;
+        line-height: 1;
+        box-shadow: 0 8px 16px rgba(239, 68, 68, 0.28);
+      }
+      .te-chat-unread-badge.is-hidden {
+        display: none;
+      }
       .te-drive-destination {
         display: grid;
-        grid-template-columns: 34px minmax(0, 1fr);
-        gap: 10px;
+        grid-template-columns: 30px minmax(0, 1fr);
+        gap: 8px;
         align-items: start;
-        padding: 12px;
-        border-radius: 18px;
+        padding: 10px;
+        border-radius: 16px;
         background: #111827;
         color: #f8fafc;
       }
       .te-drive-destination span {
-        width: 28px;
-        height: 28px;
+        width: 26px;
+        height: 26px;
         border-radius: 999px;
         display: inline-flex;
         align-items: center;
@@ -1868,37 +1898,37 @@
       }
       .te-drive-destination strong {
         min-width: 0;
-        font-size: 1rem;
-        line-height: 1.35;
+        font-size: 0.92rem;
+        line-height: 1.28;
         font-weight: 700;
         overflow-wrap: anywhere;
       }
       .te-drive-reference {
-        margin-top: -4px;
+        margin-top: -2px;
         padding: 0 2px;
         color: #475569;
-        font-size: 0.86rem;
-        line-height: 1.35;
+        font-size: 0.8rem;
+        line-height: 1.28;
         overflow-wrap: anywhere;
       }
       .te-drive-nav {
         display: grid;
         grid-template-columns: 1.08fr 1fr 1fr;
-        gap: 9px;
+        gap: 8px;
       }
       .te-drive-nav-auto,
       .te-drive-nav-app {
         min-width: 0;
-        min-height: 58px;
-        border-radius: 18px;
+        min-height: 48px;
+        border-radius: 15px;
         border: 1px solid rgba(148, 163, 184, 0.2);
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        padding: 0 10px;
+        padding: 0 8px;
         color: #0f172a;
-        font-size: 0.78rem;
+        font-size: 0.72rem;
         font-weight: 900;
         letter-spacing: 0.06em;
         text-decoration: none;
@@ -1908,7 +1938,7 @@
         border: 0;
         background: linear-gradient(135deg, #1d4ed8, #06b6d4);
         color: #f8fafc;
-        box-shadow: 0 14px 24px rgba(37, 99, 235, 0.22);
+        box-shadow: 0 10px 18px rgba(37, 99, 235, 0.2);
       }
       .te-drive-nav-app.google {
         background: #ffffff;
@@ -1918,9 +1948,9 @@
         border-color: rgba(6, 182, 212, 0.24);
       }
       .te-drive-nav-app span {
-        width: 24px;
-        height: 24px;
-        border-radius: 8px;
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1938,11 +1968,11 @@
         color: #083344;
       }
       .te-drive-finish {
-        margin: 2px 0 0;
+        margin: 0;
       }
       .te-drive-finish .swipe-track {
-        min-height: 58px;
-        padding: 7px 10px;
+        min-height: 50px;
+        padding: 6px 8px;
         border-color: rgba(217, 119, 6, 0.24);
         background: linear-gradient(135deg, #fff7d6 0%, #fde68a 100%);
         color: #78350f;
@@ -1951,15 +1981,15 @@
         background: linear-gradient(90deg, rgba(245, 158, 11, 0.38), rgba(245, 158, 11, 0.12));
       }
       .te-drive-finish .swipe-handle {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         background: linear-gradient(135deg, #f59e0b, #d97706);
         color: #fffbeb;
         box-shadow: 0 10px 18px rgba(217, 119, 6, 0.24);
       }
       .te-drive-finish .swipe-text {
         color: #78350f;
-        font-size: 0.72rem;
+        font-size: 0.66rem;
         letter-spacing: 0.08em;
       }
       .chat-header {
@@ -2074,7 +2104,7 @@
         left: 0;
         right: 0;
         bottom: auto;
-        height: 64%;
+        height: 56%;
         max-height: none;
         border-radius: 0 0 30px 30px;
         transform: none !important;
@@ -2085,7 +2115,7 @@
         display: none;
       }
       .te-stage.ui-mode-executive.has-active-service .te-active-scroll {
-        padding: 18px 16px calc(env(safe-area-inset-bottom) + 18px);
+        padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px);
       }
       .te-stage.ui-mode-executive.has-active-service .te-active-overview,
       .te-stage.ui-mode-executive.has-active-service .te-chat-panel {
@@ -2494,17 +2524,17 @@
           height: 39%;
         }
         .te-stage.ui-mode-executive.has-active-service .te-bottom-sheet.active-service {
-          height: 66%;
+          height: 58%;
           border-radius: 0 0 26px 26px;
         }
         .te-stage.ui-mode-executive.has-active-service .te-active-scroll {
-          padding: 16px 12px calc(env(safe-area-inset-bottom) + 16px);
+          padding: 8px 10px calc(env(safe-area-inset-bottom) + 10px);
         }
         .te-active-scroll {
-          padding: 0 12px calc(var(--nav-height) + env(safe-area-inset-bottom) + 38px);
+          padding: 0 10px calc(var(--nav-height) + env(safe-area-inset-bottom) + 18px);
         }
         .te-sheet-dragger {
-          padding: 10px 14px 10px;
+          padding: 7px 14px 6px;
         }
         .te-sheet-drag-copy {
           font-size: 0.62rem;
@@ -2530,39 +2560,47 @@
           font-size: 0.68rem;
         }
         .te-drive-card {
-          margin: 6px 0 10px;
-          padding: 14px;
-          border-radius: 22px;
-          gap: 12px;
+          margin: 0 0 4px;
+          padding: 10px;
+          border-radius: 20px;
+          gap: 9px;
         }
         .te-drive-top {
           align-items: start;
         }
         .te-drive-client strong {
-          font-size: clamp(1.32rem, 8vw, 2rem);
+          font-size: clamp(1.16rem, 7.1vw, 1.7rem);
         }
         .te-drive-quick-actions {
-          grid-template-columns: repeat(2, 52px);
-          gap: 8px;
+          grid-template-columns: 48px 58px;
+          gap: 7px;
         }
         .te-drive-icon-btn {
-          width: 52px;
-          height: 52px;
+          width: 48px;
+          height: 48px;
         }
         .te-drive-icon-btn svg {
-          width: 25px;
-          height: 25px;
+          width: 23px;
+          height: 23px;
+        }
+        .te-drive-message {
+          width: 58px;
+          height: 58px;
+        }
+        .te-drive-message svg {
+          width: 28px;
+          height: 28px;
         }
         .te-drive-destination {
-          grid-template-columns: 30px minmax(0, 1fr);
-          padding: 11px;
+          grid-template-columns: 28px minmax(0, 1fr);
+          padding: 9px;
         }
         .te-drive-destination span {
-          width: 26px;
-          height: 26px;
+          width: 24px;
+          height: 24px;
         }
         .te-drive-destination strong {
-          font-size: 0.92rem;
+          font-size: 0.86rem;
         }
         .te-drive-nav {
           grid-template-columns: 1fr 1fr;
@@ -4019,6 +4057,12 @@
           <section class="page" data-page="servicios">
             {% set active_lat = active_pedido.detalles.get('Latitude', active_pedido.detalles.get('Latitud', '')) if active_pedido else '' %}
             {% set active_lng = active_pedido.detalles.get('Longitude', active_pedido.detalles.get('Longitud', '')) if active_pedido else '' %}
+            {% set active_address = active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) if active_pedido else '' %}
+            {% set active_reference = active_pedido.detalles.get('Referencia', '') if active_pedido else '' %}
+            {% set active_coords_text = active_lat ~ ',' ~ active_lng %}
+            {% set active_address_compact = active_address|replace(' ', '') %}
+            {% set active_address_has_coords = active_lat and active_lng and active_lat in active_address and active_lng in active_address %}
+            {% set active_display_address = active_reference if active_reference and (active_address_compact == active_coords_text or active_address == 'Ubicacion compartida' or active_address_has_coords) else active_address %}
             <div class="servicios-panel te-panel-shell">
               <div class="te-stage{% if active_pedido %} has-active-service{% endif %}{% if ui_mode == 'executive' %} ui-mode-executive{% endif %}" id="teStage">
                 <div class="route-map-wrap te-map-shell" id="serviceMapWrap"
@@ -4213,6 +4257,7 @@
                                   <path d="M8 11h8" />
                                   <path d="M8 15h5" />
                                 </svg>
+                                <span class="te-chat-unread-badge is-hidden" id="chatUnreadBadge" aria-hidden="true">0</span>
                                 <span class="visually-hidden" id="chatLauncherPreview">Abrir chat</span>
                               </button>
                             </div>
@@ -4220,11 +4265,11 @@
 
                           <div class="te-drive-destination">
                             <span>A</span>
-                            <strong>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</strong>
+                            <strong>{{ active_display_address }}</strong>
                           </div>
-                          {% if active_pedido.detalles.get('Referencia') %}
+                          {% if active_reference and active_reference != active_display_address %}
                           <div class="te-drive-reference">
-                            {{ active_pedido.detalles.get('Referencia') }}
+                            {{ active_reference }}
                           </div>
                           {% endif %}
 
@@ -4235,17 +4280,17 @@
                               id="openNavigationBtn"
                               data-destination-lat="{{ active_lat }}"
                               data-destination-lng="{{ active_lng }}"
-                              data-destination-address="{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}"
+                              data-destination-address="{{ active_address }}"
                               data-destination-label="{{ active_pedido.detalles.get('Nombre', 'Cliente') }}"
                               data-destination-phone="{{ active_pedido.cliente_telefono }}"
                             >
                               Navegar
                             </button>
-                            <a class="te-drive-nav-app google" id="googleMapsBtn" href="https://www.google.com/maps/search/?api=1&query={{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente)|urlencode }}" target="_blank" rel="noopener">
+                            <a class="te-drive-nav-app google" id="googleMapsBtn" href="https://www.google.com/maps/search/?api=1&query={{ active_address|urlencode }}" target="_blank" rel="noopener">
                               <span>G</span>
                               Google
                             </a>
-                            <a class="te-drive-nav-app waze" id="wazeBtn" href="https://waze.com/ul?q={{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente)|urlencode }}&navigate=yes" target="_blank" rel="noopener">
+                            <a class="te-drive-nav-app waze" id="wazeBtn" href="https://waze.com/ul?q={{ active_address|urlencode }}&navigate=yes" target="_blank" rel="noopener">
                               <span>W</span>
                               Waze
                             </a>
@@ -4711,6 +4756,7 @@
       const activeChatPanel = document.getElementById('activeChatPanel');
       const openChatPanelBtn = document.getElementById('openChatPanelBtn');
       const closeChatPanelBtn = document.getElementById('closeChatPanelBtn');
+      const chatUnreadBadge = document.getElementById('chatUnreadBadge');
       const chatLauncherPreview = document.getElementById('chatLauncherPreview');
       const activeSheetDragCopy = document.querySelector('.te-sheet-drag-copy');
       const openNavigationBtn = document.getElementById('openNavigationBtn');
@@ -4784,6 +4830,7 @@
       let chatPollTimer = null;
       let chatRequestInFlight = false;
       let chatIncomingToastTimer = null;
+      let chatUnreadCount = 0;
       let notificationsSeen = false;
       let notificationDigest = '';
       let activeTopDropdown = '';
@@ -6023,6 +6070,17 @@
         return bubble;
       }
 
+      function setChatUnreadCount(count) {
+        chatUnreadCount = Math.max(0, Number(count) || 0);
+        if (!chatUnreadBadge) return;
+        chatUnreadBadge.textContent = chatUnreadCount > 9 ? '9+' : String(chatUnreadCount);
+        chatUnreadBadge.classList.toggle('is-hidden', chatUnreadCount === 0);
+      }
+
+      function addChatUnreadCount(amount) {
+        setChatUnreadCount(chatUnreadCount + Math.max(0, Number(amount) || 0));
+      }
+
       function appendChatMessages(messages, options = {}) {
         if (!chatMessages || !Array.isArray(messages) || !messages.length) return;
         const nearBottom =
@@ -6048,6 +6106,7 @@
         const latestClientMessage = [...messages].reverse().find((message) => message.sender === 'cliente');
         const chatIsVisible = serviceBottomSheet?.classList.contains('chat-open') && document.querySelector('.page.is-active')?.dataset.page === 'servicios';
         if (latestClientMessage && !options.silent && !chatIsVisible) {
+          addChatUnreadCount(messages.filter((message) => message.sender === 'cliente').length);
           showIncomingChatToast(latestClientMessage.message || '');
         }
       }
@@ -6188,6 +6247,9 @@
       function setActiveChatPanel(open) {
         if (!hasActiveService || !serviceBottomSheet) return;
         serviceBottomSheet.classList.toggle('chat-open', Boolean(open));
+        if (open) {
+          setChatUnreadCount(0);
+        }
         if (activeSheetDragCopy) {
           activeSheetDragCopy.textContent = open
             ? 'Chat'
@@ -6217,8 +6279,8 @@
         if (!hasActiveService || !teStage || !serviceBottomSheet) return null;
         const stageRect = teStage.getBoundingClientRect();
         const maxHeight = Math.max(360, stageRect.height - 14);
-        const collapsedVisible = Math.min(Math.max(250, stageRect.height * 0.34), 310);
-        const midVisible = Math.min(Math.max(420, stageRect.height * 0.62), maxHeight - 18);
+        const collapsedVisible = Math.min(Math.max(220, stageRect.height * 0.3), 280);
+        const midVisible = Math.min(Math.max(330, stageRect.height * 0.52), maxHeight - 18);
 
         return {
           maxHeight,
