@@ -1733,6 +1733,235 @@
         color: #92400e;
         font-size: 0.7rem;
       }
+      .te-drive-card {
+        display: grid;
+        gap: 14px;
+        margin: 8px 0 12px;
+        padding: 18px;
+        border-radius: 26px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 251, 0.98));
+        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.14);
+      }
+      .te-drive-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+      .te-drive-client {
+        min-width: 0;
+        display: grid;
+        gap: 2px;
+      }
+      .te-drive-client span {
+        color: #475569;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .te-drive-client strong {
+        color: #0f172a;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: clamp(1.45rem, 7vw, 2.35rem);
+        line-height: 1.02;
+        letter-spacing: 0;
+        overflow-wrap: anywhere;
+      }
+      .te-drive-client small {
+        width: max-content;
+        margin-top: 4px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(16, 185, 129, 0.12);
+        color: #047857;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .te-drive-quick-actions {
+        flex: 0 0 auto;
+        display: grid;
+        grid-template-columns: repeat(2, 58px);
+        gap: 10px;
+      }
+      .te-drive-icon-btn {
+        position: relative;
+        width: 58px;
+        height: 58px;
+        border: 0;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .te-drive-icon-btn svg {
+        position: relative;
+        z-index: 1;
+        width: 28px;
+        height: 28px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .te-drive-safety {
+        --hold-progress: 0deg;
+        background: #fff7ed;
+        color: #b45309;
+        box-shadow: 0 12px 24px rgba(180, 83, 9, 0.16);
+      }
+      .te-drive-safety .te-hold-ring {
+        position: absolute;
+        inset: -4px;
+        border-radius: inherit;
+        background: conic-gradient(#f97316 var(--hold-progress), rgba(251, 146, 60, 0.2) 0deg);
+        opacity: 0;
+        transition: opacity 0.18s ease;
+      }
+      .te-drive-safety .te-hold-ring::after {
+        content: '';
+        position: absolute;
+        inset: 4px;
+        border-radius: inherit;
+        background: #fff7ed;
+      }
+      .te-drive-safety.is-holding .te-hold-ring,
+      .te-drive-safety.is-armed .te-hold-ring {
+        opacity: 1;
+      }
+      .te-drive-safety.is-armed {
+        color: #9a3412;
+        box-shadow: 0 12px 24px rgba(234, 88, 12, 0.24);
+      }
+      .te-drive-message {
+        background: #b8ff1a;
+        color: #102006;
+        box-shadow: 0 14px 26px rgba(101, 163, 13, 0.28);
+      }
+      .te-drive-destination {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        padding: 12px;
+        border-radius: 18px;
+        background: #111827;
+        color: #f8fafc;
+      }
+      .te-drive-destination span {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #60a5fa;
+        color: #082f49;
+        font-size: 0.8rem;
+        font-weight: 900;
+      }
+      .te-drive-destination strong {
+        min-width: 0;
+        font-size: 1rem;
+        line-height: 1.35;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+      .te-drive-reference {
+        margin-top: -4px;
+        padding: 0 2px;
+        color: #475569;
+        font-size: 0.86rem;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+      }
+      .te-drive-nav {
+        display: grid;
+        grid-template-columns: 1.08fr 1fr 1fr;
+        gap: 9px;
+      }
+      .te-drive-nav-auto,
+      .te-drive-nav-app {
+        min-width: 0;
+        min-height: 58px;
+        border-radius: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 10px;
+        color: #0f172a;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+      .te-drive-nav-auto {
+        border: 0;
+        background: linear-gradient(135deg, #1d4ed8, #06b6d4);
+        color: #f8fafc;
+        box-shadow: 0 14px 24px rgba(37, 99, 235, 0.22);
+      }
+      .te-drive-nav-app.google {
+        background: #ffffff;
+      }
+      .te-drive-nav-app.waze {
+        background: #e9fbff;
+        border-color: rgba(6, 182, 212, 0.24);
+      }
+      .te-drive-nav-app span {
+        width: 24px;
+        height: 24px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.76rem;
+        font-weight: 900;
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+      .te-drive-nav-app.google span {
+        background: linear-gradient(135deg, #4285f4 0%, #34a853 38%, #fbbc05 68%, #ea4335 100%);
+        color: #ffffff;
+      }
+      .te-drive-nav-app.waze span {
+        background: #67e8f9;
+        color: #083344;
+      }
+      .te-drive-finish {
+        margin: 2px 0 0;
+      }
+      .te-drive-finish .swipe-track {
+        min-height: 58px;
+        padding: 7px 10px;
+        border-color: rgba(217, 119, 6, 0.24);
+        background: linear-gradient(135deg, #fff7d6 0%, #fde68a 100%);
+        color: #78350f;
+      }
+      .te-drive-finish .swipe-progress {
+        background: linear-gradient(90deg, rgba(245, 158, 11, 0.38), rgba(245, 158, 11, 0.12));
+      }
+      .te-drive-finish .swipe-handle {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: #fffbeb;
+        box-shadow: 0 10px 18px rgba(217, 119, 6, 0.24);
+      }
+      .te-drive-finish .swipe-text {
+        color: #78350f;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
       .chat-header {
         display: flex;
         align-items: start;
@@ -2299,6 +2528,47 @@
         }
         .te-active-chip {
           font-size: 0.68rem;
+        }
+        .te-drive-card {
+          margin: 6px 0 10px;
+          padding: 14px;
+          border-radius: 22px;
+          gap: 12px;
+        }
+        .te-drive-top {
+          align-items: start;
+        }
+        .te-drive-client strong {
+          font-size: clamp(1.32rem, 8vw, 2rem);
+        }
+        .te-drive-quick-actions {
+          grid-template-columns: repeat(2, 52px);
+          gap: 8px;
+        }
+        .te-drive-icon-btn {
+          width: 52px;
+          height: 52px;
+        }
+        .te-drive-icon-btn svg {
+          width: 25px;
+          height: 25px;
+        }
+        .te-drive-destination {
+          grid-template-columns: 30px minmax(0, 1fr);
+          padding: 11px;
+        }
+        .te-drive-destination span {
+          width: 26px;
+          height: 26px;
+        }
+        .te-drive-destination strong {
+          font-size: 0.92rem;
+        }
+        .te-drive-nav {
+          grid-template-columns: 1fr 1fr;
+        }
+        .te-drive-nav-auto {
+          grid-column: 1 / -1;
         }
         .te-active-card .servicios-row {
           grid-template-columns: 68px minmax(0, 1fr);
@@ -3906,78 +4176,62 @@
                   {% if active_pedido %}
                     <div class="te-sheet-dragger" id="activeServiceGrabber" role="button" tabindex="0" aria-label="Deslizar panel del servicio">
                       <span class="te-sheet-grip" aria-hidden="true"></span>
-                      <span class="te-sheet-drag-copy">Desliza para ver mapa, acciones y chat</span>
+                      <span class="te-sheet-drag-copy">Servicio activo</span>
                     </div>
 
                     <div class="te-active-scroll" id="activeServiceContent">
                       <div class="te-active-overview" id="activeServiceOverview">
-                        <div class="te-sheet-head te-sheet-head-active">
-                          <div>
-                            <div class="te-sheet-kicker">Servicio en curso</div>
-                            <div class="te-sheet-title">{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</div>
-                            <div class="te-sheet-sub">{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</div>
+                        <div class="te-drive-card">
+                          <div class="te-drive-top">
+                            <div class="te-drive-client">
+                              <span>Cliente</span>
+                              <strong>{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</strong>
+                              <small>En ruta</small>
+                            </div>
+                            <div class="te-drive-quick-actions">
+                              <button
+                                type="button"
+                                class="te-drive-icon-btn te-drive-safety"
+                                id="activeSafetyHoldBtn"
+                                aria-label="Mantener presionado para activar ayuda"
+                              >
+                                <span class="te-hold-ring" aria-hidden="true"></span>
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M12 3l7 3v5c0 4.7-2.8 8.4-7 10-4.2-1.6-7-5.3-7-10V6l7-3z" />
+                                  <path d="M12 8v5" />
+                                  <path d="M12 16h.01" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                class="te-drive-icon-btn te-drive-message"
+                                id="openChatPanelBtn"
+                                aria-label="Abrir mensajes"
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.7-4A8 8 0 1 1 21 12z" />
+                                  <path d="M8 11h8" />
+                                  <path d="M8 15h5" />
+                                </svg>
+                                <span class="visually-hidden" id="chatLauncherPreview">Abrir chat</span>
+                              </button>
+                            </div>
                           </div>
-                          <div class="te-sheet-meta">
-                            <strong>{{ active_pedido.hora }}</strong>
-                            <span class="te-active-summary">En ruta</span>
-                          </div>
-                        </div>
 
-                        <div class="te-active-hero">
-                          <div class="te-active-route">
-                            <span class="te-active-route-label">Origen</span>
+                          <div class="te-drive-destination">
+                            <span>A</span>
                             <strong>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</strong>
                           </div>
                           {% if active_pedido.detalles.get('Referencia') %}
-                          <div class="te-active-route">
-                            <span class="te-active-route-label">Referencia</span>
-                            <strong>{{ active_pedido.detalles.get('Referencia') }}</strong>
+                          <div class="te-drive-reference">
+                            {{ active_pedido.detalles.get('Referencia') }}
                           </div>
                           {% endif %}
-                          <div class="te-active-chip-row">
-                            <span class="te-active-chip">{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</span>
-                            <span class="te-active-chip te-active-chip-status">Listo para navegar</span>
-                          </div>
-                        </div>
 
-                        <button type="button" class="te-chat-launcher" id="openChatPanelBtn">
-                          <div class="te-chat-launcher-top">
-                            <div>
-                              <div class="te-chat-launcher-kicker">Mensajes</div>
-                              <div class="te-chat-launcher-title">Chat</div>
-                            </div>
-                            <span class="te-chat-launcher-pill">En vivo</span>
-                          </div>
-                          <div class="te-chat-launcher-copy">Abre el chat cuando necesites escribirle al cliente, sin dejar todo tan pegado en la pantalla.</div>
-                          <div class="te-chat-launcher-preview">
-                            <span id="chatLauncherPreview">Ver conversacion con el cliente</span>
-                            <strong>Abrir</strong>
-                          </div>
-                        </button>
-
-                        <div class="servicios-card active te-active-card te-service-summary-card">
-                          <div class="te-card-eyebrow">Servicio</div>
-                          <div class="servicios-title">Datos del servicio</div>
-                          <div class="te-service-summary-grid">
-                            <div class="te-service-summary-item is-wide">
-                              <span>Origen</span>
-                              <strong>{{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) }}</strong>
-                            </div>
-                            {% if active_pedido.detalles.get('Referencia') %}
-                            <div class="te-service-summary-item is-wide">
-                              <span>Referencia</span>
-                              <strong>{{ active_pedido.detalles.get('Referencia') }}</strong>
-                            </div>
-                            {% endif %}
-                            <div class="te-service-summary-item">
-                              <span>Cliente</span>
-                              <strong>{{ active_pedido.detalles.get('Nombre', 'Cliente') }}</strong>
-                            </div>
-                          </div>
-                          <div class="te-active-actions">
+                          <div class="te-drive-nav">
                             <button
                               type="button"
-                              class="nav-btn"
+                              class="te-drive-nav-auto"
                               id="openNavigationBtn"
                               data-destination-lat="{{ active_lat }}"
                               data-destination-lng="{{ active_lng }}"
@@ -3985,20 +4239,25 @@
                               data-destination-label="{{ active_pedido.detalles.get('Nombre', 'Cliente') }}"
                               data-destination-phone="{{ active_pedido.cliente_telefono }}"
                             >
-                              Abrir en mi app
+                              Navegar
                             </button>
-                            <div class="te-nav-options">
-                              <a class="te-nav-option google" id="googleMapsBtn" href="https://www.google.com/maps/search/?api=1&query={{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente)|urlencode }}" target="_blank" rel="noopener">Google</a>
-                              <a class="te-nav-option waze" id="wazeBtn" href="https://waze.com/ul?q={{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente)|urlencode }}&navigate=yes" target="_blank" rel="noopener">Waze</a>
-                            </div>
-                            <form method="post" action="{{ url_for('finalizar_servicio') }}">
-                              <div class="swipe-track" data-swipe>
-                                <div class="swipe-progress"></div>
-                                <span class="swipe-handle">></span>
-                                <span class="swipe-text">Desliza para finalizar servicio</span>
-                              </div>
-                            </form>
+                            <a class="te-drive-nav-app google" id="googleMapsBtn" href="https://www.google.com/maps/search/?api=1&query={{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente)|urlencode }}" target="_blank" rel="noopener">
+                              <span>G</span>
+                              Google
+                            </a>
+                            <a class="te-drive-nav-app waze" id="wazeBtn" href="https://waze.com/ul?q={{ active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente)|urlencode }}&navigate=yes" target="_blank" rel="noopener">
+                              <span>W</span>
+                              Waze
+                            </a>
                           </div>
+
+                          <form method="post" action="{{ url_for('finalizar_servicio') }}" class="te-drive-finish">
+                            <div class="swipe-track" data-swipe>
+                              <div class="swipe-progress"></div>
+                              <span class="swipe-handle">></span>
+                              <span class="swipe-text">Desliza para finalizar</span>
+                            </div>
+                          </form>
                         </div>
                       </div>
 
@@ -4014,9 +4273,8 @@
                           </div>
                         </div>
                         <div class="te-chat-panel-card">
-                          <div class="te-chat-card-copy">Escribe cuando lo necesites. Dejamos mas aire dentro del chat para que la conversacion respire mejor.</div>
                           <div class="te-chat-direct-note{% if active_pedido and active_pedido.chat_iniciado %} is-visible{% endif %}" id="chatDirectNotice">
-                            A partir de este momento, todos tus mensajes se enviaran directamente al conductor.
+                            A partir de este momento, tus mensajes van directo al cliente.
                           </div>
                           <div class="chat-messages" id="chatMessages" data-last-id="{% if chat_messages %}{{ chat_messages[-1].id }}{% else %}0{% endif %}">
                             {% for msg in chat_messages %}
@@ -4456,6 +4714,7 @@
       const chatLauncherPreview = document.getElementById('chatLauncherPreview');
       const activeSheetDragCopy = document.querySelector('.te-sheet-drag-copy');
       const openNavigationBtn = document.getElementById('openNavigationBtn');
+      const activeSafetyHoldBtn = document.getElementById('activeSafetyHoldBtn');
       const googleMapsBtn = document.getElementById('googleMapsBtn');
       const wazeBtn = document.getElementById('wazeBtn');
       const accountAvailabilityToggle = document.getElementById('accountAvailabilityToggle');
@@ -5834,13 +6093,105 @@
         });
       }
 
+      function initActiveSafetyHoldButton() {
+        if (!hasActiveService || !activeSafetyHoldBtn) return;
+
+        const holdMs = 1200;
+        let holdTimer = null;
+        let progressFrame = null;
+        let startAt = 0;
+        let armed = false;
+
+        const setHoldProgress = (progress) => {
+          activeSafetyHoldBtn.style.setProperty('--hold-progress', `${Math.min(Math.max(progress, 0), 1) * 360}deg`);
+        };
+
+        const clearHold = (options = {}) => {
+          if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+          }
+          if (progressFrame) {
+            cancelAnimationFrame(progressFrame);
+            progressFrame = null;
+          }
+          if (!options.keepArmed) {
+            armed = false;
+            activeSafetyHoldBtn.classList.remove('is-holding', 'is-armed');
+            setHoldProgress(0);
+          }
+        };
+
+        const tickProgress = () => {
+          const elapsed = performance.now() - startAt;
+          setHoldProgress(elapsed / holdMs);
+          if (elapsed < holdMs && !armed) {
+            progressFrame = requestAnimationFrame(tickProgress);
+          }
+        };
+
+        const activateHold = () => {
+          armed = true;
+          clearHold({ keepArmed: true });
+          activeSafetyHoldBtn.classList.remove('is-holding');
+          activeSafetyHoldBtn.classList.add('is-armed');
+          setHoldProgress(1);
+          if (navigator.vibrate) {
+            navigator.vibrate([70, 45, 70]);
+          }
+          showToast('Ayuda de seguridad confirmada.', 1800);
+          setTimeout(() => {
+            activeSafetyHoldBtn.classList.remove('is-armed');
+            setHoldProgress(0);
+            armed = false;
+          }, 1600);
+        };
+
+        const startHold = (event) => {
+          if (armed) return;
+          clearHold();
+          startAt = performance.now();
+          activeSafetyHoldBtn.classList.add('is-holding');
+          setHoldProgress(0);
+          if (event?.pointerId !== undefined && activeSafetyHoldBtn.setPointerCapture) {
+            activeSafetyHoldBtn.setPointerCapture(event.pointerId);
+          }
+          if (navigator.vibrate) {
+            navigator.vibrate(18);
+          }
+          holdTimer = setTimeout(activateHold, holdMs);
+          progressFrame = requestAnimationFrame(tickProgress);
+          if (event?.cancelable) event.preventDefault();
+        };
+
+        const cancelHold = () => {
+          if (armed) return;
+          clearHold();
+        };
+
+        activeSafetyHoldBtn.addEventListener('pointerdown', startHold);
+        activeSafetyHoldBtn.addEventListener('pointerup', cancelHold);
+        activeSafetyHoldBtn.addEventListener('pointercancel', cancelHold);
+        activeSafetyHoldBtn.addEventListener('lostpointercapture', cancelHold);
+        activeSafetyHoldBtn.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          if (activeSafetyHoldBtn.classList.contains('is-holding')) return;
+          startHold(event);
+        });
+        activeSafetyHoldBtn.addEventListener('keyup', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            cancelHold();
+          }
+        });
+      }
+
       function setActiveChatPanel(open) {
         if (!hasActiveService || !serviceBottomSheet) return;
         serviceBottomSheet.classList.toggle('chat-open', Boolean(open));
         if (activeSheetDragCopy) {
           activeSheetDragCopy.textContent = open
-            ? 'Desliza para ajustar el chat sobre el mapa'
-            : 'Desliza para ver mapa, acciones y chat';
+            ? 'Chat'
+            : 'Servicio activo';
         }
         if (usesExecutiveServiceLayout) {
           if (open && chatMessages) {
@@ -7366,6 +7717,7 @@
       applyAvailabilityState(driverOnline);
         if (hasActiveService) {
           configureActiveServiceActions();
+          initActiveSafetyHoldButton();
           initActiveServiceSheet();
           if (dashboardData.activeService?.chat_iniciado) {
             showChatDirectNotice();
