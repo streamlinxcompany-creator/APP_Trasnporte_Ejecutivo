@@ -1177,20 +1177,20 @@ def build_customer_request_payload(
     parse_coords_from_text,
     display_label="",
 ):
-    visible_location = display_label or direccion or "Ubicacion compartida"
-    partes = [f"Nombre: {nombre}", f"Direccion: {visible_location}"]
+    raw_direccion = (location_payload.get("raw_direccion") or direccion or "").strip()
+    public_location = direccion or raw_direccion or location_payload.get("direccion") or "Ubicacion compartida"
+    partes = [f"Nombre: {nombre}", f"Direccion: {public_location}"]
     pickup_note = (location_payload.get("pickup_note") or "").strip()
     latitude = location_payload.get("latitude")
     longitude = location_payload.get("longitude")
-    raw_direccion = location_payload.get("raw_direccion") or direccion
-    if pickup_note and normalize_user_text(pickup_note) != normalize_user_text(visible_location):
+    if pickup_note and normalize_user_text(pickup_note) != normalize_user_text(public_location):
         partes.append(f"Referencia: {pickup_note}")
-    if (not latitude or not longitude) and direccion:
+    if (not latitude or not longitude) and raw_direccion:
         parsed_lat, parsed_lng = parse_coords_from_text(raw_direccion)
         if parsed_lat is not None and parsed_lng is not None:
             latitude = str(parsed_lat)
             longitude = str(parsed_lng)
-    if raw_direccion:
+    if raw_direccion and normalize_user_text(raw_direccion) != normalize_user_text(public_location):
         partes.append(f"Mapa: {raw_direccion}")
     if latitude and longitude:
         partes.append(f"Latitude: {latitude}")

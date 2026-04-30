@@ -4066,11 +4066,13 @@
             {% set active_lat = active_pedido.detalles.get('Latitude', active_pedido.detalles.get('Latitud', '')) if active_pedido else '' %}
             {% set active_lng = active_pedido.detalles.get('Longitude', active_pedido.detalles.get('Longitud', '')) if active_pedido else '' %}
             {% set active_address = active_pedido.detalles.get('Direccion', active_pedido.mensaje_cliente) if active_pedido else '' %}
+            {% set active_map_address = active_pedido.detalles.get('Mapa', '') if active_pedido else '' %}
             {% set active_reference = active_pedido.detalles.get('Referencia', '') if active_pedido else '' %}
+            {% set active_public_address = active_map_address or active_address %}
             {% set active_coords_text = active_lat ~ ',' ~ active_lng %}
-            {% set active_address_compact = active_address|replace(' ', '') %}
-            {% set active_address_has_coords = active_lat and active_lng and active_lat in active_address and active_lng in active_address %}
-            {% set active_display_address = active_reference if active_reference and (active_address_compact == active_coords_text or active_address == 'Ubicacion compartida' or active_address_has_coords) else active_address %}
+            {% set active_address_compact = active_public_address|replace(' ', '') %}
+            {% set active_address_has_coords = active_lat and active_lng and active_lat in active_public_address and active_lng in active_public_address %}
+            {% set active_display_address = active_reference if active_reference and (active_address_compact == active_coords_text or active_public_address == 'Ubicacion compartida' or active_address_has_coords) else active_public_address %}
             <div class="servicios-panel te-panel-shell">
               <div class="te-stage{% if active_pedido %} has-active-service{% endif %}{% if ui_mode == 'executive' %} ui-mode-executive{% endif %}" id="teStage">
                 <div class="route-map-wrap te-map-shell" id="serviceMapWrap"
@@ -4288,17 +4290,17 @@
                               id="openNavigationBtn"
                               data-destination-lat="{{ active_lat }}"
                               data-destination-lng="{{ active_lng }}"
-                              data-destination-address="{{ active_address }}"
+                              data-destination-address="{{ active_public_address }}"
                               data-destination-label="{{ active_pedido.detalles.get('Nombre', 'Cliente') }}"
                               data-destination-phone="{{ active_pedido.cliente_telefono }}"
                             >
                               Navegar
                             </button>
-                            <a class="te-drive-nav-app google" id="googleMapsBtn" href="https://www.google.com/maps/search/?api=1&query={{ active_address|urlencode }}" target="_blank" rel="noopener">
+                            <a class="te-drive-nav-app google" id="googleMapsBtn" href="https://www.google.com/maps/search/?api=1&query={{ active_public_address|urlencode }}" target="_blank" rel="noopener">
                               <span>G</span>
                               Google
                             </a>
-                            <a class="te-drive-nav-app waze" id="wazeBtn" href="https://waze.com/ul?q={{ active_address|urlencode }}&navigate=yes" target="_blank" rel="noopener">
+                            <a class="te-drive-nav-app waze" id="wazeBtn" href="https://waze.com/ul?q={{ active_public_address|urlencode }}&navigate=yes" target="_blank" rel="noopener">
                               <span>W</span>
                               Waze
                             </a>
