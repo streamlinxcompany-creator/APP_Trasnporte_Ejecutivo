@@ -1,5 +1,6 @@
 ﻿import base64
 import hashlib
+import hmac
 import json
 import math
 import os
@@ -35,11 +36,15 @@ except Exception:
     InvalidToken = Exception
 
 try:
-    from cryptography.hazmat.primitives import serialization
-    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec, utils
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 except Exception:
+    hashes = None
     serialization = None
     ec = None
+    utils = None
+    AESGCM = None
 
 try:
     import local_settings  # optional local-only credentials
@@ -418,6 +423,12 @@ def b64url_encode(raw):
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
 
 
+def b64url_decode(value):
+    text = (value or "").strip()
+    padding = "=" * ((4 - len(text) % 4) % 4)
+    return base64.urlsafe_b64decode((text + padding).encode("ascii"))
+
+
 def derive_vapid_public_key(private_pem):
     if not private_pem or serialization is None:
         return ""
@@ -497,6 +508,103 @@ def get_vapid_private_key_for_send(private_key):
     return path
 
 
+def hkdf_extract(salt, ikm):
+    return hmac.new(salt, ikm, hashlib.sha256).digest()
+
+
+def hkdf_expand(prk, info, length):
+    output = b""
+    previous = b""
+    counter = 1
+    while len(output) < length:
+        previous = hmac.new(prk, previous + info + bytes([counter]), hashlib.sha256).digest()
+        output += previous
+        counter += 1
+    return output[:length]
+
+
+def load_vapid_private_key(private_key):
+    text = (private_key or "").strip()
+    if "BEGIN PRIVATE KEY" in text:
+        return serialization.load_pem_private_key(text.encode("utf-8"), password=None)
+    raw = b64url_decode(text)
+    scalar = int.from_bytes(raw, "big")
+    return ec.derive_private_key(scalar, ec.SECP256R1())
+
+
+def build_vapid_jwt(endpoint, private_key, public_key):
+    parsed = urllib.parse.urlparse(endpoint)
+    aud = f"{parsed.scheme}://{parsed.netloc}"
+    header = {"typ": "JWT", "alg": "ES256"}
+    claims = {
+        "aud": aud,
+        "exp": int(time.time()) + 12 * 60 * 60,
+        "sub": VAPID_SUBJECT,
+    }
+    signing_input = (
+        b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+        + "."
+        + b64url_encode(json.dumps(claims, separators=(",", ":")).encode("utf-8"))
+    )
+    private_obj = load_vapid_private_key(private_key)
+    der_signature = private_obj.sign(signing_input.encode("ascii"), ec.ECDSA(hashes.SHA256()))
+    r, s = utils.decode_dss_signature(der_signature)
+    signature = r.to_bytes(32, "big") + s.to_bytes(32, "big")
+    return f"{signing_input}.{b64url_encode(signature)}"
+
+
+def encrypt_webpush_payload(subscription, payload_text):
+    if AESGCM is None or ec is None or serialization is None:
+        raise RuntimeError("cryptography no tiene soporte AESGCM/ECDH para Web Push")
+
+    receiver_public = ec.EllipticCurvePublicKey.from_encoded_point(
+        ec.SECP256R1(),
+        b64url_decode(subscription["keys"]["p256dh"]),
+    )
+    auth_secret = b64url_decode(subscription["keys"]["auth"])
+    sender_private = ec.generate_private_key(ec.SECP256R1())
+    sender_public_raw = sender_private.public_key().public_bytes(
+        encoding=serialization.Encoding.X962,
+        format=serialization.PublicFormat.UncompressedPoint,
+    )
+    receiver_public_raw = receiver_public.public_bytes(
+        encoding=serialization.Encoding.X962,
+        format=serialization.PublicFormat.UncompressedPoint,
+    )
+    shared_secret = sender_private.exchange(ec.ECDH(), receiver_public)
+    salt = os.urandom(16)
+
+    prk_key = hkdf_extract(auth_secret, shared_secret)
+    info = b"WebPush: info\x00" + receiver_public_raw + sender_public_raw
+    ikm = hkdf_expand(prk_key, info, 32)
+    prk = hkdf_extract(salt, ikm)
+    cek = hkdf_expand(prk, b"Content-Encoding: aes128gcm\x00", 16)
+    nonce = hkdf_expand(prk, b"Content-Encoding: nonce\x00", 12)
+
+    plaintext = payload_text.encode("utf-8") + b"\x02"
+    ciphertext = AESGCM(cek).encrypt(nonce, plaintext, None)
+    record_size = 4096
+    return salt + record_size.to_bytes(4, "big") + bytes([len(sender_public_raw)]) + sender_public_raw + ciphertext
+
+
+def send_webpush_internal(row, payload, keys):
+    subscription = subscription_to_webpush_info(row)
+    payload_text = json.dumps(payload, ensure_ascii=True)
+    body = encrypt_webpush_payload(subscription, payload_text)
+    public_key = keys["public_key"]
+    token = build_vapid_jwt(subscription["endpoint"], keys["private_key"], public_key)
+    req = urllib.request.Request(subscription["endpoint"], data=body, method="POST")
+    req.add_header("Content-Type", "application/octet-stream")
+    req.add_header("Content-Encoding", "aes128gcm")
+    req.add_header("TTL", "2419200")
+    req.add_header("Urgency", "high")
+    req.add_header("Authorization", f"vapid t={token}, k={public_key}")
+    with urllib.request.urlopen(req, timeout=15) as response:
+        status_code = getattr(response, "status", 201)
+        if not (200 <= status_code < 300):
+            raise RuntimeError(f"Web Push HTTP {status_code}")
+
+
 def get_service_coverage_config():
     raw_value = get_config_value("service_coverage_config", "")
     data = {}
@@ -553,8 +661,13 @@ def get_push_status(conn=None):
         conn.close()
     keys = ensure_vapid_keys()
     return {
-        "available": bool(webpush and keys.get("private_key") and keys.get("public_key")),
+        "available": bool(
+            keys.get("private_key")
+            and keys.get("public_key")
+            and (webpush or (AESGCM and ec and serialization and hashes and utils))
+        ),
         "library_ready": bool(webpush),
+        "internal_sender_ready": bool(AESGCM and ec and serialization and hashes and utils),
         "vapid_ready": bool(keys.get("private_key") and keys.get("public_key")),
         "vapid_source": keys.get("source", ""),
         "active_subscriptions": active_subscriptions,
@@ -612,7 +725,7 @@ def send_push_payload_to_rows(rows, payload):
         return {
             "sent": 0,
             "failed": len(rows),
-            "error": "Falta configurar Web Push: instala pywebpush y verifica claves VAPID.",
+            "error": "Falta configurar Web Push: instala pywebpush o habilita cryptography AESGCM y verifica claves VAPID.",
         }
 
     keys = ensure_vapid_keys()
@@ -624,12 +737,15 @@ def send_push_payload_to_rows(rows, payload):
     vapid_private_key = get_vapid_private_key_for_send(keys["private_key"])
     for row in rows:
         try:
-            webpush(
-                subscription_info=subscription_to_webpush_info(row),
-                data=json.dumps(payload, ensure_ascii=True),
-                vapid_private_key=vapid_private_key,
-                vapid_claims={"sub": VAPID_SUBJECT},
-            )
+            if webpush:
+                webpush(
+                    subscription_info=subscription_to_webpush_info(row),
+                    data=json.dumps(payload, ensure_ascii=True),
+                    vapid_private_key=vapid_private_key,
+                    vapid_claims={"sub": VAPID_SUBJECT},
+                )
+            else:
+                send_webpush_internal(row, payload, keys)
             conn.execute(
                 """
                 UPDATE push_subscriptions
@@ -642,6 +758,8 @@ def send_push_payload_to_rows(rows, payload):
         except Exception as exc:
             failed += 1
             status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            if status_code is None and isinstance(exc, urllib.error.HTTPError):
+                status_code = exc.code
             error_text = str(exc)[:500]
             if not error_text and status_code:
                 error_text = f"HTTP {status_code}"

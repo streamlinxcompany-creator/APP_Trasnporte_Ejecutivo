@@ -1975,7 +1975,7 @@
         const ready = push.available ? "Listo" : "Pendiente";
         pushStatusBox.innerHTML = `
           <strong>${ready}: ${push.active_subscriptions || 0} celular(es) registrado(s)</strong>
-          <span>Libreria: ${push.library_ready ? "pywebpush activa" : "falta pywebpush"}</span>
+          <span>Motor: ${push.library_ready ? "pywebpush" : (push.internal_sender_ready ? "interno cryptography" : "sin motor push")}</span>
           <span>VAPID: ${push.vapid_ready ? `ok (${push.vapid_source || "-"})` : "sin claves"}</span>
         `;
         if (pushDriversList) {
