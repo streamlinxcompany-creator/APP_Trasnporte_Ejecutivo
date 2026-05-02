@@ -1429,7 +1429,7 @@
           </div>
           <div class="notify-form">
             <div class="notify-status" id="pushStatusBox">Cargando estado de Web Push...</div>
-            <input class="notify-input" id="pushTitleInput" type="text" maxlength="80" value="Zipp" />
+            <input class="notify-input" id="pushTitleInput" type="text" maxlength="80" value="Mensaje nuevo" />
             <textarea class="notify-textarea" id="pushBodyInput" maxlength="240">Aprovecha este fin de semana con Zipp</textarea>
             <button class="button primary" id="sendPushBtn">Enviar a todos</button>
             <div class="notify-driver-list" id="pushDriversList"></div>
@@ -2001,7 +2001,7 @@
       }
 
       async function sendPushNotification() {
-        const title = (pushTitleInput?.value || "Zipp").trim();
+        const title = (pushTitleInput?.value || "Mensaje nuevo").trim();
         const body = (pushBodyInput?.value || "").trim();
         if (!body) {
           showToast("Escribe el mensaje de la notificacion");

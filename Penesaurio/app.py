@@ -915,6 +915,77 @@ def notify_visible_services_for_all_drivers():
         return 0
 
 
+def notify_rescue_services_after_rings():
+    max_ring_seconds = max(seconds for seconds, _radius in SERVICE_MATCH_STAGES)
+    try:
+        conn = get_conn()
+        sync_expired_subscriptions(conn)
+        if not get_push_status(conn).get("available"):
+            conn.close()
+            return 0
+        services = conn.execute(
+            """
+            SELECT id, mensaje_cliente, timestamp
+            FROM pedidos
+            WHERE lower(estado) IN ('disponible', 'pendiente')
+              AND COALESCE(push_rescue_notified, 0) = 0
+            ORDER BY id ASC
+            """
+        ).fetchall()
+        online_drivers = conn.execute(
+            "SELECT id FROM conductores WHERE COALESCE(is_online, 1) = 1"
+        ).fetchall()
+        has_eligible_online_driver = any(
+            get_driver_dispatch_context(conn, driver["id"])["eligible"]
+            for driver in online_drivers
+        )
+        sent_total = 0
+        for service in services:
+            rescue_ready = (
+                elapsed_seconds(service["timestamp"]) > max_ring_seconds
+                or not has_eligible_online_driver
+            )
+            if not rescue_ready:
+                continue
+            drivers = conn.execute(
+                """
+                SELECT DISTINCT c.*
+                FROM conductores c
+                INNER JOIN push_subscriptions ps ON ps.conductor_id = c.id AND ps.active = 1
+                WHERE c.active_pedido_id IS NULL
+                """
+            ).fetchall()
+            target_ids = []
+            for driver in drivers:
+                subscription = get_conductor_subscription_snapshot(driver)
+                if subscription["suscripcion_activa"]:
+                    target_ids.append(driver["id"])
+            if not target_ids:
+                continue
+            detalles = parse_detalles(service["mensaje_cliente"] or "")
+            direccion = format_saved_address(detalles.get("Direccion", service["mensaje_cliente"] or ""))
+            result = send_push_to_conductors(
+                target_ids,
+                "Servicio disponible",
+                f"Hay un nuevo servicio disponible. {direccion}".strip(),
+                "/dashboard",
+                f"rescate-servicio-{service['id']}",
+            )
+            if result.get("sent", 0) > 0:
+                conn.execute(
+                    "UPDATE pedidos SET push_rescue_notified = 1 WHERE id = ?",
+                    (service["id"],),
+                )
+                conn.commit()
+                sent_total += result.get("sent", 0)
+        conn.close()
+        return sent_total
+    except Exception as exc:
+        print(f"Error enviando rescate push: {exc}")
+        log_system_event("error", "push", "Error enviando rescate push", str(exc))
+        return 0
+
+
 def log_system_event(level, category, message, details=""):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
@@ -1360,6 +1431,7 @@ def init_db():
                 conductor_placa TEXT,
                 chat_iniciado INTEGER DEFAULT 0,
                 assignment_notified INTEGER DEFAULT 0,
+                push_rescue_notified INTEGER DEFAULT 0,
                 reminder_count INTEGER DEFAULT 0,
                 timestamp TEXT
             )
@@ -1377,6 +1449,7 @@ def init_db():
             "conductor_placa",
             "chat_iniciado",
             "assignment_notified",
+            "push_rescue_notified",
             "reminder_count",
             "timestamp",
         ]
@@ -1393,6 +1466,7 @@ def init_db():
                     conductor_placa TEXT,
                     chat_iniciado INTEGER DEFAULT 0,
                     assignment_notified INTEGER DEFAULT 0,
+                    push_rescue_notified INTEGER DEFAULT 0,
                     reminder_count INTEGER DEFAULT 0,
                     timestamp TEXT
                 )
@@ -1422,6 +1496,7 @@ def init_db():
             )
             chat_iniciado_expr = chat_iniciado_col if chat_iniciado_col != "NULL" else "0"
             assignment_notified_expr = "0"
+            push_rescue_notified_expr = "0"
             reminder_count_expr = "0"
             ts_expr = ts_col if ts_col != "NULL" else "datetime('now')"
 
@@ -1435,6 +1510,7 @@ def init_db():
                     conductor_placa,
                     chat_iniciado,
                     assignment_notified,
+                    push_rescue_notified,
                     reminder_count,
                     timestamp
                 )
@@ -1446,6 +1522,7 @@ def init_db():
                     {conductor_placa_expr},
                     {chat_iniciado_expr},
                     {assignment_notified_expr},
+                    {push_rescue_notified_expr},
                     {reminder_count_expr},
                     {ts_expr}
                 FROM pedidos_old
@@ -1459,6 +1536,13 @@ def init_db():
                 )
                 cur.execute(
                     "UPDATE pedidos SET assignment_notified = 0 WHERE assignment_notified IS NULL"
+                )
+            if "push_rescue_notified" not in cols:
+                cur.execute(
+                    "ALTER TABLE pedidos ADD COLUMN push_rescue_notified INTEGER DEFAULT 0"
+                )
+                cur.execute(
+                    "UPDATE pedidos SET push_rescue_notified = 0 WHERE push_rescue_notified IS NULL"
                 )
             if "reminder_count" not in cols:
                 cur.execute(
@@ -2299,6 +2383,7 @@ def start_expiration_worker():
             retry_assignment_notifications()
             verify_idle_conversations()
             notify_visible_services_for_all_drivers()
+            notify_rescue_services_after_rings()
             time.sleep(EXPIRATION_CHECK_SECONDS)
 
     worker = threading.Thread(target=loop, name="servicios-expiracion", daemon=True)
@@ -3117,7 +3202,7 @@ def admin_notifications_send_api():
         return jsonify({"ok": False, "error": "No autenticado."}), 401
 
     payload = request.get_json(silent=True) or {}
-    title = (payload.get("title") or "Zipp").strip()
+    title = (payload.get("title") or "Mensaje nuevo").strip()
     body = (payload.get("body") or "").strip()
     if not body:
         return jsonify({"ok": False, "error": "Escribe el mensaje a enviar."}), 400

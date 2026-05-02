@@ -6,7 +6,7 @@ self.addEventListener("push", (event) => {
     payload = { body: event.data ? event.data.text() : "" };
   }
 
-  const title = payload.title || "Zipp";
+  const title = payload.title || "Mensaje nuevo";
   const options = {
     body: payload.body || "Tienes una novedad en Zipp.",
     icon: "/static/zipp-icon.png",
