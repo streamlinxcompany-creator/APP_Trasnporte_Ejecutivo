@@ -4642,6 +4642,17 @@
                 <div class="panel-plate" id="accountAvailabilityNote" style="margin-top:6px;">{% if driver_online %}Recibiendo servicios en tiempo real.{% else %}Estas fuera de linea por ahora.{% endif %}</div>
               </div>
               <div class="panel-card">
+                <div class="panel-card-title">Notificaciones</div>
+                <div class="panel-switch-row">
+                  <span>Alertas de servicios</span>
+                  <label class="switch">
+                    <input type="checkbox" id="accountNotificationToggle" />
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <div class="panel-plate" id="accountNotificationNote" style="margin-top:6px;">Revisando notificaciones de este celular.</div>
+              </div>
+              <div class="panel-card">
                 <div class="panel-card-title">Suscripcion</div>
                 <div class="panel-switch-row">
                   <span>Estado del plan</span>
@@ -4865,6 +4876,8 @@
       const accountAvailabilityText = document.getElementById('accountAvailabilityText');
       const accountAvailabilityPill = document.getElementById('accountAvailabilityPill');
       const accountAvailabilityNote = document.getElementById('accountAvailabilityNote');
+      const accountNotificationToggle = document.getElementById('accountNotificationToggle');
+      const accountNotificationNote = document.getElementById('accountNotificationNote');
       const uiModeToggle = document.getElementById('uiModeToggle');
       const uiModeNote = document.getElementById('uiModeNote');
       const priorityOverlay = document.getElementById('priorityOverlay');
@@ -5054,6 +5067,11 @@
         return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
       }
 
+      async function ensurePushServiceWorkerReady() {
+        if (!('serviceWorker' in navigator)) return null;
+        return navigator.serviceWorker.register('/zipp-service-worker.js');
+      }
+
       async function registerPushSubscription() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
           return false;
@@ -5062,7 +5080,7 @@
           return false;
         }
         try {
-          const registration = await navigator.serviceWorker.register('/zipp-service-worker.js');
+          const registration = await ensurePushServiceWorkerReady();
           const keyRes = await fetch('/api/push/vapid-public-key', { credentials: 'same-origin' });
           const keyData = await keyRes.json();
           if (!keyData.ok || !keyData.publicKey) {
@@ -5092,6 +5110,67 @@
           showToast('No se pudo registrar este celular para alertas.', 3600);
           return false;
         }
+      }
+
+      async function refreshAccountNotificationStatus() {
+        if (!accountNotificationToggle || !accountNotificationNote) return;
+        try {
+          const res = await fetch('/api/push/status', { credentials: 'same-origin' });
+          const data = await res.json();
+          const permissionGranted = typeof Notification !== 'undefined' && Notification.permission === 'granted';
+          accountNotificationToggle.checked = Boolean(data.ok && data.enabled && permissionGranted);
+          if (!data.ok) {
+            accountNotificationNote.textContent = data.error || 'No se pudo revisar el estado de notificaciones.';
+          } else if (data.enabled && permissionGranted) {
+            accountNotificationNote.textContent = `Alertas activas en ${data.devices || 1} celular(es).`;
+          } else if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+            accountNotificationNote.textContent = 'Bloqueadas en el navegador. Activalas desde Ajustes de iPhone.';
+          } else {
+            accountNotificationNote.textContent = 'Activalas para recibir avisos cuando haya servicios disponibles.';
+          }
+        } catch (err) {
+          accountNotificationNote.textContent = 'No se pudo revisar el estado de notificaciones.';
+        }
+      }
+
+      async function disablePushNotifications() {
+        if (!confirm('Seguro que deseas desactivar las notificaciones? Esta opcion te puede ayudar cuando hay servicios disponibles.')) {
+          refreshAccountNotificationStatus();
+          return;
+        }
+        let endpoint = '';
+        try {
+          if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.getRegistration();
+            const subscription = await registration?.pushManager?.getSubscription();
+            endpoint = subscription?.endpoint || '';
+            if (subscription) {
+              await subscription.unsubscribe();
+            }
+          }
+        } catch (err) {
+          // El servidor igual desactiva lo que tenga registrado.
+        }
+        try {
+          await fetch('/api/push/unsubscribe', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint }),
+          });
+          showToast('Notificaciones desactivadas.', 2200);
+        } catch (err) {
+          showToast('No se pudo desactivar en el servidor.', 2600);
+        }
+        refreshAccountNotificationStatus();
+      }
+
+      async function enablePushNotificationsFromAccount() {
+        const granted = await requestNotificationPermission('manual');
+        if (granted) {
+          showToast('Notificaciones activadas.', 2200);
+        }
+        refreshAccountNotificationStatus();
       }
 
       function setNotificationPermissionPromptCopy(mode) {
@@ -5149,6 +5228,7 @@
         if (notificationPermissionRequested) return false;
         notificationPermissionRequested = true;
         try {
+          await ensurePushServiceWorkerReady();
           const permission = await Notification.requestPermission();
           if (permission === 'default') {
             notificationPermissionRequested = false;
@@ -5177,8 +5257,9 @@
       function initNotificationPermissionFlow() {
         syncNotificationPermissionPrompt();
         if (browserNotificationsSupported() && Notification.permission === 'granted') {
-          registerPushSubscription();
+          registerPushSubscription().then(refreshAccountNotificationStatus);
         }
+        refreshAccountNotificationStatus();
         setTimeout(() => {
           if (
             browserNotificationsSupported()
@@ -8138,6 +8219,14 @@
         }
         notificationPermissionBtn.disabled = false;
         notificationPermissionBtn.textContent = originalText;
+        refreshAccountNotificationStatus();
+      });
+      accountNotificationToggle?.addEventListener('change', () => {
+        if (accountNotificationToggle.checked) {
+          enablePushNotificationsFromAccount();
+        } else {
+          disablePushNotifications();
+        }
       });
       notificationPermissionClose?.addEventListener('click', () => {
         notificationPermissionDismissed = true;

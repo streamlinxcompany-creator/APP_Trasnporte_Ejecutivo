@@ -5,6 +5,7 @@ import math
 import os
 import re
 import sqlite3
+import tempfile
 import threading
 import time
 import urllib.error
@@ -476,6 +477,26 @@ def ensure_vapid_keys():
     return {"private_key": private_pem, "public_key": public_key, "source": "generated"}
 
 
+def get_vapid_private_key_for_send(private_key):
+    text = (private_key or "").strip()
+    if not text:
+        return ""
+    if "BEGIN PRIVATE KEY" not in text:
+        return text
+    path = os.path.join(tempfile.gettempdir(), "zipp-vapid-private.pem")
+    try:
+        current = ""
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                current = fh.read()
+        if current != text:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+    except Exception:
+        return text
+    return path
+
+
 def get_service_coverage_config():
     raw_value = get_config_value("service_coverage_config", "")
     data = {}
@@ -540,6 +561,41 @@ def get_push_status(conn=None):
     }
 
 
+def get_push_driver_rows():
+    conn = get_conn()
+    rows = conn.execute(
+        """
+        SELECT
+            c.id,
+            c.nombre_real,
+            c.usuario,
+            c.placa,
+            COALESCE(COUNT(CASE WHEN ps.active = 1 THEN 1 END), 0) AS active_push_count,
+            MAX(ps.updated_at) AS push_updated_at,
+            MAX(ps.last_success_at) AS last_success_at,
+            MAX(ps.last_error) AS last_error
+        FROM conductores c
+        LEFT JOIN push_subscriptions ps ON ps.conductor_id = c.id
+        GROUP BY c.id
+        ORDER BY c.nombre_real COLLATE NOCASE, c.usuario COLLATE NOCASE
+        """
+    ).fetchall()
+    conn.close()
+    return [
+        {
+            "id": row["id"],
+            "nombre": row["nombre_real"] or row["usuario"] or "Conductor",
+            "placa": row["placa"] or "-",
+            "enabled": int(row["active_push_count"] or 0) > 0,
+            "devices": int(row["active_push_count"] or 0),
+            "updated_at": format_ts_short(row["push_updated_at"]),
+            "last_success_at": format_ts_short(row["last_success_at"]),
+            "last_error": row["last_error"] or "",
+        }
+        for row in rows
+    ]
+
+
 def subscription_to_webpush_info(row):
     return {
         "endpoint": row["endpoint"],
@@ -563,13 +619,15 @@ def send_push_payload_to_rows(rows, payload):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sent = 0
     failed = 0
+    errors = []
     conn = get_conn()
+    vapid_private_key = get_vapid_private_key_for_send(keys["private_key"])
     for row in rows:
         try:
             webpush(
                 subscription_info=subscription_to_webpush_info(row),
                 data=json.dumps(payload, ensure_ascii=True),
-                vapid_private_key=keys["private_key"],
+                vapid_private_key=vapid_private_key,
                 vapid_claims={"sub": VAPID_SUBJECT},
             )
             conn.execute(
@@ -584,6 +642,11 @@ def send_push_payload_to_rows(rows, payload):
         except Exception as exc:
             failed += 1
             status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            error_text = str(exc)[:500]
+            if not error_text and status_code:
+                error_text = f"HTTP {status_code}"
+            if error_text:
+                errors.append(error_text)
             should_deactivate = status_code in {404, 410}
             conn.execute(
                 """
@@ -591,11 +654,11 @@ def send_push_payload_to_rows(rows, payload):
                 SET last_error = ?, active = CASE WHEN ? THEN 0 ELSE active END, updated_at = ?
                 WHERE id = ?
                 """,
-                (str(exc)[:500], 1 if should_deactivate else 0, now, row["id"]),
+                (error_text, 1 if should_deactivate else 0, now, row["id"]),
             )
     conn.commit()
     conn.close()
-    return {"sent": sent, "failed": failed, "error": ""}
+    return {"sent": sent, "failed": failed, "error": errors[0] if errors else "", "errors": errors[:5]}
 
 
 def send_push_to_conductors(conductor_ids, title, body, url="/dashboard", tag="zipp-admin"):
@@ -2913,7 +2976,7 @@ def admin_notifications_status_api():
     if not admin_session_active():
         return jsonify({"ok": False, "error": "No autenticado."}), 401
     status = get_push_status()
-    return jsonify({"ok": True, "push": status})
+    return jsonify({"ok": True, "push": status, "drivers": get_push_driver_rows()})
 
 
 @app.route("/admin/api/notifications/send", methods=["POST"])
@@ -4272,6 +4335,62 @@ def push_subscribe_api():
             now,
         ),
     )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/push/status")
+def push_status_api():
+    if not session.get("conductor_id"):
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+    conn = get_conn()
+    row = conn.execute(
+        """
+        SELECT COUNT(*) AS total, MAX(last_success_at) AS last_success_at, MAX(last_error) AS last_error
+        FROM push_subscriptions
+        WHERE conductor_id = ? AND active = 1
+        """,
+        (session.get("conductor_id"),),
+    ).fetchone()
+    conn.close()
+    return jsonify(
+        {
+            "ok": True,
+            "enabled": bool(row and int(row["total"] or 0) > 0),
+            "devices": int(row["total"] or 0) if row else 0,
+            "last_success_at": format_ts_short(row["last_success_at"]) if row else "",
+            "last_error": row["last_error"] if row else "",
+        }
+    )
+
+
+@app.route("/api/push/unsubscribe", methods=["POST"])
+def push_unsubscribe_api():
+    if not session.get("conductor_id"):
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+    payload = request.get_json(silent=True) or {}
+    endpoint = (payload.get("endpoint") or "").strip()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_conn()
+    if endpoint:
+        conn.execute(
+            """
+            UPDATE push_subscriptions
+            SET active = 0, updated_at = ?
+            WHERE conductor_id = ? AND endpoint = ?
+            """,
+            (now, session.get("conductor_id"), endpoint),
+        )
+    else:
+        conn.execute(
+            """
+            UPDATE push_subscriptions
+            SET active = 0, updated_at = ?
+            WHERE conductor_id = ?
+            """,
+            (now, session.get("conductor_id")),
+        )
     conn.commit()
     conn.close()
     return jsonify({"ok": True})

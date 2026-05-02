@@ -409,6 +409,43 @@
         font-size: 12px;
         line-height: 1.45;
       }
+      .notify-driver-list {
+        display: grid;
+        gap: 10px;
+        max-height: 360px;
+        overflow: auto;
+      }
+      .notify-driver-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: start;
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid var(--stroke);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .notify-driver-name {
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .notify-driver-meta {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .notify-badge {
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 11px;
+        background: rgba(255, 107, 107, 0.15);
+        color: var(--danger);
+        white-space: nowrap;
+      }
+      .notify-badge.on {
+        background: rgba(126, 166, 227, 0.15);
+        color: var(--success);
+      }
       .coverage-toolbar {
         display: grid;
         gap: 12px;
@@ -1395,6 +1432,7 @@
             <input class="notify-input" id="pushTitleInput" type="text" maxlength="80" value="Zipp" />
             <textarea class="notify-textarea" id="pushBodyInput" maxlength="240">Aprovecha este fin de semana con Zipp</textarea>
             <button class="button primary" id="sendPushBtn">Enviar a todos</button>
+            <div class="notify-driver-list" id="pushDriversList"></div>
           </div>
         </div>
 
@@ -1690,6 +1728,7 @@
       const pushTitleInput = document.getElementById("pushTitleInput");
       const pushBodyInput = document.getElementById("pushBodyInput");
       const sendPushBtn = document.getElementById("sendPushBtn");
+      const pushDriversList = document.getElementById("pushDriversList");
       const logsList = document.getElementById("logsList");
       const logsSource = document.getElementById("logsSource");
       const driverSearchInput = document.getElementById("driverSearchInput");
@@ -1754,10 +1793,10 @@
         maximumFractionDigits: 0
       });
 
-      function showToast(message) {
+      function showToast(message, duration = 2400) {
         toast.textContent = message;
         toast.classList.add("show");
-        setTimeout(() => toast.classList.remove("show"), 2400);
+        setTimeout(() => toast.classList.remove("show"), duration);
       }
 
       function formatKmLabel(meters) {
@@ -1939,6 +1978,25 @@
           <span>Libreria: ${push.library_ready ? "pywebpush activa" : "falta pywebpush"}</span>
           <span>VAPID: ${push.vapid_ready ? `ok (${push.vapid_source || "-"})` : "sin claves"}</span>
         `;
+        if (pushDriversList) {
+          const drivers = data.drivers || [];
+          if (!drivers.length) {
+            pushDriversList.innerHTML = '<div class="empty-state">No hay conductores registrados.</div>';
+          } else {
+            pushDriversList.innerHTML = drivers.map(driver => `
+              <div class="notify-driver-item">
+                <div>
+                  <div class="notify-driver-name">${driver.nombre}</div>
+                  <div class="notify-driver-meta">Placa ${driver.placa || "-"}</div>
+                  <div class="notify-driver-meta">Celulares activos: ${driver.devices || 0}</div>
+                  ${driver.last_success_at ? `<div class="notify-driver-meta">Ultimo envio ok: ${driver.last_success_at}</div>` : ""}
+                  ${driver.last_error ? `<div class="notify-driver-meta">Error: ${driver.last_error}</div>` : ""}
+                </div>
+                <span class="notify-badge ${driver.enabled ? "on" : ""}">${driver.enabled ? "Activadas" : "Sin activar"}</span>
+              </div>
+            `).join("");
+          }
+        }
       }
 
       async function sendPushNotification() {
@@ -1961,7 +2019,8 @@
           return;
         }
         const result = data.result || {};
-        showToast(`Enviadas: ${result.sent || 0}. Fallidas: ${result.failed || 0}.`);
+        const errorText = result.error ? ` ${result.error}` : "";
+        showToast(`Enviadas: ${result.sent || 0}. Fallidas: ${result.failed || 0}.${errorText}`, 5200);
         loadNotificationStatus();
       }
 
