@@ -5067,6 +5067,16 @@
         return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
       }
 
+      function arrayBufferToUrlBase64(buffer) {
+        if (!buffer) return '';
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        bytes.forEach((byte) => {
+          binary += String.fromCharCode(byte);
+        });
+        return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+      }
+
       async function ensurePushServiceWorkerReady() {
         if (!('serviceWorker' in navigator)) return null;
         return navigator.serviceWorker.register('/zipp-service-worker.js');
@@ -5088,6 +5098,11 @@
             return false;
           }
           let subscription = await registration.pushManager.getSubscription();
+          const currentKey = arrayBufferToUrlBase64(subscription?.options?.applicationServerKey);
+          if (subscription && currentKey && currentKey !== keyData.publicKey) {
+            await subscription.unsubscribe();
+            subscription = null;
+          }
           if (!subscription) {
             subscription = await registration.pushManager.subscribe({
               userVisibleOnly: true,

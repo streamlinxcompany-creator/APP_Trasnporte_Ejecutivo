@@ -1989,6 +1989,7 @@
                   <div class="notify-driver-name">${driver.nombre}</div>
                   <div class="notify-driver-meta">Placa ${driver.placa || "-"}</div>
                   <div class="notify-driver-meta">Celulares activos: ${driver.devices || 0}</div>
+                  ${driver.stale_key ? '<div class="notify-driver-meta">Clave vieja: abre Mi cuenta > Notificaciones para reparar.</div>' : ""}
                   ${driver.last_success_at ? `<div class="notify-driver-meta">Ultimo envio ok: ${driver.last_success_at}</div>` : ""}
                   ${driver.last_error ? `<div class="notify-driver-meta">Error: ${driver.last_error}</div>` : ""}
                 </div>

@@ -684,6 +684,7 @@ def get_push_driver_rows():
             c.usuario,
             c.placa,
             COALESCE(COUNT(CASE WHEN ps.active = 1 THEN 1 END), 0) AS active_push_count,
+            COALESCE(COUNT(CASE WHEN ps.active = 1 AND ps.application_server_key IS NOT NULL AND ps.application_server_key != '' AND ps.application_server_key != ? THEN 1 END), 0) AS stale_key_count,
             MAX(ps.updated_at) AS push_updated_at,
             MAX(ps.last_success_at) AS last_success_at,
             MAX(ps.last_error) AS last_error
@@ -692,6 +693,8 @@ def get_push_driver_rows():
         GROUP BY c.id
         ORDER BY c.nombre_real COLLATE NOCASE, c.usuario COLLATE NOCASE
         """
+        ,
+        (ensure_vapid_keys().get("public_key", ""),),
     ).fetchall()
     conn.close()
     return [
@@ -701,6 +704,7 @@ def get_push_driver_rows():
             "placa": row["placa"] or "-",
             "enabled": int(row["active_push_count"] or 0) > 0,
             "devices": int(row["active_push_count"] or 0),
+            "stale_key": int(row["stale_key_count"] or 0) > 0,
             "updated_at": format_ts_short(row["push_updated_at"]),
             "last_success_at": format_ts_short(row["last_success_at"]),
             "last_error": row["last_error"] or "",
@@ -763,6 +767,11 @@ def send_push_payload_to_rows(rows, payload):
             error_text = str(exc)[:500]
             if not error_text and status_code:
                 error_text = f"HTTP {status_code}"
+            if status_code == 403:
+                error_text = (
+                    "HTTP 403: la suscripcion fue creada con otra clave push. "
+                    "Abre Zipp en el celular y vuelve a activar Notificaciones desde Mi cuenta."
+                )
             if error_text:
                 errors.append(error_text)
             should_deactivate = status_code in {404, 410}
@@ -1245,6 +1254,7 @@ def init_db():
             endpoint TEXT UNIQUE NOT NULL,
             p256dh TEXT NOT NULL,
             auth TEXT NOT NULL,
+            application_server_key TEXT,
             user_agent TEXT,
             active INTEGER DEFAULT 1,
             created_at TEXT,
@@ -1255,6 +1265,10 @@ def init_db():
         )
         """
     )
+    cur.execute("PRAGMA table_info(push_subscriptions)")
+    push_cols = [row[1] for row in cur.fetchall()]
+    if "application_server_key" not in push_cols:
+        cur.execute("ALTER TABLE push_subscriptions ADD COLUMN application_server_key TEXT")
     cur.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_push_subscriptions_conductor
@@ -4423,6 +4437,7 @@ def push_subscribe_api():
     keys = payload.get("keys") or {}
     p256dh = (keys.get("p256dh") or "").strip()
     auth = (keys.get("auth") or "").strip()
+    vapid_public_key = ensure_vapid_keys().get("public_key", "")
     if not endpoint or not p256dh or not auth:
         return jsonify({"ok": False, "error": "Suscripcion push incompleta."}), 400
 
@@ -4431,13 +4446,14 @@ def push_subscribe_api():
     conn.execute(
         """
         INSERT INTO push_subscriptions (
-            conductor_id, endpoint, p256dh, auth, user_agent, active, created_at, updated_at, last_error
+            conductor_id, endpoint, p256dh, auth, application_server_key, user_agent, active, created_at, updated_at, last_error
         )
-        VALUES (?, ?, ?, ?, ?, 1, ?, ?, NULL)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, NULL)
         ON CONFLICT(endpoint) DO UPDATE SET
             conductor_id = excluded.conductor_id,
             p256dh = excluded.p256dh,
             auth = excluded.auth,
+            application_server_key = excluded.application_server_key,
             user_agent = excluded.user_agent,
             active = 1,
             updated_at = excluded.updated_at,
@@ -4448,6 +4464,7 @@ def push_subscribe_api():
             endpoint,
             p256dh,
             auth,
+            vapid_public_key,
             request.headers.get("User-Agent", "")[:300],
             now,
             now,
