@@ -833,88 +833,6 @@ def send_admin_push_to_all(title, body):
     return result
 
 
-def notify_visible_services_for_driver(conn, conductor_id, visible_rows):
-    if not visible_rows:
-        return
-    if not get_push_status(conn).get("available"):
-        return
-    sub_row = conn.execute(
-        """
-        SELECT COUNT(*) AS total
-        FROM push_subscriptions
-        WHERE conductor_id = ? AND active = 1
-        """,
-        (conductor_id,),
-    ).fetchone()
-    if not sub_row or int(sub_row["total"] or 0) <= 0:
-        return
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    to_notify = []
-    for row, _distance_meters, _age_seconds in visible_rows:
-        pedido_id = row["id"]
-        try:
-            conn.execute(
-                """
-                INSERT INTO push_notification_receipts (conductor_id, pedido_id, event_key, created_at)
-                VALUES (?, ?, 'service-visible', ?)
-                """,
-                (conductor_id, pedido_id, now),
-            )
-            to_notify.append(row)
-        except sqlite3.IntegrityError:
-            continue
-    if not to_notify:
-        return
-    conn.commit()
-    for row in to_notify:
-        detalles = parse_detalles(row["mensaje_cliente"] or "")
-        direccion = format_saved_address(detalles.get("Direccion", row["mensaje_cliente"] or ""))
-        nombre = detalles.get("Nombre", "Cliente")
-        send_push_to_conductors(
-            [conductor_id],
-            "Nuevo servicio disponible",
-            f"{nombre} - {direccion}",
-            "/dashboard",
-            f"servicio-{row['id']}",
-        )
-
-
-def notify_visible_services_for_all_drivers():
-    try:
-        conn = get_conn()
-        sync_expired_subscriptions(conn)
-        if not get_push_status(conn).get("available"):
-            conn.close()
-            return 0
-        drivers = conn.execute(
-            """
-            SELECT DISTINCT c.id
-            FROM conductores c
-            INNER JOIN push_subscriptions ps ON ps.conductor_id = c.id AND ps.active = 1
-            WHERE COALESCE(c.is_online, 1) = 1
-            """
-        ).fetchall()
-        notified_checks = 0
-        for driver in drivers:
-            context = get_driver_dispatch_context(conn, driver["id"])
-            if not context["eligible"]:
-                continue
-            visible_rows = get_visible_pending_services(
-                conn,
-                context["driver_lat"],
-                context["driver_lng"],
-            )
-            before = notified_checks
-            notify_visible_services_for_driver(conn, driver["id"], visible_rows)
-            notified_checks = before + len(visible_rows)
-        conn.close()
-        return notified_checks
-    except Exception as exc:
-        print(f"Error verificando notificaciones push: {exc}")
-        log_system_event("error", "push", "Error verificando notificaciones push", str(exc))
-        return 0
-
-
 def notify_rescue_services_after_rings():
     max_ring_seconds = max(seconds for seconds, _radius in SERVICE_MATCH_STAGES)
     try:
@@ -962,12 +880,10 @@ def notify_rescue_services_after_rings():
                     target_ids.append(driver["id"])
             if not target_ids:
                 continue
-            detalles = parse_detalles(service["mensaje_cliente"] or "")
-            direccion = format_saved_address(detalles.get("Direccion", service["mensaje_cliente"] or ""))
             result = send_push_to_conductors(
                 target_ids,
-                "Servicio disponible",
-                f"Hay un nuevo servicio disponible. {direccion}".strip(),
+                "Nuevo servicio disponible",
+                "Hay un nuevo servicio cerca de ti",
                 "/dashboard",
                 f"rescate-servicio-{service['id']}",
             )
@@ -2382,7 +2298,6 @@ def start_expiration_worker():
             verificar_expiracion_servicios()
             retry_assignment_notifications()
             verify_idle_conversations()
-            notify_visible_services_for_all_drivers()
             notify_rescue_services_after_rings()
             time.sleep(EXPIRATION_CHECK_SECONDS)
 
@@ -4406,7 +4321,6 @@ def servicios_status_api():
         driver_context["driver_lat"],
         driver_context["driver_lng"],
     )
-    notify_visible_services_for_driver(conn, session.get("conductor_id"), visible_rows)
     conn.close()
 
     count_val = len(visible_rows)
@@ -4455,7 +4369,6 @@ def servicios_list_api():
             driver_context["driver_lat"],
             driver_context["driver_lng"],
         )
-        notify_visible_services_for_driver(conn, session.get("conductor_id"), visible_rows)
         conn.close()
     except Exception:
         visible_rows = []
