@@ -1,6 +1,7 @@
 {
   "name": "Zipp",
   "short_name": "Zipp",
+  "id": "/",
   "start_url": "/login",
   "display": "standalone",
   "background_color": "#071f3b",

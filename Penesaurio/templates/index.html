@@ -4037,8 +4037,8 @@
         </div>
         <div class="notification-permission-prompt" id="notificationPermissionPrompt" aria-live="polite">
           <div class="notification-permission-copy">
-            <strong>Activa las alertas</strong>
-            <span>Asi Zipp puede sonar cuando un servicio te corresponda.</span>
+            <strong id="notificationPermissionTitle">Activa las alertas</strong>
+            <span id="notificationPermissionText">Asi Zipp puede sonar cuando un servicio te corresponda.</span>
           </div>
           <div class="notification-permission-actions">
             <button class="notification-permission-action" type="button" id="notificationPermissionBtn">Activar</button>
@@ -4876,6 +4876,8 @@
       const notificationPermissionPrompt = document.getElementById('notificationPermissionPrompt');
       const notificationPermissionBtn = document.getElementById('notificationPermissionBtn');
       const notificationPermissionClose = document.getElementById('notificationPermissionClose');
+      const notificationPermissionTitle = document.getElementById('notificationPermissionTitle');
+      const notificationPermissionText = document.getElementById('notificationPermissionText');
       const notificationSoundUrl = {{ url_for('notification_sound')|tojson }};
       let lastMaxId = null;
       let priorityTimer = null;
@@ -5030,11 +5032,40 @@
         return typeof Notification !== 'undefined' && window.isSecureContext;
       }
 
+      function isIosDevice() {
+        const ua = navigator.userAgent || '';
+        return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      }
+
+      function isStandaloneWebApp() {
+        return window.navigator.standalone === true
+          || window.matchMedia?.('(display-mode: standalone)')?.matches
+          || window.matchMedia?.('(display-mode: fullscreen)')?.matches;
+      }
+
+      function needsIosHomeScreenInstall() {
+        return isIosDevice() && !isStandaloneWebApp() && !browserNotificationsSupported();
+      }
+
+      function setNotificationPermissionPromptCopy(mode) {
+        if (!notificationPermissionTitle || !notificationPermissionText || !notificationPermissionBtn) return;
+        if (mode === 'ios-install') {
+          notificationPermissionTitle.textContent = 'Instala Zipp para alertas';
+          notificationPermissionText.textContent = 'En iPhone: Compartir, Agregar a pantalla de inicio. Luego abre Zipp desde el icono y toca Activar.';
+          notificationPermissionBtn.textContent = 'Entendido';
+          return;
+        }
+        notificationPermissionTitle.textContent = 'Activa las alertas';
+        notificationPermissionText.textContent = 'Asi Zipp puede sonar cuando un servicio te corresponda.';
+        notificationPermissionBtn.textContent = 'Activar';
+      }
+
       function syncNotificationPermissionPrompt() {
         if (!notificationPermissionPrompt) return;
+        const needsInstall = needsIosHomeScreenInstall();
+        setNotificationPermissionPromptCopy(needsInstall ? 'ios-install' : 'default');
         const shouldShow = Boolean(
-          browserNotificationsSupported()
-          && Notification.permission === 'default'
+          ((browserNotificationsSupported() && Notification.permission === 'default') || needsInstall)
           && !notificationPermissionDismissed
           && driverOnline
           && !hasActiveService
@@ -5043,6 +5074,13 @@
       }
 
       async function requestNotificationPermission(source = 'manual') {
+        if (needsIosHomeScreenInstall()) {
+          if (source === 'manual') {
+            showToast('En iPhone primero agrega Zipp a pantalla de inicio.', 3600);
+          }
+          syncNotificationPermissionPrompt();
+          return false;
+        }
         if (!browserNotificationsSupported()) {
           if (source === 'manual') {
             showToast('Este navegador no permite alertas aqui.', 2600);
@@ -5070,6 +5108,8 @@
           if (permission === 'granted') {
             notificationPermissionDismissed = true;
             showToast('Alertas activas.', 1800);
+          } else if (permission === 'default' && source === 'manual') {
+            showToast('No aparecio la solicitud. Abre Zipp desde el icono instalado y vuelve a tocar Activar.', 4200);
           } else if (permission === 'denied' && source === 'manual') {
             showToast('Las alertas quedaron bloqueadas.', 2600);
           }
@@ -5078,6 +5118,9 @@
         } catch (err) {
           notificationPermissionRequested = false;
           syncNotificationPermissionPrompt();
+          if (source === 'manual') {
+            showToast('iPhone no dejo abrir la solicitud. Revisa Ajustes > Notificaciones > Zipp.', 4200);
+          }
           return false;
         }
       }
@@ -5088,6 +5131,7 @@
           if (
             browserNotificationsSupported()
             && Notification.permission === 'default'
+            && !isIosDevice()
             && !hasActiveService
             && driverOnline
           ) {
@@ -8026,6 +8070,12 @@
         }, 160);
       }
       notificationPermissionBtn?.addEventListener('click', async () => {
+        if (needsIosHomeScreenInstall()) {
+          notificationPermissionDismissed = true;
+          showToast('Abre Safari, toca Compartir y agrega Zipp a pantalla de inicio.', 4200);
+          syncNotificationPermissionPrompt();
+          return;
+        }
         notificationPermissionDismissed = false;
         const originalText = notificationPermissionBtn.textContent;
         notificationPermissionBtn.disabled = true;
@@ -8049,6 +8099,7 @@
           if (
             browserNotificationsSupported()
             && Notification.permission === 'default'
+            && !isIosDevice()
             && !notificationPermissionDismissed
             && driverOnline
             && !hasActiveService
