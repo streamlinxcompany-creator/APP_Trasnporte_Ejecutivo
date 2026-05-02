@@ -5082,7 +5082,25 @@
         return navigator.serviceWorker.register('/zipp-service-worker.js');
       }
 
-      async function registerPushSubscription() {
+      async function unsubscribeBrowserPushSubscriptions() {
+        if (!('serviceWorker' in navigator)) return '';
+        let lastEndpoint = '';
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            const subscription = await registration.pushManager?.getSubscription?.();
+            if (subscription) {
+              lastEndpoint = subscription.endpoint || lastEndpoint;
+              await subscription.unsubscribe();
+            }
+          }
+        } catch (err) {
+          // iOS can be picky here; the server cleanup still runs.
+        }
+        return lastEndpoint;
+      }
+
+      async function registerPushSubscription(options = {}) {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
           return false;
         }
@@ -5099,8 +5117,14 @@
           }
           let subscription = await registration.pushManager.getSubscription();
           const currentKey = arrayBufferToUrlBase64(subscription?.options?.applicationServerKey);
-          if (subscription && currentKey && currentKey !== keyData.publicKey) {
+          if (subscription && (options.force || !currentKey || currentKey !== keyData.publicKey)) {
             await subscription.unsubscribe();
+            await fetch('/api/push/unsubscribe', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ endpoint: subscription.endpoint || '' }),
+            });
             subscription = null;
           }
           if (!subscription) {
@@ -5153,19 +5177,7 @@
           refreshAccountNotificationStatus();
           return;
         }
-        let endpoint = '';
-        try {
-          if ('serviceWorker' in navigator) {
-            const registration = await navigator.serviceWorker.getRegistration();
-            const subscription = await registration?.pushManager?.getSubscription();
-            endpoint = subscription?.endpoint || '';
-            if (subscription) {
-              await subscription.unsubscribe();
-            }
-          }
-        } catch (err) {
-          // El servidor igual desactiva lo que tenga registrado.
-        }
+        const endpoint = await unsubscribeBrowserPushSubscriptions();
         try {
           await fetch('/api/push/unsubscribe', {
             method: 'POST',
@@ -5183,7 +5195,8 @@
       async function enablePushNotificationsFromAccount() {
         const granted = await requestNotificationPermission('manual');
         if (granted) {
-          showToast('Notificaciones activadas.', 2200);
+          const fixed = await registerPushSubscription({ force: true });
+          showToast(fixed ? 'Notificaciones reparadas y activas.' : 'No se pudo reparar este celular.', 2800);
         }
         refreshAccountNotificationStatus();
       }
@@ -5229,7 +5242,7 @@
           return false;
         }
         if (Notification.permission === 'granted') {
-          await registerPushSubscription();
+          await registerPushSubscription({ force: source === 'manual' });
           syncNotificationPermissionPrompt();
           return true;
         }
@@ -5250,7 +5263,7 @@
           }
           if (permission === 'granted') {
             notificationPermissionDismissed = true;
-            const subscribed = await registerPushSubscription();
+            const subscribed = await registerPushSubscription({ force: source === 'manual' });
             showToast(subscribed ? 'Alertas activas en este celular.' : 'Permiso activo, pero falta registrar este celular.', 2600);
           } else if (permission === 'default' && source === 'manual') {
             showToast('No aparecio la solicitud. Abre Zipp desde el icono instalado y vuelve a tocar Activar.', 4200);
@@ -8225,6 +8238,13 @@
           return;
         }
         notificationPermissionDismissed = false;
+        await unsubscribeBrowserPushSubscriptions();
+        await fetch('/api/push/unsubscribe', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
         const originalText = notificationPermissionBtn.textContent;
         notificationPermissionBtn.disabled = true;
         notificationPermissionBtn.textContent = 'Activando';

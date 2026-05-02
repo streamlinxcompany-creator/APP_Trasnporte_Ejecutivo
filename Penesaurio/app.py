@@ -72,7 +72,7 @@ DEFAULT_COVERAGE_CENTER_LNG = -75.431704
 DEFAULT_COVERAGE_RADIUS_METERS = 6000
 DRIVER_LOCATION_FRESH_SECONDS = 5 * 60
 GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
-VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@zipp.local")
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:soporte@zipp.app")
 SERVICE_MATCH_STAGES = [
     (30, 500),
     (60, 1200),
@@ -4443,6 +4443,14 @@ def push_subscribe_api():
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     conn = get_conn()
+    conn.execute(
+        """
+        UPDATE push_subscriptions
+        SET active = 0, updated_at = ?
+        WHERE conductor_id = ? AND endpoint != ?
+        """,
+        (now, session.get("conductor_id"), endpoint),
+    )
     conn.execute(
         """
         INSERT INTO push_subscriptions (
