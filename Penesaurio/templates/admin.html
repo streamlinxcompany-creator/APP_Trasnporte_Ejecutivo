@@ -151,7 +151,7 @@
       }
       .section-hub {
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
         gap: 14px;
         margin-bottom: 24px;
       }
@@ -375,6 +375,39 @@
       }
       .coords-actions .button {
         flex: 1;
+      }
+      .notify-panel {
+        grid-column: span 4;
+      }
+      .notify-form {
+        display: grid;
+        gap: 12px;
+      }
+      .notify-input,
+      .notify-textarea {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--stroke);
+        background: rgba(8, 12, 18, 0.7);
+        color: var(--text);
+        padding: 12px;
+        font-family: "Sora", sans-serif;
+        font-size: 13px;
+      }
+      .notify-textarea {
+        min-height: 112px;
+        resize: vertical;
+      }
+      .notify-status {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid var(--stroke);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
       }
       .coverage-toolbar {
         display: grid;
@@ -1201,6 +1234,7 @@
       body[data-admin-view="twilio"] .coverage-panel,
       body[data-admin-view="twilio"] .monitor-panel,
       body[data-admin-view="twilio"] .active-panel,
+      body[data-admin-view="twilio"] .notify-panel,
       body[data-admin-view="twilio"] .services-panel,
       body[data-admin-view="twilio"] #driversSection,
       body[data-admin-view="twilio"] #billingSection {
@@ -1209,6 +1243,7 @@
       body[data-admin-view="tests"] .stats-grid,
       body[data-admin-view="tests"] .section-hub,
       body[data-admin-view="tests"] .twilio-panel,
+      body[data-admin-view="tests"] .notify-panel,
       body[data-admin-view="tests"] .monitor-panel,
       body[data-admin-view="tests"] .active-panel,
       body[data-admin-view="tests"] .logs-panel,
@@ -1224,6 +1259,7 @@
       body[data-admin-view="drivers"] .coverage-panel,
       body[data-admin-view="drivers"] .monitor-panel,
       body[data-admin-view="drivers"] .active-panel,
+      body[data-admin-view="drivers"] .notify-panel,
       body[data-admin-view="drivers"] .services-panel,
       body[data-admin-view="drivers"] .logs-panel,
       body[data-admin-view="drivers"] #billingSection {
@@ -1237,11 +1273,26 @@
       body[data-admin-view="billing"] .coverage-panel,
       body[data-admin-view="billing"] .monitor-panel,
       body[data-admin-view="billing"] .active-panel,
+      body[data-admin-view="billing"] .notify-panel,
       body[data-admin-view="billing"] .services-panel,
       body[data-admin-view="billing"] .logs-panel {
         display: none;
       }
       body[data-admin-view="billing"] #driversSection {
+        display: none;
+      }
+      body[data-admin-view="notifications"] .stats-grid,
+      body[data-admin-view="notifications"] .section-hub,
+      body[data-admin-view="notifications"] .twilio-panel,
+      body[data-admin-view="notifications"] .generator-panel,
+      body[data-admin-view="notifications"] .coords-panel,
+      body[data-admin-view="notifications"] .coverage-panel,
+      body[data-admin-view="notifications"] .monitor-panel,
+      body[data-admin-view="notifications"] .active-panel,
+      body[data-admin-view="notifications"] .services-panel,
+      body[data-admin-view="notifications"] .logs-panel,
+      body[data-admin-view="notifications"] #driversSection,
+      body[data-admin-view="notifications"] #billingSection {
         display: none;
       }
     </style>
@@ -1308,6 +1359,10 @@
           <strong>Mensualidades</strong>
           <span>Controla planes, renovaciones y dias extra.</span>
         </a>
+        <a class="section-link" href="/admin/notifications">
+          <strong>Notificaciones</strong>
+          <span>Prueba avisos push y mensajes para conductores.</span>
+        </a>
       </section>
 
       <section class="main-grid">
@@ -1325,6 +1380,22 @@
             </div>
           </div>
           <div class="hint">La mensajeria ya no se puede apagar desde este panel.</div>
+        </div>
+
+        <div class="panel notify-panel" id="notificationsSection">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Notificaciones push</h3>
+              <p class="panel-sub">Prueba avisos directos al celular de los conductores.</p>
+            </div>
+            <button class="button" id="refreshNotificationsBtn">Estado</button>
+          </div>
+          <div class="notify-form">
+            <div class="notify-status" id="pushStatusBox">Cargando estado de Web Push...</div>
+            <input class="notify-input" id="pushTitleInput" type="text" maxlength="80" value="Zipp" />
+            <textarea class="notify-textarea" id="pushBodyInput" maxlength="240">Aprovecha este fin de semana con Zipp</textarea>
+            <button class="button primary" id="sendPushBtn">Enviar a todos</button>
+          </div>
         </div>
 
         <div class="panel generator-panel" id="testsSection">
@@ -1614,6 +1685,11 @@
       const coordsInput = document.getElementById("coordsInput");
       const sendCoordsBtn = document.getElementById("sendCoordsBtn");
       const fillCoordsBtn = document.getElementById("fillCoordsBtn");
+      const refreshNotificationsBtn = document.getElementById("refreshNotificationsBtn");
+      const pushStatusBox = document.getElementById("pushStatusBox");
+      const pushTitleInput = document.getElementById("pushTitleInput");
+      const pushBodyInput = document.getElementById("pushBodyInput");
+      const sendPushBtn = document.getElementById("sendPushBtn");
       const logsList = document.getElementById("logsList");
       const logsSource = document.getElementById("logsSource");
       const driverSearchInput = document.getElementById("driverSearchInput");
@@ -1847,6 +1923,46 @@
         initCoverageMap();
         coverageMap?.setView([coverageConfig.center_lat, coverageConfig.center_lng], coverageMap?.getZoom() || 13, { animate: false });
         renderCoverageMap();
+      }
+
+      async function loadNotificationStatus() {
+        if (!pushStatusBox) return;
+        const data = await fetchJson("/admin/api/notifications/status");
+        if (!data.ok) {
+          pushStatusBox.textContent = data.error || "No se pudo leer el estado push.";
+          return;
+        }
+        const push = data.push || {};
+        const ready = push.available ? "Listo" : "Pendiente";
+        pushStatusBox.innerHTML = `
+          <strong>${ready}: ${push.active_subscriptions || 0} celular(es) registrado(s)</strong>
+          <span>Libreria: ${push.library_ready ? "pywebpush activa" : "falta pywebpush"}</span>
+          <span>VAPID: ${push.vapid_ready ? `ok (${push.vapid_source || "-"})` : "sin claves"}</span>
+        `;
+      }
+
+      async function sendPushNotification() {
+        const title = (pushTitleInput?.value || "Zipp").trim();
+        const body = (pushBodyInput?.value || "").trim();
+        if (!body) {
+          showToast("Escribe el mensaje de la notificacion");
+          return;
+        }
+        sendPushBtn.disabled = true;
+        sendPushBtn.textContent = "Enviando...";
+        const data = await fetchJson("/admin/api/notifications/send", {
+          method: "POST",
+          body: JSON.stringify({ title, body })
+        });
+        sendPushBtn.disabled = false;
+        sendPushBtn.textContent = "Enviar a todos";
+        if (!data.ok) {
+          showToast(data.error || "No se pudo enviar");
+          return;
+        }
+        const result = data.result || {};
+        showToast(`Enviadas: ${result.sent || 0}. Fallidas: ${result.failed || 0}.`);
+        loadNotificationStatus();
       }
 
       function buildInitialsMarker(initials) {
@@ -2341,6 +2457,8 @@
         refreshMonitorBtn?.addEventListener("click", loadMonitor);
         refreshLogsBtn.addEventListener("click", loadLogs);
         clearLogsBtn.addEventListener("click", clearLogs);
+        refreshNotificationsBtn?.addEventListener("click", loadNotificationStatus);
+        sendPushBtn?.addEventListener("click", sendPushNotification);
         driverSearchInput?.addEventListener("input", () => loadDrivers());
 
         sendCoordsBtn?.addEventListener("click", async () => {
@@ -2486,6 +2604,7 @@
 
       setupEvents();
       loadCoverage();
+      loadNotificationStatus();
       refreshAll();
       setInterval(refreshAll, 5000);
     </script>

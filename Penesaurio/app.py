@@ -22,10 +22,23 @@ except Exception:
     Client = None
 
 try:
+    from pywebpush import WebPushException, webpush
+except Exception:
+    WebPushException = Exception
+    webpush = None
+
+try:
     from cryptography.fernet import Fernet, InvalidToken
 except Exception:
     Fernet = None
     InvalidToken = Exception
+
+try:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+except Exception:
+    serialization = None
+    ec = None
 
 try:
     import local_settings  # optional local-only credentials
@@ -53,6 +66,7 @@ DEFAULT_COVERAGE_CENTER_LNG = -75.431704
 DEFAULT_COVERAGE_RADIUS_METERS = 6000
 DRIVER_LOCATION_FRESH_SECONDS = 5 * 60
 GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@zipp.local")
 SERVICE_MATCH_STAGES = [
     (30, 500),
     (60, 1200),
@@ -399,6 +413,69 @@ def set_config_value(key, value):
     conn.close()
 
 
+def b64url_encode(raw):
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def derive_vapid_public_key(private_pem):
+    if not private_pem or serialization is None:
+        return ""
+    try:
+        private_key = serialization.load_pem_private_key(
+            private_pem.encode("utf-8"),
+            password=None,
+        )
+        numbers = private_key.public_key().public_numbers()
+        raw_public = (
+            b"\x04"
+            + int(numbers.x).to_bytes(32, "big")
+            + int(numbers.y).to_bytes(32, "big")
+        )
+        return b64url_encode(raw_public)
+    except Exception:
+        return ""
+
+
+def ensure_vapid_keys():
+    private_key = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
+    public_key = os.environ.get("VAPID_PUBLIC_KEY", "").strip()
+    if private_key:
+        return {
+            "private_key": private_key,
+            "public_key": public_key or derive_vapid_public_key(private_key),
+            "source": "env",
+        }
+
+    stored_private = get_config_value("vapid_private_key", "")
+    stored_public = get_config_value("vapid_public_key", "")
+    if stored_private and stored_public:
+        return {
+            "private_key": stored_private,
+            "public_key": stored_public,
+            "source": "db",
+        }
+
+    if ec is None or serialization is None:
+        return {"private_key": "", "public_key": "", "source": "missing_crypto"}
+
+    private_obj = ec.generate_private_key(ec.SECP256R1())
+    private_pem = private_obj.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
+    numbers = private_obj.public_key().public_numbers()
+    public_raw = (
+        b"\x04"
+        + int(numbers.x).to_bytes(32, "big")
+        + int(numbers.y).to_bytes(32, "big")
+    )
+    public_key = b64url_encode(public_raw)
+    set_config_value("vapid_private_key", private_pem)
+    set_config_value("vapid_public_key", public_key)
+    return {"private_key": private_pem, "public_key": public_key, "source": "generated"}
+
+
 def get_service_coverage_config():
     raw_value = get_config_value("service_coverage_config", "")
     data = {}
@@ -439,6 +516,213 @@ def save_service_coverage_config(center_lat, center_lng, radius_meters):
     }
     set_config_value("service_coverage_config", json.dumps(payload, ensure_ascii=True))
     return payload
+
+
+def get_push_status(conn=None):
+    own_conn = conn is None
+    conn = conn or get_conn()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) AS total FROM push_subscriptions WHERE active = 1"
+        ).fetchone()
+        active_subscriptions = int(row["total"]) if row else 0
+    except Exception:
+        active_subscriptions = 0
+    if own_conn:
+        conn.close()
+    keys = ensure_vapid_keys()
+    return {
+        "available": bool(webpush and keys.get("private_key") and keys.get("public_key")),
+        "library_ready": bool(webpush),
+        "vapid_ready": bool(keys.get("private_key") and keys.get("public_key")),
+        "vapid_source": keys.get("source", ""),
+        "active_subscriptions": active_subscriptions,
+    }
+
+
+def subscription_to_webpush_info(row):
+    return {
+        "endpoint": row["endpoint"],
+        "keys": {
+            "p256dh": row["p256dh"],
+            "auth": row["auth"],
+        },
+    }
+
+
+def send_push_payload_to_rows(rows, payload):
+    status = get_push_status()
+    if not status["available"]:
+        return {
+            "sent": 0,
+            "failed": len(rows),
+            "error": "Falta configurar Web Push: instala pywebpush y verifica claves VAPID.",
+        }
+
+    keys = ensure_vapid_keys()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    sent = 0
+    failed = 0
+    conn = get_conn()
+    for row in rows:
+        try:
+            webpush(
+                subscription_info=subscription_to_webpush_info(row),
+                data=json.dumps(payload, ensure_ascii=True),
+                vapid_private_key=keys["private_key"],
+                vapid_claims={"sub": VAPID_SUBJECT},
+            )
+            conn.execute(
+                """
+                UPDATE push_subscriptions
+                SET last_success_at = ?, last_error = NULL, active = 1, updated_at = ?
+                WHERE id = ?
+                """,
+                (now, now, row["id"]),
+            )
+            sent += 1
+        except Exception as exc:
+            failed += 1
+            status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            should_deactivate = status_code in {404, 410}
+            conn.execute(
+                """
+                UPDATE push_subscriptions
+                SET last_error = ?, active = CASE WHEN ? THEN 0 ELSE active END, updated_at = ?
+                WHERE id = ?
+                """,
+                (str(exc)[:500], 1 if should_deactivate else 0, now, row["id"]),
+            )
+    conn.commit()
+    conn.close()
+    return {"sent": sent, "failed": failed, "error": ""}
+
+
+def send_push_to_conductors(conductor_ids, title, body, url="/dashboard", tag="zipp-admin"):
+    ids = [int(conductor_id) for conductor_id in conductor_ids if conductor_id]
+    if not ids:
+        return {"sent": 0, "failed": 0, "targets": 0, "error": "Sin conductores destino."}
+    placeholders = ",".join("?" for _ in ids)
+    conn = get_conn()
+    rows = conn.execute(
+        f"""
+        SELECT *
+        FROM push_subscriptions
+        WHERE active = 1 AND conductor_id IN ({placeholders})
+        """,
+        ids,
+    ).fetchall()
+    conn.close()
+    payload = {
+        "title": title,
+        "body": body,
+        "url": url,
+        "tag": tag,
+    }
+    result = send_push_payload_to_rows(rows, payload)
+    result["targets"] = len(rows)
+    return result
+
+
+def send_admin_push_to_all(title, body):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM push_subscriptions WHERE active = 1"
+    ).fetchall()
+    conn.close()
+    result = send_push_payload_to_rows(
+        rows,
+        {
+            "title": title,
+            "body": body,
+            "url": "/dashboard",
+            "tag": f"admin-{int(time.time())}",
+        },
+    )
+    result["targets"] = len(rows)
+    return result
+
+
+def notify_visible_services_for_driver(conn, conductor_id, visible_rows):
+    if not visible_rows:
+        return
+    if not get_push_status(conn).get("available"):
+        return
+    sub_row = conn.execute(
+        """
+        SELECT COUNT(*) AS total
+        FROM push_subscriptions
+        WHERE conductor_id = ? AND active = 1
+        """,
+        (conductor_id,),
+    ).fetchone()
+    if not sub_row or int(sub_row["total"] or 0) <= 0:
+        return
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    to_notify = []
+    for row, _distance_meters, _age_seconds in visible_rows:
+        pedido_id = row["id"]
+        try:
+            conn.execute(
+                """
+                INSERT INTO push_notification_receipts (conductor_id, pedido_id, event_key, created_at)
+                VALUES (?, ?, 'service-visible', ?)
+                """,
+                (conductor_id, pedido_id, now),
+            )
+            to_notify.append(row)
+        except sqlite3.IntegrityError:
+            continue
+    if not to_notify:
+        return
+    conn.commit()
+    for row in to_notify:
+        detalles = parse_detalles(row["mensaje_cliente"] or "")
+        direccion = format_saved_address(detalles.get("Direccion", row["mensaje_cliente"] or ""))
+        nombre = detalles.get("Nombre", "Cliente")
+        send_push_to_conductors(
+            [conductor_id],
+            "Nuevo servicio disponible",
+            f"{nombre} - {direccion}",
+            "/dashboard",
+            f"servicio-{row['id']}",
+        )
+
+
+def notify_visible_services_for_all_drivers():
+    try:
+        conn = get_conn()
+        sync_expired_subscriptions(conn)
+        if not get_push_status(conn).get("available"):
+            conn.close()
+            return 0
+        drivers = conn.execute(
+            """
+            SELECT DISTINCT c.id
+            FROM conductores c
+            INNER JOIN push_subscriptions ps ON ps.conductor_id = c.id AND ps.active = 1
+            WHERE COALESCE(c.is_online, 1) = 1
+            """
+        ).fetchall()
+        notified_checks = 0
+        for driver in drivers:
+            context = get_driver_dispatch_context(conn, driver["id"])
+            if not context["eligible"]:
+                continue
+            visible_rows = get_visible_pending_services(
+                conn,
+                context["driver_lat"],
+                context["driver_lng"],
+            )
+            before = notified_checks
+            notify_visible_services_for_driver(conn, driver["id"], visible_rows)
+            notified_checks = before + len(visible_rows)
+        conn.close()
+        return notified_checks
+    except Exception as exc:
+        print(f"Error verificando notificaciones push: {exc}")
+        log_system_event("error", "push", "Error verificando notificaciones push", str(exc))
+        return 0
 
 
 def log_system_event(level, category, message, details=""):
@@ -768,6 +1052,44 @@ def init_db():
             message TEXT NOT NULL,
             details TEXT,
             timestamp TEXT
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conductor_id INTEGER NOT NULL,
+            endpoint TEXT UNIQUE NOT NULL,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            user_agent TEXT,
+            active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT,
+            last_success_at TEXT,
+            last_error TEXT,
+            FOREIGN KEY (conductor_id) REFERENCES conductores(id)
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_push_subscriptions_conductor
+        ON push_subscriptions(conductor_id, active)
+        """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS push_notification_receipts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conductor_id INTEGER NOT NULL,
+            pedido_id INTEGER,
+            event_key TEXT NOT NULL,
+            created_at TEXT,
+            UNIQUE(conductor_id, pedido_id, event_key)
         )
         """
     )
@@ -1781,6 +2103,7 @@ def start_expiration_worker():
             verificar_expiracion_servicios()
             retry_assignment_notifications()
             verify_idle_conversations()
+            notify_visible_services_for_all_drivers()
             time.sleep(EXPIRATION_CHECK_SECONDS)
 
     worker = threading.Thread(target=loop, name="servicios-expiracion", daemon=True)
@@ -2444,6 +2767,18 @@ def admin_billing_page():
     )
 
 
+@app.route("/admin/notifications")
+def admin_notifications_page():
+    if not admin_session_active():
+        return redirect(url_for("login"))
+    return render_template(
+        "admin.html",
+        admin_usuario=session.get("admin_usuario"),
+        admin_view="notifications",
+        admin_page_title="Notificaciones",
+    )
+
+
 @app.route("/admin/monitor")
 def admin_monitor_page():
     if not admin_session_active():
@@ -2571,6 +2906,37 @@ def admin_coverage_save_api():
         f"center={coverage['center_lat']},{coverage['center_lng']} radius_meters={coverage['radius_meters']}",
     )
     return jsonify({"ok": True, "coverage": coverage})
+
+
+@app.route("/admin/api/notifications/status")
+def admin_notifications_status_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+    status = get_push_status()
+    return jsonify({"ok": True, "push": status})
+
+
+@app.route("/admin/api/notifications/send", methods=["POST"])
+def admin_notifications_send_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    payload = request.get_json(silent=True) or {}
+    title = (payload.get("title") or "Zipp").strip()
+    body = (payload.get("body") or "").strip()
+    if not body:
+        return jsonify({"ok": False, "error": "Escribe el mensaje a enviar."}), 400
+    if len(title) > 80 or len(body) > 240:
+        return jsonify({"ok": False, "error": "Mensaje demasiado largo."}), 400
+
+    result = send_admin_push_to_all(title, body)
+    log_system_event(
+        "info",
+        "push",
+        "Notificacion enviada desde admin",
+        f"targets={result.get('targets', 0)} sent={result.get('sent', 0)} failed={result.get('failed', 0)}",
+    )
+    return jsonify({"ok": True, "result": result})
 
 
 @app.route("/admin/api/services")
@@ -3388,6 +3754,15 @@ def notification_sound():
     )
 
 
+@app.route("/zipp-service-worker.js", methods=["GET"])
+def zipp_service_worker():
+    path = os.path.join(app.static_folder or "static", "zipp-service-worker.js")
+    response = send_file(path, mimetype="application/javascript", conditional=True, max_age=0)
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.route("/tomar", methods=["POST"])
 def tomar():
     if not session.get("conductor_id"):
@@ -3751,6 +4126,7 @@ def servicios_status_api():
         driver_context["driver_lat"],
         driver_context["driver_lng"],
     )
+    notify_visible_services_for_driver(conn, session.get("conductor_id"), visible_rows)
     conn.close()
 
     count_val = len(visible_rows)
@@ -3799,6 +4175,7 @@ def servicios_list_api():
             driver_context["driver_lat"],
             driver_context["driver_lng"],
         )
+        notify_visible_services_for_driver(conn, session.get("conductor_id"), visible_rows)
         conn.close()
     except Exception:
         visible_rows = []
@@ -3842,6 +4219,62 @@ def servicios_list_api():
             "subscription_active": True,
         }
     )
+
+
+@app.route("/api/push/vapid-public-key")
+def push_vapid_public_key_api():
+    if not session.get("conductor_id"):
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+    keys = ensure_vapid_keys()
+    public_key = keys.get("public_key", "")
+    if not public_key:
+        return jsonify({"ok": False, "error": "Web Push no esta configurado."}), 500
+    return jsonify({"ok": True, "publicKey": public_key})
+
+
+@app.route("/api/push/subscribe", methods=["POST"])
+def push_subscribe_api():
+    if not session.get("conductor_id"):
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+
+    payload = request.get_json(silent=True) or {}
+    endpoint = (payload.get("endpoint") or "").strip()
+    keys = payload.get("keys") or {}
+    p256dh = (keys.get("p256dh") or "").strip()
+    auth = (keys.get("auth") or "").strip()
+    if not endpoint or not p256dh or not auth:
+        return jsonify({"ok": False, "error": "Suscripcion push incompleta."}), 400
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_conn()
+    conn.execute(
+        """
+        INSERT INTO push_subscriptions (
+            conductor_id, endpoint, p256dh, auth, user_agent, active, created_at, updated_at, last_error
+        )
+        VALUES (?, ?, ?, ?, ?, 1, ?, ?, NULL)
+        ON CONFLICT(endpoint) DO UPDATE SET
+            conductor_id = excluded.conductor_id,
+            p256dh = excluded.p256dh,
+            auth = excluded.auth,
+            user_agent = excluded.user_agent,
+            active = 1,
+            updated_at = excluded.updated_at,
+            last_error = NULL
+        """,
+        (
+            session.get("conductor_id"),
+            endpoint,
+            p256dh,
+            auth,
+            request.headers.get("User-Agent", "")[:300],
+            now,
+            now,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
 
 
 @app.route("/api/conductor/availability", methods=["POST"])
