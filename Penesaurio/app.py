@@ -51,6 +51,7 @@ CONVERSATION_IDLE_NUDGE_SECONDS = 5 * 60
 DEFAULT_COVERAGE_CENTER_LAT = 6.030589
 DEFAULT_COVERAGE_CENTER_LNG = -75.431704
 DEFAULT_COVERAGE_RADIUS_METERS = 6000
+DRIVER_LOCATION_FRESH_SECONDS = 5 * 60
 GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
 SERVICE_MATCH_STAGES = [
     (30, 500),
@@ -1085,6 +1086,92 @@ def is_service_visible_for_driver(row, driver_lat=None, driver_lng=None):
 
     distance = haversine_distance_meters(driver_lat, driver_lng, service_lat, service_lng)
     return bool(distance is not None and distance <= radius_limit), distance, elapsed
+
+
+def is_driver_location_recent(location_updated_at):
+    if not location_updated_at:
+        return False
+    return elapsed_seconds(location_updated_at) <= DRIVER_LOCATION_FRESH_SECONDS
+
+
+def get_driver_dispatch_context(conn, conductor_id):
+    row = conn.execute(
+        "SELECT * FROM conductores WHERE id = ?",
+        (conductor_id,),
+    ).fetchone()
+    if row is None:
+        return {
+            "eligible": False,
+            "reason": "driver_not_found",
+            "online": False,
+            "active_pedido_id": None,
+            "subscription_active": False,
+            "location_recent": False,
+            "driver_lat": None,
+            "driver_lng": None,
+        }
+
+    active_state = get_driver_active_service(
+        conn,
+        row["id"],
+        row["nombre_real"],
+        row["placa"],
+    )
+    active_pedido_id = active_state["active_pedido_id"] if active_state else None
+    is_online = (
+        bool(row["is_online"])
+        if "is_online" in row.keys() and row["is_online"] is not None
+        else True
+    )
+    subscription = get_conductor_subscription_snapshot(row)
+    driver_lat = parse_float_or_none(row["current_lat"]) if "current_lat" in row.keys() else None
+    driver_lng = parse_float_or_none(row["current_lng"]) if "current_lng" in row.keys() else None
+    location_recent = (
+        driver_lat is not None
+        and driver_lng is not None
+        and is_driver_location_recent(row["location_updated_at"] if "location_updated_at" in row.keys() else "")
+    )
+    reason = ""
+    if not is_online:
+        reason = "offline"
+    elif active_pedido_id:
+        reason = "active_service"
+    elif not subscription["suscripcion_activa"]:
+        reason = "subscription_inactive"
+    elif not location_recent:
+        reason = "location_stale"
+
+    return {
+        "eligible": not reason,
+        "reason": reason,
+        "online": is_online,
+        "active_pedido_id": active_pedido_id,
+        "subscription_active": subscription["suscripcion_activa"],
+        "location_recent": location_recent,
+        "driver_lat": driver_lat,
+        "driver_lng": driver_lng,
+    }
+
+
+def get_visible_pending_services(conn, driver_lat, driver_lng):
+    rows = conn.execute(
+        """
+        SELECT id, cliente_telefono, mensaje_cliente, timestamp
+        FROM pedidos
+        WHERE lower(estado) IN ('disponible', 'pendiente')
+        ORDER BY id ASC
+        """
+    ).fetchall()
+    visible = []
+    for row in rows:
+        is_visible, distance_meters, age_seconds = is_service_visible_for_driver(
+            row,
+            driver_lat,
+            driver_lng,
+        )
+        if is_visible:
+            visible.append((row, distance_meters, age_seconds))
+    return visible
 
 
 def format_saved_address(value):
@@ -3148,22 +3235,28 @@ def build_panel_context():
     rows = []
     if not active_pedido_id and driver_online:
         driver_row = conn.execute(
-            "SELECT current_lat, current_lng FROM conductores WHERE id = ?",
+            "SELECT current_lat, current_lng, location_updated_at FROM conductores WHERE id = ?",
             (session.get("conductor_id"),),
         ).fetchone()
         driver_lat = parse_float_or_none(driver_row["current_lat"]) if driver_row else None
         driver_lng = parse_float_or_none(driver_row["current_lng"]) if driver_row else None
-        rows = conn.execute(
-            """
-            SELECT id, estado, cliente_telefono, mensaje_cliente, timestamp
-            FROM pedidos
-            WHERE lower(estado) IN ('disponible', 'pendiente')
-            ORDER BY id ASC
-            """
-        ).fetchall()
-        rows = [
-            row for row in rows if is_service_visible_for_driver(row, driver_lat, driver_lng)[0]
-        ]
+        location_recent = (
+            driver_lat is not None
+            and driver_lng is not None
+            and is_driver_location_recent(driver_row["location_updated_at"] if driver_row else "")
+        )
+        if location_recent:
+            rows = conn.execute(
+                """
+                SELECT id, estado, cliente_telefono, mensaje_cliente, timestamp
+                FROM pedidos
+                WHERE lower(estado) IN ('disponible', 'pendiente')
+                ORDER BY id ASC
+                """
+            ).fetchall()
+            rows = [
+                row for row in rows if is_service_visible_for_driver(row, driver_lat, driver_lng)[0]
+            ]
 
     rows_mios = conn.execute(
         """
@@ -3630,35 +3723,48 @@ def servicios_status_api():
         return jsonify({"ok": False, "error": "No autenticado."}), 401
 
     conn = get_conn()
-    driver_row = conn.execute(
-        "SELECT is_online, current_lat, current_lng FROM conductores WHERE id = ?",
-        (session.get("conductor_id"),),
-    ).fetchone()
-    is_online = bool(driver_row["is_online"]) if driver_row and driver_row["is_online"] is not None else True
-    if not is_online:
+    driver_context = get_driver_dispatch_context(conn, session.get("conductor_id"))
+    conn.commit()
+    if not driver_context["eligible"]:
         conn.close()
-        return jsonify({"ok": True, "count": 0, "max_id": 0, "online": False})
-    driver_lat = parse_float_or_none(driver_row["current_lat"]) if driver_row else None
-    driver_lng = parse_float_or_none(driver_row["current_lng"]) if driver_row else None
+        return jsonify(
+            {
+                "ok": True,
+                "count": 0,
+                "max_id": 0,
+                "online": driver_context["online"],
+                "alert_ready": False,
+                "reason": driver_context["reason"],
+                "service_ids": [],
+                "location_recent": driver_context["location_recent"],
+                "active_pedido_id": driver_context["active_pedido_id"],
+                "subscription_active": driver_context["subscription_active"],
+            }
+        )
 
-    rows = conn.execute(
-        """
-        SELECT id, timestamp, mensaje_cliente
-        FROM pedidos
-        WHERE lower(estado) IN ('disponible', 'pendiente')
-        ORDER BY id ASC
-        """
-    ).fetchall()
+    visible_rows = get_visible_pending_services(
+        conn,
+        driver_context["driver_lat"],
+        driver_context["driver_lng"],
+    )
     conn.close()
 
-    visible_rows = [
-        row
-        for row in rows
-        if is_service_visible_for_driver(row, driver_lat, driver_lng)[0]
-    ]
     count_val = len(visible_rows)
-    max_id_val = visible_rows[-1]["id"] if visible_rows else 0
-    return jsonify({"ok": True, "count": count_val, "max_id": max_id_val, "online": True})
+    max_id_val = visible_rows[-1][0]["id"] if visible_rows else 0
+    return jsonify(
+        {
+            "ok": True,
+            "count": count_val,
+            "max_id": max_id_val,
+            "online": True,
+            "alert_ready": True,
+            "reason": "",
+            "service_ids": [row["id"] for row, _distance, _age in visible_rows],
+            "location_recent": True,
+            "active_pedido_id": None,
+            "subscription_active": True,
+        }
+    )
 
 
 @app.route("/api/servicios/list")
@@ -3668,37 +3774,33 @@ def servicios_list_api():
 
     try:
         conn = get_conn()
-        driver_row = conn.execute(
-            "SELECT is_online, current_lat, current_lng FROM conductores WHERE id = ?",
-            (session.get("conductor_id"),),
-        ).fetchone()
-        is_online = bool(driver_row["is_online"]) if driver_row and driver_row["is_online"] is not None else True
-        if not is_online:
+        driver_context = get_driver_dispatch_context(conn, session.get("conductor_id"))
+        conn.commit()
+        if not driver_context["eligible"]:
             conn.close()
-            return jsonify({"ok": True, "servicios": [], "online": False})
-        driver_lat = parse_float_or_none(driver_row["current_lat"]) if driver_row else None
-        driver_lng = parse_float_or_none(driver_row["current_lng"]) if driver_row else None
-        rows = conn.execute(
-            """
-            SELECT id, cliente_telefono, mensaje_cliente, timestamp
-            FROM pedidos
-            WHERE lower(estado) IN ('disponible', 'pendiente')
-            ORDER BY id ASC
-            """
-        ).fetchall()
+            return jsonify(
+                {
+                    "ok": True,
+                    "servicios": [],
+                    "online": driver_context["online"],
+                    "alert_ready": False,
+                    "reason": driver_context["reason"],
+                    "location_recent": driver_context["location_recent"],
+                    "active_pedido_id": driver_context["active_pedido_id"],
+                    "subscription_active": driver_context["subscription_active"],
+                }
+            )
+        visible_rows = get_visible_pending_services(
+            conn,
+            driver_context["driver_lat"],
+            driver_context["driver_lng"],
+        )
         conn.close()
     except Exception:
-        rows = []
+        visible_rows = []
 
     servicios = []
-    for row in rows:
-        visible, distance_meters, age_seconds = is_service_visible_for_driver(
-            row,
-            driver_lat,
-            driver_lng,
-        )
-        if not visible:
-            continue
+    for row, distance_meters, age_seconds in visible_rows:
         detalles = parse_detalles(row["mensaje_cliente"] or "")
         direccion = detalles.get("Direccion", row["mensaje_cliente"] or "")
         lat = detalles.get("Latitude") or detalles.get("Latitud") or ""
@@ -3724,7 +3826,18 @@ def servicios_list_api():
             }
         )
 
-    return jsonify({"ok": True, "servicios": servicios, "online": True})
+    return jsonify(
+        {
+            "ok": True,
+            "servicios": servicios,
+            "online": True,
+            "alert_ready": True,
+            "reason": "",
+            "location_recent": True,
+            "active_pedido_id": None,
+            "subscription_active": True,
+        }
+    )
 
 
 @app.route("/api/conductor/availability", methods=["POST"])

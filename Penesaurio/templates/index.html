@@ -3811,6 +3811,71 @@
       .toast.show {
         opacity: 1;
       }
+      .notification-permission-prompt {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        right: 14px;
+        z-index: 30;
+        display: none;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid rgba(59, 130, 246, 0.28);
+        border-radius: 18px;
+        background: rgba(248, 250, 252, 0.98);
+        box-shadow: 0 22px 44px rgba(15, 23, 42, 0.2);
+        color: #0f172a;
+      }
+      .notification-permission-prompt.show {
+        display: flex;
+      }
+      .notification-permission-copy {
+        min-width: 0;
+        flex: 1;
+      }
+      .notification-permission-copy strong {
+        display: block;
+        font-size: 0.88rem;
+        font-weight: 800;
+      }
+      .notification-permission-copy span {
+        display: block;
+        margin-top: 2px;
+        font-size: 0.76rem;
+        color: #475569;
+        line-height: 1.3;
+      }
+      .notification-permission-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .notification-permission-action,
+      .notification-permission-close {
+        border: 0;
+        cursor: pointer;
+        font-weight: 800;
+      }
+      .notification-permission-action {
+        min-height: 38px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: #2563eb;
+        color: #eff6ff;
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .notification-permission-close {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        color: #334155;
+        font-size: 1rem;
+      }
       .chat-toast {
         position: fixed;
         right: 16px;
@@ -3956,6 +4021,16 @@
             <div class="priority-timer">
               <div class="priority-progress" id="priorityProgress"></div>
             </div>
+          </div>
+        </div>
+        <div class="notification-permission-prompt" id="notificationPermissionPrompt" aria-live="polite">
+          <div class="notification-permission-copy">
+            <strong>Activa las alertas</strong>
+            <span>Asi Zipp puede sonar cuando un servicio te corresponda.</span>
+          </div>
+          <div class="notification-permission-actions">
+            <button class="notification-permission-action" type="button" id="notificationPermissionBtn">Activar</button>
+            <button class="notification-permission-close" type="button" id="notificationPermissionClose" aria-label="Cerrar">x</button>
           </div>
         </div>
         <div class="content-wrap" id="contentWrap">
@@ -4786,12 +4861,16 @@
       const priorityId = document.getElementById('priorityId');
       const priorityDetailBtn = document.getElementById('priorityDetailBtn');
       const priorityProgress = document.getElementById('priorityProgress');
+      const notificationPermissionPrompt = document.getElementById('notificationPermissionPrompt');
+      const notificationPermissionBtn = document.getElementById('notificationPermissionBtn');
+      const notificationPermissionClose = document.getElementById('notificationPermissionClose');
       const notificationSoundUrl = {{ url_for('notification_sound')|tojson }};
       let lastMaxId = null;
       let priorityTimer = null;
       let notificationAudio = null;
       let notificationAudioUnlocked = false;
       let notificationPermissionRequested = false;
+      let notificationPermissionDismissed = false;
       const initialMaxId = {{ pedidos[0].id if pedidos else 0 }};
       const detailModal = document.getElementById('detailModal');
       const detailContent = document.getElementById('detailContent');
@@ -4806,6 +4885,10 @@
       let routeAnimationFrame = null;
       let latestServices = [];
       let selectedServiceId = {{ pedidos[0].id if pedidos else 'null' }};
+      const initialVisibleServiceIds = Array.from(document.querySelectorAll('[data-select-service][data-service-id]'))
+        .map((node) => Number(node.dataset.serviceId))
+        .filter((id) => Number.isFinite(id) && id > 0);
+      const alertedServiceIds = new Set(initialVisibleServiceIds);
       let driverPosition = null;
       let driverWatchId = null;
       let lastDriverLocationSyncAt = 0;
@@ -4931,6 +5014,77 @@
         }, duration);
       }
 
+      function browserNotificationsSupported() {
+        return typeof Notification !== 'undefined' && window.isSecureContext;
+      }
+
+      function syncNotificationPermissionPrompt() {
+        if (!notificationPermissionPrompt) return;
+        const shouldShow = Boolean(
+          browserNotificationsSupported()
+          && Notification.permission === 'default'
+          && !notificationPermissionDismissed
+          && driverOnline
+          && !hasActiveService
+        );
+        notificationPermissionPrompt.classList.toggle('show', shouldShow);
+      }
+
+      async function requestNotificationPermission(source = 'manual') {
+        if (!browserNotificationsSupported()) {
+          if (source === 'manual') {
+            showToast('Este navegador no permite alertas aqui.', 2600);
+          }
+          return false;
+        }
+        if (Notification.permission === 'granted') {
+          syncNotificationPermissionPrompt();
+          return true;
+        }
+        if (Notification.permission !== 'default') {
+          syncNotificationPermissionPrompt();
+          if (source === 'manual') {
+            showToast('Las alertas estan bloqueadas en el navegador.', 3000);
+          }
+          return false;
+        }
+        if (notificationPermissionRequested) return false;
+        notificationPermissionRequested = true;
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission === 'default') {
+            notificationPermissionRequested = false;
+          }
+          if (permission === 'granted') {
+            notificationPermissionDismissed = true;
+            showToast('Alertas activas.', 1800);
+          } else if (permission === 'denied' && source === 'manual') {
+            showToast('Las alertas quedaron bloqueadas.', 2600);
+          }
+          syncNotificationPermissionPrompt();
+          return permission === 'granted';
+        } catch (err) {
+          notificationPermissionRequested = false;
+          syncNotificationPermissionPrompt();
+          return false;
+        }
+      }
+
+      function initNotificationPermissionFlow() {
+        syncNotificationPermissionPrompt();
+        setTimeout(() => {
+          if (
+            browserNotificationsSupported()
+            && Notification.permission === 'default'
+            && !hasActiveService
+            && driverOnline
+          ) {
+            requestNotificationPermission('entry');
+          }
+        }, 900);
+        setTimeout(syncNotificationPermissionPrompt, 1400);
+      }
+
       function getNotificationAudio() {
         if (notificationAudio || !notificationSoundUrl) return notificationAudio;
         notificationAudio = new Audio(notificationSoundUrl);
@@ -4967,21 +5121,21 @@
             if (service?.nombre) bodyParts.push(service.nombre);
             if (service?.direccion) bodyParts.push(service.direccion);
             try {
-              new Notification('Nuevo servicio disponible', {
+              const notification = new Notification('Nuevo servicio disponible', {
                 body: bodyParts.join(' - ') || 'Revisa el panel para tomarlo.',
                 tag: `servicio-${service?.id || 'nuevo'}`,
                 renotify: true,
               });
+              notification.onclick = () => {
+                window.focus();
+                setActivePage('servicios');
+                showServiceBottomSheet(7000);
+              };
             } catch (err) {
               // ignore
             }
-          } else if (
-            Notification.permission === 'default'
-            && !notificationPermissionRequested
-            && !document.hidden
-          ) {
-            notificationPermissionRequested = true;
-            Notification.requestPermission().catch(() => {});
+          } else if (Notification.permission === 'default' && !document.hidden) {
+            requestNotificationPermission('service');
           }
         }
         if (!audio) return;
@@ -5847,6 +6001,7 @@
         }
 
         updateServiceCounters(driverOnline ? latestServices.length : 0);
+        syncNotificationPermissionPrompt();
       }
 
       async function persistAvailability(enabled) {
@@ -7617,6 +7772,19 @@
             applyAvailabilityState(false);
             return;
           }
+          if (data.alert_ready === false) {
+            if (data.reason === 'location_stale') {
+              requestDriverPosition(false);
+            }
+            latestServices = [];
+            updateServiceCounters(0);
+            renderSelectedServicePanel(null);
+            hideServiceBottomSheet();
+            servicesList.innerHTML = data.reason === 'location_stale'
+              ? '<div class="servicios-empty">Actualizando tu ubicacion para buscar servicios cercanos.</div>'
+              : '<div class="servicios-empty">No hay servicios disponibles para tu estado actual.</div>';
+            return;
+          }
           latestServices = sortServicesByArrival(
             (data.servicios || []).map((service) => normalizeService(service)).filter(Boolean)
           );
@@ -7768,16 +7936,30 @@
             applyAvailabilityState(false);
             return;
           }
-          if (lastMaxId === null) {
-            lastMaxId = Math.max(data.max_id || 0, initialMaxId || 0);
+          if (data.alert_ready === false) {
+            if (data.reason === 'location_stale') {
+              requestDriverPosition(false);
+            }
             return;
           }
+          const visibleIds = (data.service_ids || [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id) && id > 0);
+          if (lastMaxId === null) {
+            lastMaxId = Math.max(data.max_id || 0, initialMaxId || 0);
+            visibleIds.forEach((id) => alertedServiceIds.add(id));
+            return;
+          }
+          const nextAlertId = visibleIds.find((id) => !alertedServiceIds.has(id));
           if (data.max_id && data.max_id > lastMaxId) {
             lastMaxId = data.max_id;
+          }
+          if (nextAlertId) {
+            alertedServiceIds.add(nextAlertId);
             const listRes = await fetch('/api/servicios/list');
             const listData = await listRes.json();
             if (listData.ok) {
-              const servicio = (listData.servicios || []).find(s => s.id === data.max_id) || (listData.servicios || [])[0];
+              const servicio = (listData.servicios || []).find(s => Number(s.id) === nextAlertId) || (listData.servicios || [])[0];
               showPriority(servicio);
               refreshServicesList();
             }
@@ -7831,15 +8013,34 @@
           showToast(dashboardData.flashMessages[dashboardData.flashMessages.length - 1], 2600);
         }, 160);
       }
+      notificationPermissionBtn?.addEventListener('click', () => {
+        notificationPermissionDismissed = false;
+        requestNotificationPermission('manual');
+      });
+      notificationPermissionClose?.addEventListener('click', () => {
+        notificationPermissionDismissed = true;
+        syncNotificationPermissionPrompt();
+      });
+      initNotificationPermissionFlow();
       const notificationUnlockEvents = ['click', 'touchstart', 'pointerdown', 'keydown'];
       notificationUnlockEvents.forEach((eventName) => {
         document.addEventListener(eventName, () => {
           unlockNotificationAudio();
+          if (
+            browserNotificationsSupported()
+            && Notification.permission === 'default'
+            && !notificationPermissionDismissed
+            && driverOnline
+            && !hasActiveService
+          ) {
+            requestNotificationPermission('gesture');
+          }
         }, { passive: true });
       });
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && !hasActiveService) {
           unlockNotificationAudio();
+          syncNotificationPermissionPrompt();
           checkActiveService({ silent: true });
         }
       });
