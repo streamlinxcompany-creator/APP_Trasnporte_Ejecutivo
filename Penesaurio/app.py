@@ -2988,18 +2988,22 @@ def admin_driver_subscription_api():
         )
         message = f"Dias del plan actualizados a {extra_days}."
     elif action == "renew":
-        plan_days = row["dias_mensualidad"] or DEFAULT_MEMBERSHIP_DAYS
+        if str(days_value).strip() and extra_days <= 0:
+            conn.close()
+            return jsonify({"ok": False, "error": "Define una cantidad valida de dias."}), 400
+        plan_days = extra_days if extra_days > 0 else (row["dias_mensualidad"] or DEFAULT_MEMBERSHIP_DAYS)
         new_end = base_fin + timedelta(days=plan_days)
         conn.execute(
             """
             UPDATE conductores
             SET status_suscripto = 'activo',
                 fin_suscripcion = ?,
+                dias_mensualidad = ?,
                 mensualidades_pagadas = COALESCE(mensualidades_pagadas, 0) + 1,
                 ultima_mensualidad_at = ?
             WHERE id = ?
             """,
-            (format_db_datetime(new_end), format_db_datetime(now), conductor_id),
+            (format_db_datetime(new_end), plan_days, format_db_datetime(now), conductor_id),
         )
         message = f"Mensualidad aplicada por {plan_days} dias."
     elif action == "add_days":

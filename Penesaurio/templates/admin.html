@@ -329,6 +329,12 @@
         color: var(--accent);
       }
 
+      .button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+        filter: grayscale(0.35);
+      }
+
       .button.primary {
         background: var(--accent);
         color: #1b1404;
@@ -823,6 +829,10 @@
         overflow: auto;
       }
 
+      .modal-card.renewal-card {
+        max-width: 460px;
+      }
+
       .driver-detail-top {
         display: flex;
         align-items: flex-start;
@@ -972,6 +982,35 @@
         background: rgba(255, 255, 255, 0.04);
         color: var(--text);
         font-size: 12px;
+      }
+
+      .renewal-field {
+        display: grid;
+        gap: 8px;
+        margin: 16px 0;
+      }
+
+      .renewal-field label {
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 1.1px;
+        text-transform: uppercase;
+      }
+
+      .renewal-field .sub-input {
+        width: 100%;
+        font-size: 16px;
+        padding: 12px;
+      }
+
+      .renewal-summary {
+        border: 1px solid var(--stroke);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.5;
+        padding: 14px;
       }
 
       .sub-meta {
@@ -1492,12 +1531,8 @@
             <div class="detail-actions">
               <div class="detail-row">
                 <button class="button" id="driverPasswordBtn">Ver clave</button>
-                <button class="button primary" id="driverRenewBtn">Cobrar plan</button>
+                <button class="button primary" id="driverRenewBtn">Renovar Plan</button>
                 <button class="button danger" id="driverDeactivateBtn">Desactivar suscripcion</button>
-              </div>
-              <div class="detail-row">
-                <input class="sub-input" type="number" min="1" id="driverPlanDaysInput" />
-                <button class="button" id="driverPlanSaveBtn">Guardar dias del plan</button>
               </div>
               <div class="detail-row">
                 <input class="sub-input" type="number" min="1" placeholder="Dias extra" id="driverExtraDaysInput" />
@@ -1505,6 +1540,23 @@
               </div>
             </div>
           </section>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="renewPlanModal">
+      <div class="modal-card renewal-card">
+        <h3>Renovar plan</h3>
+        <div class="renewal-field">
+          <label for="driverPlanDaysInput">Dias a asignar</label>
+          <input class="sub-input" type="number" min="1" step="1" inputmode="numeric" id="driverPlanDaysInput" />
+        </div>
+        <div class="renewal-summary" id="renewPlanSummary">
+          Activa el plan del conductor seleccionado.
+        </div>
+        <div class="modal-actions">
+          <button class="button" id="closeRenewModalBtn">Cancelar</button>
+          <button class="button primary" id="driverRenewConfirmBtn">Activar plan</button>
         </div>
       </div>
     </div>
@@ -1586,9 +1638,12 @@
       const driverRenewBtn = document.getElementById("driverRenewBtn");
       const driverDeactivateBtn = document.getElementById("driverDeactivateBtn");
       const driverPlanDaysInput = document.getElementById("driverPlanDaysInput");
-      const driverPlanSaveBtn = document.getElementById("driverPlanSaveBtn");
       const driverExtraDaysInput = document.getElementById("driverExtraDaysInput");
       const driverExtraDaysBtn = document.getElementById("driverExtraDaysBtn");
+      const renewPlanModal = document.getElementById("renewPlanModal");
+      const renewPlanSummary = document.getElementById("renewPlanSummary");
+      const driverRenewConfirmBtn = document.getElementById("driverRenewConfirmBtn");
+      const closeRenewModalBtn = document.getElementById("closeRenewModalBtn");
 
       const credModal = document.getElementById("credModal");
       const credUser = document.getElementById("credUser");
@@ -1601,6 +1656,7 @@
       let currentPassword = "";
       let currentDriverId = null;
       let currentDriverDetailId = null;
+      let currentRenewalDriver = null;
       let driversCache = [];
       let coverageMap = null;
       let coverageMarker = null;
@@ -1648,6 +1704,75 @@
           return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
         }
         return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      }
+
+      function parseAdminDate(value) {
+        const text = String(value || "").trim();
+        const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
+        if (!match) return null;
+        const day = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const year = Number(match[3]);
+        const hour = Number(match[4] || 0);
+        const minute = Number(match[5] || 0);
+        const parsed = new Date(year, month, day, hour, minute);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      }
+
+      function addDays(date, days) {
+        const copy = new Date(date.getTime());
+        copy.setDate(copy.getDate() + Number(days || 0));
+        return copy;
+      }
+
+      function formatAdminDate(date) {
+        return new Intl.DateTimeFormat("es-CO", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(date);
+      }
+
+      function getRenewalBaseDate(conductor) {
+        const now = new Date();
+        const currentEnd = parseAdminDate(conductor?.fin_suscripcion);
+        if (currentEnd && currentEnd > now) return currentEnd;
+        return now;
+      }
+
+      function updateRenewalSummary() {
+        if (!currentRenewalDriver) return;
+        const days = Number(driverPlanDaysInput?.value || 0);
+        if (!Number.isInteger(days) || days <= 0) {
+          driverRenewConfirmBtn.disabled = true;
+          renewPlanSummary.textContent = "Escribe una cantidad valida de dias para ver la fecha final.";
+          return;
+        }
+        driverRenewConfirmBtn.disabled = false;
+        const start = getRenewalBaseDate(currentRenewalDriver);
+        const end = addDays(start, days);
+        renewPlanSummary.textContent = `Activar plan de ${currentRenewalDriver.nombre} del dia ${formatAdminDate(start)} hasta el dia ${formatAdminDate(end)}.`;
+      }
+
+      function openRenewalModal() {
+        const conductor = driversCache.find(driver => String(driver.id) === String(currentDriverDetailId));
+        if (!conductor) {
+          showToast("Selecciona un conductor para renovar el plan");
+          return;
+        }
+        currentRenewalDriver = conductor;
+        driverPlanDaysInput.value = conductor.dias_mensualidad || 30;
+        updateRenewalSummary();
+        renewPlanModal.classList.add("active");
+        driverPlanDaysInput.focus();
+        driverPlanDaysInput.select();
+      }
+
+      function closeRenewalModal() {
+        currentRenewalDriver = null;
+        renewPlanModal.classList.remove("active");
       }
 
       async function fetchJson(url, options) {
@@ -1998,7 +2123,7 @@
 
       async function updateSubscription(id, action) {
         const payload = { id, action };
-        if (action === "set_plan_days") {
+        if (action === "renew") {
           payload.days = Number(driverPlanDaysInput?.value || 0);
         }
         if (action === "add_days") {
@@ -2010,6 +2135,7 @@
         });
         if (data.ok) {
           showToast(data.message || "Suscripcion actualizada");
+          if (action === "renew") closeRenewalModal();
           loadDrivers();
           loadOverview();
         } else {
@@ -2035,7 +2161,6 @@
         const subscriptionLabel = conductor.suscripcion_activa
           ? `Activa  -  ${conductor.dias_restantes} dia(s)`
           : "Pago pendiente";
-        const existingPlanValue = driverPlanDaysInput.value;
         const existingExtraValue = driverExtraDaysInput.value;
 
         driverDetailName.textContent = conductor.nombre;
@@ -2068,15 +2193,13 @@
           { label: "Suscripcion base", value: conductor.status_suscripto || "-" }
         ]);
 
-        driverPlanDaysInput.value = preserveDraft && existingPlanValue
-          ? existingPlanValue
-          : (conductor.dias_mensualidad || 30);
         driverExtraDaysInput.value = preserveDraft ? existingExtraValue : "";
         driverDetailModal.classList.add("active");
       }
 
       function closeDriverDetail() {
         currentDriverDetailId = null;
+        closeRenewalModal();
         driverDetailModal.classList.remove("active");
       }
 
@@ -2327,13 +2450,18 @@
           if (currentDriverDetailId) openCredentials(currentDriverDetailId);
         });
         driverRenewBtn.addEventListener("click", () => {
-          if (currentDriverDetailId) updateSubscription(currentDriverDetailId, "renew");
+          if (currentDriverDetailId) openRenewalModal();
         });
         driverDeactivateBtn.addEventListener("click", () => {
           if (currentDriverDetailId) updateSubscription(currentDriverDetailId, "deactivate");
         });
-        driverPlanSaveBtn.addEventListener("click", () => {
-          if (currentDriverDetailId) updateSubscription(currentDriverDetailId, "set_plan_days");
+        driverPlanDaysInput.addEventListener("input", updateRenewalSummary);
+        closeRenewModalBtn.addEventListener("click", closeRenewalModal);
+        driverRenewConfirmBtn.addEventListener("click", () => {
+          if (currentDriverDetailId) updateSubscription(currentDriverDetailId, "renew");
+        });
+        renewPlanModal.addEventListener("click", event => {
+          if (event.target === renewPlanModal) closeRenewalModal();
         });
         driverExtraDaysBtn.addEventListener("click", () => {
           if (currentDriverDetailId) updateSubscription(currentDriverDetailId, "add_days");
