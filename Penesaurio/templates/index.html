@@ -3813,9 +3813,10 @@
       }
       .notification-permission-prompt {
         position: absolute;
-        top: 14px;
+        top: auto;
         left: 14px;
         right: 14px;
+        bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom));
         z-index: 30;
         display: none;
         align-items: center;
@@ -3826,9 +3827,16 @@
         background: rgba(248, 250, 252, 0.98);
         box-shadow: 0 22px 44px rgba(15, 23, 42, 0.2);
         color: #0f172a;
+        transform: translateY(14px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
       }
       .notification-permission-prompt.show {
         display: flex;
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
       }
       .notification-permission-copy {
         min-width: 0;
@@ -3867,6 +3875,10 @@
         font-size: 0.72rem;
         letter-spacing: 0.06em;
         text-transform: uppercase;
+      }
+      .notification-permission-action:disabled {
+        cursor: wait;
+        opacity: 0.72;
       }
       .notification-permission-close {
         width: 34px;
@@ -8013,9 +8025,17 @@
           showToast(dashboardData.flashMessages[dashboardData.flashMessages.length - 1], 2600);
         }, 160);
       }
-      notificationPermissionBtn?.addEventListener('click', () => {
+      notificationPermissionBtn?.addEventListener('click', async () => {
         notificationPermissionDismissed = false;
-        requestNotificationPermission('manual');
+        const originalText = notificationPermissionBtn.textContent;
+        notificationPermissionBtn.disabled = true;
+        notificationPermissionBtn.textContent = 'Activando';
+        const granted = await requestNotificationPermission('manual');
+        if (granted) {
+          notificationPermissionPrompt?.classList.remove('show');
+        }
+        notificationPermissionBtn.disabled = false;
+        notificationPermissionBtn.textContent = originalText;
       });
       notificationPermissionClose?.addEventListener('click', () => {
         notificationPermissionDismissed = true;
