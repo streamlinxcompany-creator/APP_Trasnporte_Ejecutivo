@@ -961,9 +961,28 @@ def build_name_required_for_invitation_message():
     )
 
 
-def build_invitation_completed_message(nombre):
+def build_terms_url(invite_base_url=None):
+    explicit_url = os.environ.get("ZIPP_TERMS_URL", "").strip()
+    if explicit_url:
+        return explicit_url
+    base_url = (
+        os.environ.get("ZIPP_INVITE_BASE_URL")
+        or os.environ.get("ZIPP_PUBLIC_BASE_URL")
+        or invite_base_url
+        or ""
+    ).strip()
+    if not base_url:
+        return "/terminos-y-condiciones"
+    return f"{base_url.rstrip('/')}/terminos-y-condiciones"
+
+
+def build_invitation_completed_message(nombre, invite_base_url=None):
+    terms_url = build_terms_url(invite_base_url=invite_base_url)
     return (
-        f"*Gracias, {nombre}.* Tu registro quedo activo en la red de confianza de Zipp.\n"
+        f"*Gracias, {nombre}.* Tu registro quedo activo en la red de confianza de Zipp. 🚀\n\n"
+        "Al solicitar tu primer servicio, confirmas que eres mayor de edad y que aceptas nuestros "
+        "Terminos, Condiciones y Politica de Privacidad operada por StreamLinx.\n"
+        f"Puedes consultarlos aqui: {terms_url}\n\n"
         "*Enviame tu ubicacion actual* cuando quieras pedir tu servicio."
     )
 
@@ -2389,7 +2408,10 @@ def handle_twilio_webhook(
             conn.close()
             return respond_client(
                 telefono,
-                build_invitation_completed_message(candidate_name),
+                build_invitation_completed_message(
+                    candidate_name,
+                    invite_base_url=invite_base_url,
+                ),
             )
 
         if usuario_inicial and invitation_row and invitation_row["paso"] in {"invite_codigo", "invite_nombre"}:

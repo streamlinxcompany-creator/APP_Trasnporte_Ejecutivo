@@ -3174,6 +3174,14 @@ def index_root():
     )
 
 
+@app.route("/terminos-y-condiciones")
+def terms_page():
+    return render_template(
+        "terms.html",
+        streamlinx_version=get_static_asset_version("Streamlinx.png"),
+    )
+
+
 @app.route("/suscripcion/pago-pendiente")
 def payment_pending():
     if not session.get("conductor_id"):
