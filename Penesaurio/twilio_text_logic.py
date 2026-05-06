@@ -5,6 +5,13 @@ import re
 from datetime import datetime
 
 from twilio.twiml.messaging_response import MessagingResponse
+from trust_network import (
+    complete_registration_with_reserved_code,
+    create_client_code_for_phone,
+    extract_code_from_text,
+    format_expiration,
+    reserve_code_for_phone,
+)
 
 try:
     from groq import Groq
@@ -91,6 +98,7 @@ BUTTON_PAYLOAD_ALIASES = {
     "manage_rename": "renombrar",
     "manage_delete": "eliminar",
     "manage_back": "volver ubicaciones",
+    "generate_invite_code": "generar codigo",
 }
 OUT_OF_ZONE_ACCEPT_KEYWORDS = {
     "si",
@@ -922,7 +930,73 @@ def build_welcome_back_message(nombre, original_text=""):
 
 
 def build_new_customer_message(original_text=""):
-    return f"{FIRST_CONTACT_WELCOME}\n*Como te llamas?*"
+    return build_invitation_required_message()
+
+
+def build_invitation_required_message():
+    return (
+        "*Hola. Bienvenid@ a Zipp.*\n\n"
+        "Nos encantaria llevarte a tu destino, pero para garantizar la seguridad y exclusividad de nuestra comunidad, "
+        "operamos por invitacion.\n\n"
+        "Por favor, ingresa tu codigo de invitacion ahora. Si no tienes uno, pidele a un amigo que ya use Zipp "
+        "que te genere un codigo desde su perfil.\n\n"
+        "Aqui te espero."
+    )
+
+
+def build_invitation_verified_message(inviter_name):
+    inviter = (inviter_name or "tu contacto").strip()
+    return (
+        f"*Codigo verificado.* Ahora eres parte de la red de confianza de *{inviter}*.\n"
+        "*Cual es tu nombre?*"
+    )
+
+
+def build_name_required_for_invitation_message():
+    return (
+        "*Necesito tu nombre para completar el registro.*\n"
+        "Escribelo tal como quieres aparecer en Zipp."
+    )
+
+
+def build_invitation_completed_message(nombre):
+    return (
+        f"*Gracias, {nombre}.* Tu registro quedo activo en la red de confianza de Zipp.\n"
+        "*Enviame tu ubicacion actual* cuando quieras pedir tu servicio."
+    )
+
+
+def wants_invitation_code(text):
+    normalized = normalize_user_text(text)
+    return normalized in {
+        "generar codigo",
+        "generar codigo de invitacion",
+        "codigo",
+        "codigo de invitacion",
+        "crear codigo",
+        "invitar",
+        "invitar amigo",
+        "invitar a un amigo",
+    }
+
+
+def append_invitation_action(text):
+    base = (text or "").strip()
+    action = "_Para invitar a un amigo, escribe_ *GENERAR CODIGO*."
+    if not base:
+        return action
+    if "GENERAR CODIGO" in base.upper():
+        return base
+    return f"{base}\n\n{action}"
+
+
+def build_generated_invitation_message(code_row):
+    return (
+        "*Codigo de invitacion generado.*\n"
+        f"*{code_row['codigo']}*\n\n"
+        f"Este codigo tiene validez hasta *{format_expiration(code_row['expira_en'])}*.\n"
+        "Compartelo solo con una persona de confianza. Cuando se use, quedara invalidado."
+    )
 
 
 def build_name_ack_message(nombre):
@@ -951,7 +1025,7 @@ def build_service_name_request_message(original_text=""):
 
 
 def build_missing_name_message(original_text=""):
-    return f"{FIRST_CONTACT_WELCOME}\n*Antes de seguir,* cuentame tu nombre."
+    return build_name_required_for_invitation_message()
 
 
 def build_known_user_reply_message(nombre, original_text="", reply=""):
@@ -1889,10 +1963,12 @@ def start_known_user_flow(
         nombre=usuario["nombre"] or "",
     )
     direcciones = get_direcciones(cur, usuario["id"], is_reserved_direccion)
-    return build_location_prompt_with_saved_options(
-        usuario["nombre"],
-        direcciones,
-        format_saved_address,
+    return append_invitation_action(
+        build_location_prompt_with_saved_options(
+            usuario["nombre"],
+            direcciones,
+            format_saved_address,
+        )
     )
 
 
@@ -2186,6 +2262,137 @@ def handle_twilio_webhook(
         mensaje_lower = normalize_user_text(mensaje_limpio)
         open_service = get_latest_search_service(cur, telefono)
         taken_service = get_latest_taken_service(cur, telefono)
+        usuario_inicial = get_usuario_by_telefono(cur, telefono)
+        invitation_row = cur.execute(
+            "SELECT * FROM conversaciones WHERE telefono = ?",
+            (telefono,),
+        ).fetchone()
+
+        if wants_invitation_code(mensaje_limpio):
+            if not usuario_inicial:
+                set_conversation(cur, telefono, "invite_codigo", fecha_actual)
+                conn.commit()
+                conn.close()
+                return respond_client(telefono, build_invitation_required_message())
+            code_row, code_error = create_client_code_for_phone(cur, telefono)
+            if not code_row:
+                conn.commit()
+                conn.close()
+                return respond_client(
+                    telefono,
+                    code_error or "No pudimos generar el codigo en este momento.",
+                )
+            conn.commit()
+            conn.close()
+            return respond_client(telefono, build_generated_invitation_message(code_row))
+
+        if (
+            not usuario_inicial
+            and invitation_row
+            and invitation_row["paso"] in {"invite_codigo", "invite_nombre"}
+        ):
+            if invitation_row["paso"] == "invite_codigo":
+                code_text = extract_code_from_text(mensaje_limpio)
+                code_row, code_error = reserve_code_for_phone(cur, code_text, telefono)
+                if not code_row:
+                    conn.commit()
+                    conn.close()
+                    return respond_client(
+                        telefono,
+                        f"{code_error}\n\n{build_invitation_required_message()}",
+                    )
+                inviter = cur.execute(
+                    "SELECT nombre FROM clientes_confianza WHERE id = ?",
+                    (code_row["creador_node_id"],),
+                ).fetchone()
+                cur.execute(
+                    """
+                    UPDATE conversaciones
+                    SET paso = 'invite_nombre', servicio = ?, nombre = ?, updated_at = ?
+                    WHERE telefono = ?
+                    """,
+                    (
+                        code_row["codigo"],
+                        inviter["nombre"] if inviter else "Zipp",
+                        fecha_actual,
+                        telefono,
+                    ),
+                )
+                conn.commit()
+                conn.close()
+                return respond_client(
+                    telefono,
+                    build_invitation_verified_message(inviter["nombre"] if inviter else "Zipp"),
+                )
+
+            assistant = get_twilio_groq_assistant()
+            candidate_name = assistant.extract_customer_name_agent(
+                mensaje_limpio,
+                conversation_step="nombre",
+                known_name="",
+            )
+            if not candidate_name:
+                conn.close()
+                return respond_client(telefono, build_name_required_for_invitation_message())
+            registration, registration_error = complete_registration_with_reserved_code(
+                cur,
+                telefono,
+                candidate_name,
+                invitation_row["servicio"],
+            )
+            if not registration:
+                cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
+                conn.commit()
+                conn.close()
+                return respond_client(
+                    telefono,
+                    f"{registration_error}\n\n{build_invitation_required_message()}",
+                )
+            cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
+            conn.commit()
+            conn.close()
+            return respond_client(
+                telefono,
+                append_invitation_action(build_invitation_completed_message(candidate_name)),
+            )
+
+        if usuario_inicial and invitation_row and invitation_row["paso"] in {"invite_codigo", "invite_nombre"}:
+            cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))
+            conn.commit()
+
+        if not usuario_inicial:
+            code_text = extract_code_from_text(mensaje_limpio)
+            if "ZIPP-" in mensaje_limpio.upper():
+                code_row, code_error = reserve_code_for_phone(cur, code_text, telefono)
+                if not code_row:
+                    conn.commit()
+                    conn.close()
+                    return respond_client(
+                        telefono,
+                        f"{code_error}\n\n{build_invitation_required_message()}",
+                    )
+                inviter = cur.execute(
+                    "SELECT nombre FROM clientes_confianza WHERE id = ?",
+                    (code_row["creador_node_id"],),
+                ).fetchone()
+                set_conversation(
+                    cur,
+                    telefono,
+                    "invite_nombre",
+                    fecha_actual,
+                    nombre=inviter["nombre"] if inviter else "Zipp",
+                    servicio=code_row["codigo"],
+                )
+                conn.commit()
+                conn.close()
+                return respond_client(
+                    telefono,
+                    build_invitation_verified_message(inviter["nombre"] if inviter else "Zipp"),
+                )
+            set_conversation(cur, telefono, "invite_codigo", fecha_actual)
+            conn.commit()
+            conn.close()
+            return respond_client(telefono, build_invitation_required_message())
 
         if taken_service and not open_service:
             cur.execute("DELETE FROM conversaciones WHERE telefono = ?", (telefono,))

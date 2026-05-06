@@ -275,6 +275,10 @@
         grid-column: span 8;
       }
 
+      .trust-panel {
+        grid-column: span 12;
+      }
+
       .active-panel {
         grid-column: span 4;
       }
@@ -555,6 +559,122 @@
       }
       .monitor-stage-pill strong {
         color: var(--text);
+      }
+      .trust-layout {
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 16px;
+      }
+      .trust-sidebar,
+      .trust-map-wrap {
+        border: 1px solid var(--stroke);
+        border-radius: 16px;
+        background: var(--panel-strong);
+      }
+      .trust-sidebar {
+        padding: 14px;
+        display: grid;
+        gap: 14px;
+        align-content: start;
+      }
+      .trust-code-box {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--stroke);
+      }
+      .trust-code-value {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 22px;
+        word-break: break-word;
+      }
+      .trust-code-meta,
+      .trust-small {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .trust-list {
+        display: grid;
+        gap: 8px;
+        max-height: 260px;
+        overflow: auto;
+      }
+      .trust-item {
+        width: 100%;
+        border: 1px solid var(--stroke);
+        border-radius: 12px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        text-align: left;
+      }
+      .trust-item.active,
+      .trust-item:hover {
+        border-color: rgba(126, 166, 227, 0.55);
+      }
+      .trust-item strong,
+      .trust-item span {
+        display: block;
+      }
+      .trust-item span {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      .trust-map-wrap {
+        min-height: 620px;
+        overflow: hidden;
+      }
+      .trust-map-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--stroke);
+      }
+      .trust-map-head strong,
+      .trust-map-head span {
+        display: block;
+      }
+      .trust-map-head span {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      .trust-network {
+        width: 100%;
+        height: 560px;
+        display: block;
+        background:
+          radial-gradient(circle at 50% 46%, rgba(126, 166, 227, 0.14), transparent 28%),
+          linear-gradient(180deg, rgba(10, 20, 34, 0.7), rgba(5, 11, 18, 0.9));
+      }
+      .trust-link {
+        stroke: rgba(190, 214, 240, 0.32);
+        stroke-width: 2;
+      }
+      .trust-node circle {
+        fill: #102235;
+        stroke: #7ea6e3;
+        stroke-width: 2;
+      }
+      .trust-node.root circle {
+        fill: #bed6f0;
+        stroke: #eef4fb;
+      }
+      .trust-node text {
+        fill: var(--text);
+        font-family: "Sora", sans-serif;
+        font-size: 11px;
+        text-anchor: middle;
+        pointer-events: none;
+      }
+      .trust-node.root text {
+        fill: #07111c;
+        font-weight: 700;
       }
       .driver-live-marker {
         width: 40px;
@@ -1190,6 +1310,9 @@
         .driver-detail-grid {
           grid-template-columns: 1fr;
         }
+        .trust-layout {
+          grid-template-columns: 1fr;
+        }
       }
 
       @media (max-width: 720px) {
@@ -1216,6 +1339,9 @@
         }
         .coverage-grid {
           grid-template-columns: 1fr;
+        }
+        .trust-network {
+          height: 460px;
         }
         .driver-meta,
         .detail-grid {
@@ -1270,6 +1396,7 @@
       body[data-admin-view="twilio"] .coords-panel,
       body[data-admin-view="twilio"] .coverage-panel,
       body[data-admin-view="twilio"] .monitor-panel,
+      body[data-admin-view="twilio"] .trust-panel,
       body[data-admin-view="twilio"] .active-panel,
       body[data-admin-view="twilio"] .notify-panel,
       body[data-admin-view="twilio"] .services-panel,
@@ -1282,6 +1409,7 @@
       body[data-admin-view="tests"] .twilio-panel,
       body[data-admin-view="tests"] .notify-panel,
       body[data-admin-view="tests"] .monitor-panel,
+      body[data-admin-view="tests"] .trust-panel,
       body[data-admin-view="tests"] .active-panel,
       body[data-admin-view="tests"] .logs-panel,
       body[data-admin-view="tests"] #driversSection,
@@ -1295,6 +1423,7 @@
       body[data-admin-view="drivers"] .coords-panel,
       body[data-admin-view="drivers"] .coverage-panel,
       body[data-admin-view="drivers"] .monitor-panel,
+      body[data-admin-view="drivers"] .trust-panel,
       body[data-admin-view="drivers"] .active-panel,
       body[data-admin-view="drivers"] .notify-panel,
       body[data-admin-view="drivers"] .services-panel,
@@ -1309,6 +1438,7 @@
       body[data-admin-view="billing"] .coords-panel,
       body[data-admin-view="billing"] .coverage-panel,
       body[data-admin-view="billing"] .monitor-panel,
+      body[data-admin-view="billing"] .trust-panel,
       body[data-admin-view="billing"] .active-panel,
       body[data-admin-view="billing"] .notify-panel,
       body[data-admin-view="billing"] .services-panel,
@@ -1325,11 +1455,27 @@
       body[data-admin-view="notifications"] .coords-panel,
       body[data-admin-view="notifications"] .coverage-panel,
       body[data-admin-view="notifications"] .monitor-panel,
+      body[data-admin-view="notifications"] .trust-panel,
       body[data-admin-view="notifications"] .active-panel,
       body[data-admin-view="notifications"] .services-panel,
       body[data-admin-view="notifications"] .logs-panel,
       body[data-admin-view="notifications"] #driversSection,
       body[data-admin-view="notifications"] #billingSection {
+        display: none;
+      }
+      body[data-admin-view="trust"] .stats-grid,
+      body[data-admin-view="trust"] .section-hub,
+      body[data-admin-view="trust"] .twilio-panel,
+      body[data-admin-view="trust"] .notify-panel,
+      body[data-admin-view="trust"] .generator-panel,
+      body[data-admin-view="trust"] .coords-panel,
+      body[data-admin-view="trust"] .coverage-panel,
+      body[data-admin-view="trust"] .monitor-panel,
+      body[data-admin-view="trust"] .active-panel,
+      body[data-admin-view="trust"] .services-panel,
+      body[data-admin-view="trust"] .logs-panel,
+      body[data-admin-view="trust"] #driversSection,
+      body[data-admin-view="trust"] #billingSection {
         display: none;
       }
     </style>
@@ -1400,6 +1546,10 @@
           <strong>Notificaciones</strong>
           <span>Prueba avisos push y mensajes para conductores.</span>
         </a>
+        <a class="section-link" href="/admin/confianza">
+          <strong>Red de confianza</strong>
+          <span>Codigos lider, referidos y arbol visual de clientes.</span>
+        </a>
       </section>
 
       <section class="main-grid">
@@ -1433,6 +1583,50 @@
             <textarea class="notify-textarea" id="pushBodyInput" maxlength="240">Aprovecha este fin de semana con Zipp</textarea>
             <button class="button primary" id="sendPushBtn">Enviar a todos</button>
             <div class="notify-driver-list" id="pushDriversList"></div>
+          </div>
+        </div>
+
+        <div class="panel trust-panel" id="trustSection">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Red de confianza</h3>
+              <p class="panel-sub">Codigos de un solo uso, expiracion estricta y trazabilidad visual por invitacion.</p>
+            </div>
+            <div class="coords-actions">
+              <button class="button" id="refreshTrustBtn">Recargar</button>
+              <button class="button primary" id="generateLeaderCodeBtn">Generar codigo lider</button>
+            </div>
+          </div>
+          <div class="trust-layout">
+            <aside class="trust-sidebar">
+              <div class="trust-code-box">
+                <div class="trust-small">Codigo lider vigente</div>
+                <div class="trust-code-value" id="leaderCodeValue">Sin codigo generado</div>
+                <div class="trust-code-meta" id="leaderCodeMeta">Los codigos lider duran maximo una hora y se invalidan al usarse.</div>
+              </div>
+              <div>
+                <div class="trust-small">Nodos principales</div>
+                <div class="trust-list" id="trustLeaderList">
+                  <div class="empty-state">Cargando red...</div>
+                </div>
+              </div>
+              <div>
+                <div class="trust-small">Codigos activos</div>
+                <div class="trust-list" id="trustCodeList">
+                  <div class="empty-state">Sin codigos activos.</div>
+                </div>
+              </div>
+            </aside>
+            <section class="trust-map-wrap">
+              <div class="trust-map-head">
+                <div>
+                  <strong id="trustMapTitle">Red Zipp</strong>
+                  <span id="trustMapSubtitle">Selecciona un nodo para revisar su rama.</span>
+                </div>
+                <span class="pill warn" id="trustSyncStatus">SYNC</span>
+              </div>
+              <svg class="trust-network" id="trustNetworkSvg" role="img" aria-label="Mapa de red de confianza"></svg>
+            </section>
           </div>
         </div>
 
@@ -1740,6 +1934,16 @@
       const coverageRadiusInput = document.getElementById("coverageRadiusInput");
       const coverageSaveBtn = document.getElementById("coverageSaveBtn");
       const coverageResetBtn = document.getElementById("coverageResetBtn");
+      const refreshTrustBtn = document.getElementById("refreshTrustBtn");
+      const generateLeaderCodeBtn = document.getElementById("generateLeaderCodeBtn");
+      const leaderCodeValue = document.getElementById("leaderCodeValue");
+      const leaderCodeMeta = document.getElementById("leaderCodeMeta");
+      const trustLeaderList = document.getElementById("trustLeaderList");
+      const trustCodeList = document.getElementById("trustCodeList");
+      const trustNetworkSvg = document.getElementById("trustNetworkSvg");
+      const trustMapTitle = document.getElementById("trustMapTitle");
+      const trustMapSubtitle = document.getElementById("trustMapSubtitle");
+      const trustSyncStatus = document.getElementById("trustSyncStatus");
 
       const driverDetailModal = document.getElementById("driverDetailModal");
       const driverDetailName = document.getElementById("driverDetailName");
@@ -1781,6 +1985,7 @@
       let monitorCoverageCenter = null;
       let monitorDriverMarkers = [];
       let monitorFirstLoad = true;
+      let selectedTrustRootId = null;
       let coverageConfig = {
         center_lat: 6.030589,
         center_lng: -75.431704,
@@ -1897,6 +2102,15 @@
           ...options
         });
         return res.json();
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
       }
 
       function syncCoverageInputs() {
@@ -2138,6 +2352,151 @@
         coverageMap?.setView([coverageConfig.center_lat, coverageConfig.center_lng], coverageMap?.getZoom() || 13, { animate: false });
         renderCoverageMap();
         showToast("Cobertura guardada");
+      }
+
+      function renderTrustLeaders(data) {
+        if (!trustLeaderList) return;
+        const leaders = data.leaders || [];
+        if (!leaders.length) {
+          trustLeaderList.innerHTML = '<div class="empty-state">No hay nodos todavia.</div>';
+          return;
+        }
+        trustLeaderList.innerHTML = leaders.map((leader) => `
+          <button class="trust-item ${leader.id === data.selected_leader ? "active" : ""}" data-trust-root="${leader.id}">
+            <strong>${escapeHtml(leader.nombre)}</strong>
+            <span>${leader.referidos || 0} referidos | ${leader.total_red || 0} en red</span>
+          </button>
+        `).join("");
+      }
+
+      function renderTrustCodes(codes = []) {
+        if (!trustCodeList) return;
+        if (!codes.length) {
+          trustCodeList.innerHTML = '<div class="empty-state">Sin codigos activos.</div>';
+          return;
+        }
+        trustCodeList.innerHTML = codes.map((code) => `
+          <div class="trust-item">
+            <strong>${escapeHtml(code.codigo)}</strong>
+            <span>${escapeHtml(code.tipo)} | ${escapeHtml(code.estado)} | vence ${escapeHtml(code.expira_en)}</span>
+            <span>Creado por ${escapeHtml(code.creador)}</span>
+          </div>
+        `).join("");
+      }
+
+      function renderTrustGraph(data) {
+        if (!trustNetworkSvg) return;
+        const nodes = (data.graph?.nodes || []).map((node) => ({ ...node }));
+        const links = data.graph?.links || [];
+        const width = trustNetworkSvg.clientWidth || 780;
+        const height = trustNetworkSvg.clientHeight || 560;
+        trustNetworkSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+        trustNetworkSvg.innerHTML = "";
+
+        if (!nodes.length) {
+          const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          text.setAttribute("x", width / 2);
+          text.setAttribute("y", height / 2);
+          text.setAttribute("fill", "#9aa3ad");
+          text.setAttribute("text-anchor", "middle");
+          text.textContent = "Sin nodos para visualizar";
+          trustNetworkSvg.appendChild(text);
+          return;
+        }
+
+        const byId = new Map(nodes.map((node) => [node.id, node]));
+        const levels = new Map();
+        nodes.forEach((node) => {
+          const depth = Number(node.depth || 0);
+          if (!levels.has(depth)) levels.set(depth, []);
+          levels.get(depth).push(node);
+        });
+        const maxDepth = Math.max(...nodes.map((node) => Number(node.depth || 0)), 0);
+        levels.forEach((levelNodes, depth) => {
+          const y = maxDepth === 0 ? height / 2 : 70 + (depth * ((height - 140) / Math.max(maxDepth, 1)));
+          levelNodes.forEach((node, index) => {
+            const x = ((index + 1) * width) / (levelNodes.length + 1);
+            node.x = x;
+            node.y = y;
+          });
+        });
+
+        const linkLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        trustNetworkSvg.appendChild(linkLayer);
+        links.forEach((link) => {
+          const source = byId.get(link.source);
+          const target = byId.get(link.target);
+          if (!source || !target) return;
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("class", "trust-link");
+          line.setAttribute("x1", source.x);
+          line.setAttribute("y1", source.y);
+          line.setAttribute("x2", target.x);
+          line.setAttribute("y2", target.y);
+          linkLayer.appendChild(line);
+        });
+
+        const nodeLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        trustNetworkSvg.appendChild(nodeLayer);
+        nodes.forEach((node) => {
+          const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          group.setAttribute("class", `trust-node ${node.root ? "root" : ""}`);
+          group.setAttribute("transform", `translate(${node.x}, ${node.y})`);
+
+          const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          circle.setAttribute("r", node.root ? "30" : "24");
+          group.appendChild(circle);
+
+          const initial = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          initial.setAttribute("y", "4");
+          initial.textContent = node.root ? "P" : String(node.name || "?").slice(0, 1).toUpperCase();
+          group.appendChild(initial);
+
+          const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          label.setAttribute("y", node.root ? "48" : "42");
+          label.textContent = String(node.name || "Cliente").slice(0, 22);
+          group.appendChild(label);
+          nodeLayer.appendChild(group);
+        });
+
+        const selected = nodes.find((node) => node.id === data.selected_leader) || nodes[0];
+        trustMapTitle.textContent = selected?.name || "Red Zipp";
+        trustMapSubtitle.textContent = `${Math.max(0, nodes.length - 1)} persona(s) conectadas a esta rama.`;
+      }
+
+      async function loadTrustNetwork() {
+        if (!trustNetworkSvg) return;
+        const param = selectedTrustRootId ? `?root_id=${selectedTrustRootId}` : "";
+        const data = await fetchJson(`/admin/api/trust-network${param}`);
+        if (!data.ok) {
+          showToast(data.error || "No se pudo cargar la red");
+          return;
+        }
+        selectedTrustRootId = data.selected_leader || selectedTrustRootId;
+        trustSyncStatus.textContent = `SYNC ${String(data.updated_at || "").slice(11, 19)}`;
+        renderTrustLeaders(data);
+        renderTrustCodes(data.codes || []);
+        renderTrustGraph(data);
+      }
+
+      async function generateLeaderCode() {
+        if (!generateLeaderCodeBtn) return;
+        generateLeaderCodeBtn.disabled = true;
+        generateLeaderCodeBtn.textContent = "Generando...";
+        const data = await fetchJson("/admin/api/trust-network/leader-code", {
+          method: "POST",
+          body: "{}"
+        });
+        generateLeaderCodeBtn.disabled = false;
+        generateLeaderCodeBtn.textContent = "Generar codigo lider";
+        if (!data.ok) {
+          showToast(data.error || "No se pudo generar codigo");
+          return;
+        }
+        leaderCodeValue.textContent = data.codigo;
+        leaderCodeMeta.innerHTML = `Valido hasta <strong>${escapeHtml(data.expira_en)}</strong>. Al usarse queda invalidado.`;
+        showToast("Codigo lider generado");
+        loadTrustNetwork();
       }
 
       async function loadOverview() {
@@ -2509,6 +2868,7 @@
         loadDrivers();
         loadLogs();
         loadMonitor();
+        loadTrustNetwork();
       }
 
       function setupEvents() {
@@ -2519,6 +2879,14 @@
         clearLogsBtn.addEventListener("click", clearLogs);
         refreshNotificationsBtn?.addEventListener("click", loadNotificationStatus);
         sendPushBtn?.addEventListener("click", sendPushNotification);
+        refreshTrustBtn?.addEventListener("click", loadTrustNetwork);
+        generateLeaderCodeBtn?.addEventListener("click", generateLeaderCode);
+        trustLeaderList?.addEventListener("click", event => {
+          const button = event.target.closest("[data-trust-root]");
+          if (!button) return;
+          selectedTrustRootId = Number(button.getAttribute("data-trust-root"));
+          loadTrustNetwork();
+        });
         driverSearchInput?.addEventListener("input", () => loadDrivers());
 
         sendCoordsBtn?.addEventListener("click", async () => {
@@ -2665,6 +3033,7 @@
       setupEvents();
       loadCoverage();
       loadNotificationStatus();
+      loadTrustNetwork();
       refreshAll();
       setInterval(refreshAll, 5000);
     </script>

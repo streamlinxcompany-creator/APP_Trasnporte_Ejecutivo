@@ -52,6 +52,12 @@ except Exception:
     local_settings = None
 
 from twilio_text_logic import handle_twilio_webhook
+from trust_network import (
+    build_graph_payload,
+    create_leader_code,
+    format_expiration,
+    init_trust_schema,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change")
@@ -109,6 +115,7 @@ WHATSAPP_BUTTON_TEMPLATE_ENVS = {
     "location_required": "TWILIO_CONTENT_SID_LOCATION_REQUIRED",
     "location_saved_list": "TWILIO_CONTENT_SID_LOCATION_SAVED_LIST",
     "location_manage_action": "TWILIO_CONTENT_SID_LOCATION_MANAGE_ACTION",
+    "generate_invite_code": "TWILIO_CONTENT_SID_GENERATE_INVITE_CODE",
 }
 
 TEST_COORDS = [
@@ -1210,6 +1217,8 @@ def init_db():
         ON direcciones(usuario_id)
         """
     )
+
+    init_trust_schema(conn)
 
     cur.execute(
         """
@@ -2974,6 +2983,18 @@ def admin_notifications_page():
     )
 
 
+@app.route("/admin/confianza")
+def admin_trust_page():
+    if not admin_session_active():
+        return redirect(url_for("login"))
+    return render_template(
+        "admin.html",
+        admin_usuario=session.get("admin_usuario"),
+        admin_view="trust",
+        admin_page_title="Red de Confianza",
+    )
+
+
 @app.route("/admin/monitor")
 def admin_monitor_page():
     if not admin_session_active():
@@ -3132,6 +3153,49 @@ def admin_notifications_send_api():
         f"targets={result.get('targets', 0)} sent={result.get('sent', 0)} failed={result.get('failed', 0)}",
     )
     return jsonify({"ok": True, "result": result})
+
+
+@app.route("/admin/api/trust-network")
+def admin_trust_network_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+    root_id = request.args.get("root_id", type=int)
+    try:
+        conn = get_conn()
+        payload = build_graph_payload(conn.cursor(), root_id)
+        conn.commit()
+        conn.close()
+        return jsonify({"ok": True, **payload})
+    except Exception as exc:
+        log_system_event("error", "trust_network", "No se pudo leer la red", str(exc))
+        return jsonify({"ok": False, "error": "No se pudo cargar la red de confianza."}), 500
+
+
+@app.route("/admin/api/trust-network/leader-code", methods=["POST"])
+def admin_trust_leader_code_api():
+    if not admin_session_active():
+        return jsonify({"ok": False, "error": "No autenticado."}), 401
+    try:
+        conn = get_conn()
+        code = create_leader_code(conn.cursor())
+        conn.commit()
+        conn.close()
+        log_system_event(
+            "info",
+            "trust_network",
+            "Codigo lider generado",
+            f"codigo={code['codigo']} expira={code['expira_en']}",
+        )
+        return jsonify(
+            {
+                "ok": True,
+                "codigo": code["codigo"],
+                "expira_en": format_expiration(code["expira_en"]),
+            }
+        )
+    except Exception as exc:
+        log_system_event("error", "trust_network", "No se pudo generar codigo lider", str(exc))
+        return jsonify({"ok": False, "error": "No se pudo generar el codigo lider."}), 500
 
 
 @app.route("/admin/api/services")
