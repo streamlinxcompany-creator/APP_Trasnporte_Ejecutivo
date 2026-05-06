@@ -646,35 +646,68 @@
       }
       .trust-network {
         width: 100%;
-        height: 560px;
+        height: 680px;
         display: block;
         background:
-          radial-gradient(circle at 50% 46%, rgba(126, 166, 227, 0.14), transparent 28%),
-          linear-gradient(180deg, rgba(10, 20, 34, 0.7), rgba(5, 11, 18, 0.9));
+          radial-gradient(circle at 16% 8%, rgba(241, 196, 15, 0.08), transparent 28%),
+          radial-gradient(circle at 88% 12%, rgba(231, 76, 60, 0.08), transparent 28%),
+          linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+          #07111c;
+        background-size: auto, auto, 8px 8px, 8px 8px, auto;
+        cursor: grab;
       }
-      .trust-link {
-        stroke: rgba(190, 214, 240, 0.32);
-        stroke-width: 2;
+      .trust-network:active {
+        cursor: grabbing;
       }
-      .trust-node circle {
-        fill: #102235;
-        stroke: #7ea6e3;
-        stroke-width: 2;
+      .trust-network .node circle {
+        fill: #0b1622;
+        stroke: #fff400;
+        stroke-width: 3.5px;
+        filter: drop-shadow(0 0 10px rgba(241, 196, 15, 0.76));
+        cursor: pointer;
       }
-      .trust-node.root circle {
-        fill: #bed6f0;
-        stroke: #eef4fb;
+      .trust-network .node.root circle {
+        stroke-width: 4.5px;
+        filter: drop-shadow(0 0 18px rgba(241, 196, 15, 0.95));
       }
-      .trust-node text {
-        fill: var(--text);
-        font-family: "Sora", sans-serif;
-        font-size: 11px;
+      .trust-network .node-initial {
+        fill: #f8fafc;
+        font-size: 12px;
+        font-weight: 900;
         text-anchor: middle;
+        dominant-baseline: central;
         pointer-events: none;
       }
-      .trust-node.root text {
-        fill: #07111c;
+      .trust-network .node.root .node-initial {
+        fill: #e74c3c;
+        font-size: 24px;
+      }
+      .trust-network .node-label {
+        fill: #eef4fb;
+        font-size: 12px;
         font-weight: 700;
+        paint-order: stroke;
+        stroke: rgba(11, 22, 34, 0.88);
+        stroke-width: 4px;
+        stroke-linejoin: round;
+        pointer-events: none;
+      }
+      .trust-network .link-glow {
+        fill: none;
+        stroke: rgba(255, 244, 0, 0.22);
+        stroke-width: 7px;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .trust-network .link {
+        fill: none;
+        stroke: #fff400;
+        stroke-width: 3px;
+        stroke-opacity: 0.95;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        filter: drop-shadow(0 0 5px rgba(241, 196, 15, 0.7));
       }
       .driver-live-marker {
         width: 40px;
@@ -1891,6 +1924,7 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script>
       const statTwilioValue = document.getElementById("statTwilioValue");
       const statTwilioSub = document.getElementById("statTwilioSub");
@@ -1986,6 +2020,8 @@
       let monitorDriverMarkers = [];
       let monitorFirstLoad = true;
       let selectedTrustRootId = null;
+      let trustLastData = null;
+      let trustCurrentZoom = null;
       let coverageConfig = {
         center_lat: 6.030589,
         center_lng: -75.431704,
@@ -2385,83 +2421,407 @@
       }
 
       function renderTrustGraph(data) {
-        if (!trustNetworkSvg) return;
-        const nodes = (data.graph?.nodes || []).map((node) => ({ ...node }));
-        const links = data.graph?.links || [];
-        const width = trustNetworkSvg.clientWidth || 780;
-        const height = trustNetworkSvg.clientHeight || 560;
-        trustNetworkSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-        trustNetworkSvg.innerHTML = "";
+        if (!trustNetworkSvg || typeof d3 === "undefined") return;
+        const svg = d3.select(trustNetworkSvg);
+        const element = trustNetworkSvg;
+        const width = element.clientWidth || 900;
+        const height = element.clientHeight || 680;
+        svg.attr("viewBox", [0, 0, width, height]);
+        svg.selectAll("*").remove();
+        svg.on(".zoom", null);
+        if (!trustCurrentZoom) trustCurrentZoom = d3.zoomIdentity;
+
+        const nodes = (data.graph?.nodes || []).map(d => ({ ...d }));
+        const rawLinks = (data.graph?.links || []).map(d => ({ ...d }));
 
         if (!nodes.length) {
-          const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          text.setAttribute("x", width / 2);
-          text.setAttribute("y", height / 2);
-          text.setAttribute("fill", "#9aa3ad");
-          text.setAttribute("text-anchor", "middle");
-          text.textContent = "Sin nodos para visualizar";
-          trustNetworkSvg.appendChild(text);
+          svg.append("text")
+            .attr("x", width / 2)
+            .attr("y", height / 2)
+            .attr("text-anchor", "middle")
+            .attr("fill", "#9fb0c2")
+            .text("Sin nodos para visualizar");
+          trustMapTitle.textContent = "Mapa de red";
+          trustMapSubtitle.textContent = "Selecciona o crea un lider.";
           return;
         }
 
-        const byId = new Map(nodes.map((node) => [node.id, node]));
-        const levels = new Map();
-        nodes.forEach((node) => {
-          const depth = Number(node.depth || 0);
-          if (!levels.has(depth)) levels.set(depth, []);
-          levels.get(depth).push(node);
+        function initials(name, root = false) {
+          if (root) return "P";
+          const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+          const letters = parts.length > 1
+            ? parts.slice(0, 2).map(part => part[0])
+            : [String(name || "?").trim()[0] || "?"];
+          return letters.join("").toUpperCase();
+        }
+
+        const leader = (data.leaders || []).find(item => item.id === data.selected_leader);
+        trustMapTitle.textContent = leader ? leader.nombre : "Mapa de red";
+        trustMapSubtitle.textContent = leader
+          ? `${leader.referidos} referidos conectados a este Nodo P`
+          : "Red activa";
+
+        const centerNode = nodes.find(n => n.root);
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const nodeById = new Map(nodes.map(node => [node.id, node]));
+        const childrenByParent = new Map();
+        rawLinks.forEach(link => {
+          const sourceId = typeof link.source === "object" ? link.source.id : link.source;
+          const targetId = typeof link.target === "object" ? link.target.id : link.target;
+          if (!childrenByParent.has(sourceId)) childrenByParent.set(sourceId, []);
+          childrenByParent.get(sourceId).push(targetId);
         });
-        const maxDepth = Math.max(...nodes.map((node) => Number(node.depth || 0)), 0);
-        levels.forEach((levelNodes, depth) => {
-          const y = maxDepth === 0 ? height / 2 : 70 + (depth * ((height - 140) / Math.max(maxDepth, 1)));
-          levelNodes.forEach((node, index) => {
-            const x = ((index + 1) * width) / (levelNodes.length + 1);
-            node.x = x;
-            node.y = y;
+
+        const subtreeLeafCount = new Map();
+        function countLeaves(nodeId) {
+          const children = childrenByParent.get(nodeId) || [];
+          if (!children.length) {
+            subtreeLeafCount.set(nodeId, 1);
+            return 1;
+          }
+          const total = children.reduce((sum, childId) => sum + countLeaves(childId), 0);
+          subtreeLeafCount.set(nodeId, total);
+          return total;
+        }
+        if (centerNode) countLeaves(centerNode.id);
+
+        function placeBranch(nodeId, angle, depth) {
+          const node = nodeById.get(nodeId);
+          if (!node) return;
+          if (node.root) {
+            node.x = centerX;
+            node.y = centerY;
+            node.fx = centerX;
+            node.fy = centerY;
+          } else {
+            const radius = 132 + (depth - 1) * 96;
+            node.x = centerX + Math.cos(angle) * radius;
+            node.y = centerY + Math.sin(angle) * radius;
+            node.targetX = node.x;
+            node.targetY = node.y;
+          }
+
+          const children = childrenByParent.get(nodeId) || [];
+          const spread = Math.min(1.2, 0.36 * Math.max(0, children.length - 1));
+          let cursor = angle - spread / 2;
+          const totalLeaves = children.reduce((sum, childId) => sum + (subtreeLeafCount.get(childId) || 1), 0) || 1;
+          children.forEach(childId => {
+            const childLeaves = subtreeLeafCount.get(childId) || 1;
+            const portion = spread * (childLeaves / totalLeaves);
+            const childAngle = children.length > 1 ? cursor + portion / 2 : angle;
+            cursor += portion;
+            placeBranch(childId, childAngle, depth + 1);
           });
-        });
+        }
 
-        const linkLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        trustNetworkSvg.appendChild(linkLayer);
-        links.forEach((link) => {
-          const source = byId.get(link.source);
-          const target = byId.get(link.target);
-          if (!source || !target) return;
-          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-          line.setAttribute("class", "trust-link");
-          line.setAttribute("x1", source.x);
-          line.setAttribute("y1", source.y);
-          line.setAttribute("x2", target.x);
-          line.setAttribute("y2", target.y);
-          linkLayer.appendChild(line);
-        });
+        if (centerNode) {
+          centerNode.x = centerX;
+          centerNode.y = centerY;
+          centerNode.targetX = centerX;
+          centerNode.targetY = centerY;
+          const rootChildren = childrenByParent.get(centerNode.id) || [];
+          rootChildren.forEach((childId, index) => {
+            const angle = rootChildren.length === 1
+              ? -Math.PI / 2
+              : -Math.PI / 2 + (Math.PI * 2 * index) / rootChildren.length;
+            placeBranch(childId, angle, 1);
+          });
+          centerNode.fx = centerX;
+          centerNode.fy = centerY;
+        }
 
-        const nodeLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        trustNetworkSvg.appendChild(nodeLayer);
-        nodes.forEach((node) => {
-          const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-          group.setAttribute("class", `trust-node ${node.root ? "root" : ""}`);
-          group.setAttribute("transform", `translate(${node.x}, ${node.y})`);
+        const links = rawLinks
+          .map(link => {
+            const sourceId = typeof link.source === "object" ? link.source.id : link.source;
+            const targetId = typeof link.target === "object" ? link.target.id : link.target;
+            return {
+              source: nodeById.get(sourceId),
+              target: nodeById.get(targetId),
+            };
+          })
+          .filter(link => link.source && link.target);
 
-          const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-          circle.setAttribute("r", node.root ? "30" : "24");
-          group.appendChild(circle);
+        const simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).distance(d => d.source.root ? 126 : 94).strength(0.72))
+          .force("charge", d3.forceManyBody().strength(d => d.root ? -900 : -230))
+          .force("collide", d3.forceCollide().radius(d => d.root ? 58 : 42).strength(1))
+          .force("center", d3.forceCenter(centerX, centerY))
+          .force("x", d3.forceX(d => d.targetX || centerX).strength(d => d.root ? 1 : 0.16))
+          .force("y", d3.forceY(d => d.targetY || centerY).strength(d => d.root ? 1 : 0.16))
+          .stop();
 
-          const initial = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          initial.setAttribute("y", "4");
-          initial.textContent = node.root ? "P" : String(node.name || "?").slice(0, 1).toUpperCase();
-          group.appendChild(initial);
+        for (let i = 0; i < 320; i += 1) simulation.tick();
+        if (centerNode) {
+          centerNode.x = centerX;
+          centerNode.y = centerY;
+        }
 
-          const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          label.setAttribute("y", node.root ? "48" : "42");
-          label.textContent = String(node.name || "Cliente").slice(0, 22);
-          group.appendChild(label);
-          nodeLayer.appendChild(group);
-        });
+        function resolveNodeCollisions(iterations = 24) {
+          for (let step = 0; step < iterations; step += 1) {
+            for (let i = 0; i < nodes.length; i += 1) {
+              for (let j = i + 1; j < nodes.length; j += 1) {
+                const a = nodes[i];
+                const b = nodes[j];
+                const ar = a.root ? 42 : 30;
+                const br = b.root ? 42 : 30;
+                const minDistance = ar + br + 16;
+                let dx = b.x - a.x;
+                let dy = b.y - a.y;
+                let distance = Math.hypot(dx, dy);
+                if (!distance) {
+                  dx = 1;
+                  dy = 0;
+                  distance = 1;
+                }
+                if (distance >= minDistance) continue;
+                const push = (minDistance - distance) / 2;
+                const nx = dx / distance;
+                const ny = dy / distance;
+                if (!a.root) {
+                  a.x -= nx * push;
+                  a.y -= ny * push;
+                }
+                if (!b.root) {
+                  b.x += nx * push;
+                  b.y += ny * push;
+                }
+              }
+            }
+            if (centerNode) {
+              centerNode.x = centerX;
+              centerNode.y = centerY;
+            }
+          }
+        }
 
-        const selected = nodes.find((node) => node.id === data.selected_leader) || nodes[0];
-        trustMapTitle.textContent = selected?.name || "Red Zipp";
-        trustMapSubtitle.textContent = `${Math.max(0, nodes.length - 1)} persona(s) conectadas a esta rama.`;
+        function resolveLineNodeOverlaps(iterations = 70) {
+          for (let step = 0; step < iterations; step += 1) {
+            links.forEach(linkItem => {
+              const source = linkItem.source;
+              const target = linkItem.target;
+              const dx = target.x - source.x;
+              const dy = target.y - source.y;
+              const length = Math.hypot(dx, dy) || 1;
+              nodes.forEach(node => {
+                if (node.id === source.id || node.id === target.id || node.root) return;
+                const projection = ((node.x - source.x) * dx + (node.y - source.y) * dy) / (length * length);
+                if (projection <= 0.12 || projection >= 0.88) return;
+                const px = source.x + dx * projection;
+                const py = source.y + dy * projection;
+                const side = (node.x - source.x) * (-dy / length) + (node.y - source.y) * (dx / length);
+                const distance = Math.hypot(node.x - px, node.y - py);
+                const minDistance = 46;
+                if (distance >= minDistance) return;
+                const direction = side >= 0 ? 1 : -1;
+                const push = (minDistance - distance) * 0.9 + 3;
+                node.x += (-dy / length) * direction * push;
+                node.y += (dx / length) * direction * push;
+              });
+            });
+            resolveNodeCollisions(2);
+            if (centerNode) {
+              centerNode.x = centerX;
+              centerNode.y = centerY;
+            }
+          }
+        }
+
+        resolveNodeCollisions();
+        resolveLineNodeOverlaps();
+
+        function resolveRootLineOverlaps(iterations = 46) {
+          if (!centerNode) return;
+          for (let step = 0; step < iterations; step += 1) {
+            links.forEach(linkItem => {
+              const source = linkItem.source;
+              const target = linkItem.target;
+              if (source.root || target.root) return;
+
+              const dx = target.x - source.x;
+              const dy = target.y - source.y;
+              const length = Math.hypot(dx, dy) || 1;
+              const projection = ((centerNode.x - source.x) * dx + (centerNode.y - source.y) * dy) / (length * length);
+              if (projection <= 0.1 || projection >= 0.9) return;
+
+              const px = source.x + dx * projection;
+              const py = source.y + dy * projection;
+              const distance = Math.hypot(centerNode.x - px, centerNode.y - py);
+              const minDistance = 70;
+              if (distance >= minDistance) return;
+
+              const normalX = -dy / length;
+              const normalY = dx / length;
+              let side = (centerNode.x - source.x) * normalX + (centerNode.y - source.y) * normalY;
+              if (Math.abs(side) < 1) {
+                const midpointX = (source.x + target.x) / 2;
+                side = midpointX >= centerX ? 1 : -1;
+              }
+              const direction = side >= 0 ? -1 : 1;
+              const push = Math.min(18, (minDistance - distance) * 0.28 + 2);
+
+              source.x += normalX * direction * push;
+              source.y += normalY * direction * push;
+              target.x += normalX * direction * push;
+              target.y += normalY * direction * push;
+            });
+            resolveNodeCollisions(1);
+            centerNode.x = centerX;
+            centerNode.y = centerY;
+          }
+        }
+
+        resolveRootLineOverlaps();
+        resolveLineNodeOverlaps(16);
+
+        const labelBoxes = [];
+        function rectsOverlap(a, b, padding = 4) {
+          return !(
+            a.x + a.width + padding < b.x ||
+            b.x + b.width + padding < a.x ||
+            a.y + a.height + padding < b.y ||
+            b.y + b.height + padding < a.y
+          );
+        }
+
+        function circleRectOverlap(circle, rect, padding = 10) {
+          const radius = (circle.root ? 34 : 22) + padding;
+          const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+          const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+          return Math.hypot(circle.x - closestX, circle.y - closestY) < radius;
+        }
+
+        function labelCandidates(node) {
+          const radius = node.root ? 34 : 22;
+          const text = String(node.name || "");
+          const widthEstimate = Math.max(28, text.length * 7.3 + 8);
+          const heightEstimate = 18;
+          const gap = radius + 9;
+          return [
+            {
+              anchor: "start",
+              x: gap,
+              y: 4,
+              box: { x: node.x + gap, y: node.y - 9, width: widthEstimate, height: heightEstimate },
+            },
+            {
+              anchor: "end",
+              x: -gap,
+              y: 4,
+              box: { x: node.x - gap - widthEstimate, y: node.y - 9, width: widthEstimate, height: heightEstimate },
+            },
+            {
+              anchor: "middle",
+              x: 0,
+              y: -(radius + 14),
+              box: { x: node.x - widthEstimate / 2, y: node.y - radius - 26, width: widthEstimate, height: heightEstimate },
+            },
+            {
+              anchor: "middle",
+              x: 0,
+              y: radius + 22,
+              box: { x: node.x - widthEstimate / 2, y: node.y + radius + 8, width: widthEstimate, height: heightEstimate },
+            },
+          ];
+        }
+
+        function chooseLabelPosition(node) {
+          const candidates = labelCandidates(node);
+          let best = candidates[0];
+          let bestScore = Number.POSITIVE_INFINITY;
+          candidates.forEach((candidate, index) => {
+            let score = index * 5;
+            nodes.forEach(other => {
+              if (other.id === node.id) return;
+              if (circleRectOverlap(other, candidate.box, 12)) score += 1000;
+            });
+            labelBoxes.forEach(box => {
+              if (rectsOverlap(candidate.box, box, 4)) score += 700;
+            });
+            if (candidate.box.x < 10 || candidate.box.x + candidate.box.width > width - 10) score += 80;
+            if (candidate.box.y < 52 || candidate.box.y + candidate.box.height > height - 10) score += 80;
+            if (score < bestScore) {
+              bestScore = score;
+              best = candidate;
+            }
+          });
+          labelBoxes.push(best.box);
+          return best;
+        }
+
+        const labelPositions = new Map();
+        [...nodes]
+          .sort((a, b) => (a.root === b.root ? a.depth - b.depth : a.root ? -1 : 1))
+          .forEach(node => {
+            labelPositions.set(node.id, chooseLabelPosition(node));
+          });
+
+        const viewport = svg.append("g").attr("class", "network-viewport");
+        const linkLayer = viewport.append("g").attr("class", "links");
+
+        const linkGlow = linkLayer
+          .selectAll("path.link-glow")
+          .data(links)
+          .join("path")
+          .attr("class", "link-glow");
+
+        const link = linkLayer
+          .selectAll("path.link")
+          .data(links)
+          .join("path")
+          .attr("class", "link");
+
+        const node = viewport.append("g")
+          .attr("class", "nodes")
+          .selectAll("g")
+          .data(nodes)
+          .join("g")
+          .attr("class", d => `node${d.root ? " root" : ""}`)
+          .attr("transform", d => `translate(${d.x},${d.y})`);
+
+        node.append("circle")
+          .attr("r", d => d.root ? 34 : 22);
+
+        node.append("text")
+          .attr("class", "node-initial")
+          .attr("x", 0)
+          .attr("y", 1)
+          .text(d => initials(d.name, d.root));
+
+        node.append("text")
+          .attr("class", "node-label")
+          .attr("x", d => labelPositions.get(d.id)?.x ?? (d.root ? 42 : 30))
+          .attr("y", d => labelPositions.get(d.id)?.y ?? 4)
+          .attr("text-anchor", d => labelPositions.get(d.id)?.anchor ?? "start")
+          .text(d => d.name);
+
+        function straightPath(d) {
+          const sourceRadius = d.source.root ? 34 : 22;
+          const targetRadius = d.target.root ? 34 : 22;
+          const rawDx = d.target.x - d.source.x;
+          const rawDy = d.target.y - d.source.y;
+          const rawLength = Math.sqrt(rawDx * rawDx + rawDy * rawDy) || 1;
+          const x1 = d.source.x + (rawDx / rawLength) * sourceRadius;
+          const y1 = d.source.y + (rawDy / rawLength) * sourceRadius;
+          const x2 = d.target.x - (rawDx / rawLength) * targetRadius;
+          const y2 = d.target.y - (rawDy / rawLength) * targetRadius;
+          return `M${x1},${y1} L${x2},${y2}`;
+        }
+
+        linkGlow.attr("d", straightPath);
+        link.attr("d", straightPath);
+
+        const zoomBehavior = d3.zoom()
+          .scaleExtent([0.35, 3.4])
+          .filter(event => !event.ctrlKey || event.type === "wheel")
+          .on("zoom", event => {
+            trustCurrentZoom = event.transform;
+            viewport.attr("transform", trustCurrentZoom);
+          });
+
+        svg.call(zoomBehavior);
+        viewport.attr("transform", trustCurrentZoom);
+        svg.call(zoomBehavior.transform, trustCurrentZoom);
       }
 
       async function loadTrustNetwork() {
@@ -2473,6 +2833,7 @@
           return;
         }
         selectedTrustRootId = data.selected_leader || selectedTrustRootId;
+        trustLastData = data;
         trustSyncStatus.textContent = `SYNC ${String(data.updated_at || "").slice(11, 19)}`;
         renderTrustLeaders(data);
         renderTrustCodes(data.codes || []);
@@ -2885,6 +3246,7 @@
           const button = event.target.closest("[data-trust-root]");
           if (!button) return;
           selectedTrustRootId = Number(button.getAttribute("data-trust-root"));
+          trustCurrentZoom = typeof d3 !== "undefined" ? d3.zoomIdentity : null;
           loadTrustNetwork();
         });
         driverSearchInput?.addEventListener("input", () => loadDrivers());
@@ -3036,6 +3398,7 @@
       loadTrustNetwork();
       refreshAll();
       setInterval(refreshAll, 5000);
+      window.addEventListener("resize", () => trustLastData && renderTrustGraph(trustLastData));
     </script>
   </body>
 </html>
