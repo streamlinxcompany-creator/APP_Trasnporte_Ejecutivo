@@ -51,13 +51,16 @@ try:
 except Exception:
     local_settings = None
 
-from twilio_text_logic import handle_twilio_webhook
+from twilio_text_logic import build_invitation_whatsapp_link, handle_twilio_webhook
 from trust_network import (
     build_graph_payload,
     count_descendants,
     create_leader_code,
     format_expiration,
     init_trust_schema,
+    normalize_code,
+    now_local,
+    parse_datetime,
     trust_path,
 )
 
@@ -354,6 +357,65 @@ def build_whatsapp_payment_link():
         "Hola, quiero ponerme al dia con mi mensualidad para reactivar la app."
     )
     return f"https://wa.me/{PAYMENT_WHATSAPP_NUMBER}?text={text}"
+
+
+def build_invite_preview_context(raw_code):
+    code = normalize_code(raw_code)
+    conn = get_conn()
+    row = conn.execute(
+        """
+        SELECT c.*, creator.nombre AS creador_nombre
+        FROM codigos_confianza c
+        LEFT JOIN clientes_confianza creator ON creator.id = c.creador_node_id
+        WHERE c.codigo = ?
+        """,
+        (code,),
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return {
+            "code": code,
+            "inviter": "un amigo",
+            "valid": False,
+            "expires": "",
+            "whatsapp_url": "",
+            "status_title": "Codigo no encontrado",
+            "status_text": "Revisa que el enlace este completo o pidele a tu contacto que genere uno nuevo.",
+        }
+
+    inviter = (row["creador_nombre"] or "un amigo").strip()
+    expires = format_expiration(row["expira_en"])
+    expiration_dt = parse_datetime(row["expira_en"])
+    is_expired = bool(expiration_dt and expiration_dt < now_local())
+    estado = (row["estado"] or "").strip().lower()
+    valid = estado == "disponible" and not is_expired
+
+    if valid:
+        status_title = "Codigo vigente"
+        status_text = f"Este codigo puede usarse hasta {expires}."
+    elif estado == "usado":
+        status_title = "Codigo ya usado"
+        status_text = "Este codigo ya fue verificado y quedo invalidado."
+    elif estado == "reservado":
+        status_title = "Codigo en proceso"
+        status_text = "Este codigo ya esta en proceso de registro en WhatsApp."
+    elif is_expired or estado == "expirado":
+        status_title = "Codigo vencido"
+        status_text = "Pidele a tu contacto que genere un codigo nuevo desde Zipp."
+    else:
+        status_title = "Codigo no disponible"
+        status_text = "Este codigo no esta disponible para registro."
+
+    return {
+        "code": code,
+        "inviter": inviter,
+        "valid": valid,
+        "expires": expires,
+        "whatsapp_url": build_invitation_whatsapp_link(code) if valid else "",
+        "status_title": status_title,
+        "status_text": status_text,
+    }
 
 
 def get_conductor_subscription_snapshot(row, reference_dt=None):
@@ -2922,8 +2984,15 @@ def webhook():
         format_saved_address=format_saved_address,
         is_reserved_direccion=is_reserved_direccion,
         parse_coords_from_text=parse_coords_from_text,
+        invite_base_url=request.url_root,
         reply_sender=send_whatsapp_reply,
     )
+
+
+@app.route("/i/<path:code>")
+def invite_preview(code):
+    invite = build_invite_preview_context(code)
+    return render_template("invite_preview.html", invite=invite)
 
 
 @app.route("/login", methods=["GET", "POST"])
