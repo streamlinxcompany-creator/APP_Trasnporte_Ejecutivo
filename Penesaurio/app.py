@@ -2985,6 +2985,7 @@ def webhook():
         is_reserved_direccion=is_reserved_direccion,
         parse_coords_from_text=parse_coords_from_text,
         invite_base_url=request.url_root,
+        reply_sender=send_whatsapp_reply,
     )
 
 
