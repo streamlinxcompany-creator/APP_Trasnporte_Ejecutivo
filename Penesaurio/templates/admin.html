@@ -2777,7 +2777,19 @@
           .data(nodes)
           .join("g")
           .attr("class", d => `node${d.root ? " root" : ""}`)
-          .attr("transform", d => `translate(${d.x},${d.y})`);
+          .attr("transform", d => `translate(${d.x},${d.y})`)
+          .attr("role", "link")
+          .attr("tabindex", 0)
+          .on("click", (event, d) => {
+            event.stopPropagation();
+            window.open(`/admin/confianza/cliente/${d.id}`, "_blank", "noopener");
+          })
+          .on("keydown", (event, d) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              window.open(`/admin/confianza/cliente/${d.id}`, "_blank", "noopener");
+            }
+          });
 
         node.append("circle")
           .attr("r", d => d.root ? 34 : 22);

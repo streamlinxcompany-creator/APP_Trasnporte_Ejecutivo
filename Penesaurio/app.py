@@ -54,9 +54,11 @@ except Exception:
 from twilio_text_logic import handle_twilio_webhook
 from trust_network import (
     build_graph_payload,
+    count_descendants,
     create_leader_code,
     format_expiration,
     init_trust_schema,
+    trust_path,
 )
 
 app = Flask(__name__)
@@ -2627,6 +2629,188 @@ def extract_cliente_info(mensaje_cliente):
     return nombre, direccion
 
 
+def build_trust_client_detail(cliente_id):
+    conn = get_conn()
+    cur = conn.cursor()
+    cliente = cur.execute(
+        """
+        SELECT c.*, u.nombre AS usuario_nombre, u.telefono AS usuario_telefono,
+               u.created_at AS usuario_created_at, u.updated_at AS usuario_updated_at
+        FROM clientes_confianza c
+        LEFT JOIN usuarios u ON u.id = c.usuario_id
+        WHERE c.id = ?
+        """,
+        (cliente_id,),
+    ).fetchone()
+    if not cliente:
+        conn.close()
+        return None
+
+    parent = None
+    if cliente["padre_id"]:
+        parent = cur.execute(
+            "SELECT * FROM clientes_confianza WHERE id = ?",
+            (cliente["padre_id"],),
+        ).fetchone()
+
+    path_rows = trust_path(cur, cliente_id)
+    root = path_rows[0] if path_rows else cliente
+    used_code = cur.execute(
+        """
+        SELECT *
+        FROM codigos_confianza
+        WHERE usado_por_node_id = ?
+        ORDER BY usado_en DESC
+        LIMIT 1
+        """,
+        (cliente_id,),
+    ).fetchone()
+    active_codes = cur.execute(
+        """
+        SELECT codigo, tipo, estado, expira_en
+        FROM codigos_confianza
+        WHERE creador_node_id = ?
+          AND estado IN ('disponible', 'reservado')
+        ORDER BY expira_en ASC
+        """,
+        (cliente_id,),
+    ).fetchall()
+    children = cur.execute(
+        """
+        SELECT id, nombre, telefono, estado, creado_en
+        FROM clientes_confianza
+        WHERE padre_id = ?
+        ORDER BY creado_en DESC
+        """,
+        (cliente_id,),
+    ).fetchall()
+
+    usuario_id = cliente["usuario_id"]
+    addresses = []
+    if usuario_id:
+        addresses = cur.execute(
+            """
+            SELECT id, direccion, etiqueta, latitude, longitude, created_at, updated_at
+            FROM direcciones
+            WHERE usuario_id = ?
+            ORDER BY COALESCE(updated_at, created_at) DESC
+            LIMIT 20
+            """,
+            (usuario_id,),
+        ).fetchall()
+
+    phone = cliente["usuario_telefono"] or cliente["telefono"] or ""
+    service_rows = []
+    if phone:
+        service_rows = cur.execute(
+            """
+            SELECT id, mensaje_cliente, estado, conductor_nombre, conductor_placa, timestamp
+            FROM pedidos
+            WHERE cliente_telefono = ?
+            ORDER BY id DESC
+            LIMIT 25
+            """,
+            (phone,),
+        ).fetchall()
+
+    last_service = service_rows[0] if service_rows else None
+    last_details = parse_detalles(last_service["mensaje_cliente"] if last_service else "")
+    last_name, last_address = extract_cliente_info(last_service["mensaje_cliente"] if last_service else "")
+    completed_count = sum(
+        1 for row in service_rows if (row["estado"] or "").strip().lower() in {"completado", "finalizado"}
+    )
+    cancelled_count = sum(
+        1 for row in service_rows if (row["estado"] or "").strip().lower() in {"cancelado", "expirado"}
+    )
+    descendant_count = count_descendants(cur, cliente_id)
+
+    conn.close()
+    depth = max(0, len(path_rows) - 1)
+    return {
+        "id": cliente["id"],
+        "nombre": cliente["nombre"],
+        "inicial": "P" if cliente["es_admin"] else (cliente["nombre"][:1] or "?").upper(),
+        "telefono": phone if not cliente["es_admin"] else "",
+        "telefono_interno": cliente["telefono"],
+        "estado": cliente["estado"],
+        "es_admin": bool(cliente["es_admin"]),
+        "creado_en": cliente["creado_en"] or "",
+        "actualizado_en": cliente["updated_at"] or cliente["usuario_updated_at"] or "",
+        "referente": parent["nombre"] if parent else "Nodo P",
+        "referente_id": parent["id"] if parent else None,
+        "lider": root["nombre"] if root else cliente["nombre"],
+        "lider_id": root["id"] if root else cliente["id"],
+        "profundidad": depth,
+        "codigo_usado": used_code["codigo"] if used_code else "",
+        "tipo_codigo": used_code["tipo"] if used_code else "",
+        "referidos_directos": len(children),
+        "red_total": descendant_count,
+        "ruta_confianza": [
+            {
+                "id": item["id"],
+                "nombre": item["nombre"],
+                "root": bool(item["es_admin"]) or item["padre_id"] is None,
+            }
+            for item in path_rows
+        ],
+        "referidos": [dict(row) for row in children],
+        "codigos_activos": [
+            {
+                "codigo": row["codigo"],
+                "tipo": row["tipo"],
+                "estado": row["estado"],
+                "expira_en": format_expiration(row["expira_en"]),
+            }
+            for row in active_codes
+        ],
+        "direcciones": [dict(row) for row in addresses],
+        "servicios": [
+            {
+                "id": row["id"],
+                "estado": row["estado"] or "",
+                "timestamp": row["timestamp"] or "",
+                "conductor": row["conductor_nombre"] or "",
+                "placa": row["conductor_placa"] or "",
+                "detalles": parse_detalles(row["mensaje_cliente"] or ""),
+                "mensaje": row["mensaje_cliente"] or "",
+            }
+            for row in service_rows
+        ],
+        "metricas": [
+            {"label": "Carreras registradas", "value": len(service_rows)},
+            {"label": "Completadas", "value": completed_count},
+            {"label": "Canceladas o expiradas", "value": cancelled_count},
+            {"label": "Direcciones guardadas", "value": len(addresses)},
+            {"label": "Referidos directos", "value": len(children)},
+            {"label": "Personas bajo su red", "value": descendant_count},
+        ],
+        "identidad": [
+            {"label": "Nombre completo", "value": cliente["nombre"]},
+            {"label": "Telefono WhatsApp", "value": phone},
+            {"label": "Codigo interno", "value": cliente["telefono"]},
+            {"label": "Estado de cuenta", "value": cliente["estado"]},
+            {"label": "Fecha de ingreso", "value": cliente["creado_en"] or ""},
+            {"label": "Usuario Zipp", "value": cliente["usuario_nombre"] or ""},
+        ],
+        "seguridad": [
+            {"label": "Quien lo ingreso", "value": parent["nombre"] if parent else "Codigo Lider"},
+            {"label": "Codigo usado", "value": used_code["codigo"] if used_code else ""},
+            {"label": "Tipo de codigo", "value": used_code["tipo"] if used_code else ""},
+            {"label": "Lider raiz", "value": root["nombre"] if root else ""},
+            {"label": "Nivel en la red", "value": depth},
+            {"label": "Codigos activos creados", "value": len(active_codes)},
+        ],
+        "operacion": [
+            {"label": "Ultima carrera", "value": last_service["timestamp"] if last_service else ""},
+            {"label": "Ultima direccion", "value": last_address},
+            {"label": "Ultimo estado", "value": last_service["estado"] if last_service else ""},
+            {"label": "Ultimo conductor", "value": (last_service["conductor_nombre"] or "") if last_service else ""},
+            {"label": "Ultima placa", "value": (last_service["conductor_placa"] or "") if last_service else ""},
+            {"label": "Nombre en ultimo pedido", "value": last_name or last_details.get("Nombre", "")},
+        ],
+    }
+
+
 def format_ts_short(ts_value):
     if not ts_value:
         return "-"
@@ -3094,6 +3278,20 @@ def admin_trust_page():
         admin_usuario=session.get("admin_usuario"),
         admin_view="trust",
         admin_page_title="Red de Confianza",
+    )
+
+
+@app.route("/admin/confianza/cliente/<int:cliente_id>")
+def admin_trust_client_page(cliente_id):
+    if not admin_session_active():
+        return redirect(url_for("login"))
+    cliente = build_trust_client_detail(cliente_id)
+    if cliente is None:
+        return redirect(url_for("admin_trust_page"))
+    return render_template(
+        "trust_client.html",
+        admin_usuario=session.get("admin_usuario"),
+        cliente=cliente,
     )
 
 
