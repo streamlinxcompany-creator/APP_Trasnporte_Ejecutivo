@@ -2,6 +2,7 @@ import json
 import math
 import os
 import re
+import urllib.parse
 from datetime import datetime
 
 from twilio.twiml.messaging_response import MessagingResponse
@@ -22,6 +23,7 @@ except Exception:
 SHORT_CANCEL_HINT = "Si deseas cancelar, escribe *CANCELAR*."
 MAICOL_SOURCE_PATH = r"C:\Users\Juan Pablo\Desktop\Maicol\MaicolSistem.py"
 DEFAULT_GROQ_TEXT_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_ZIPP_WHATSAPP_NUMBER = "573106269788"
 FIRST_CONTACT_WELCOME = "*Hola, bienvenid@ a Zipp.*"
 MAP_ONLY_REJECTION_MESSAGE = (
     "*Necesito tu ubicacion actual* desde WhatsApp para recogerte.\n"
@@ -990,12 +992,30 @@ def append_invitation_action(text):
     return f"{base}\n\n{action}"
 
 
+def get_zipp_whatsapp_number():
+    raw = os.environ.get("ZIPP_WHATSAPP_NUMBER") or os.environ.get("PAYMENT_WHATSAPP_NUMBER") or DEFAULT_ZIPP_WHATSAPP_NUMBER
+    return re.sub(r"\D+", "", raw or DEFAULT_ZIPP_WHATSAPP_NUMBER)
+
+
+def build_invitation_whatsapp_link(code):
+    message = (
+        "¡Hola Zipp! 🚀 Vengo referido por un amigo. "
+        f"Mi código de invitación es: {code}. ¿Me ayudas con mi registro?"
+    )
+    encoded = urllib.parse.quote(message, safe="")
+    return f"https://wa.me/{get_zipp_whatsapp_number()}?text={encoded}"
+
+
 def build_generated_invitation_message(code_row):
+    link = build_invitation_whatsapp_link(code_row["codigo"])
+    expiration = format_expiration(code_row["expira_en"])
     return (
         "*Codigo de invitacion generado.*\n"
         f"*{code_row['codigo']}*\n\n"
-        f"Este codigo tiene validez hasta *{format_expiration(code_row['expira_en'])}*.\n"
-        "Compartelo solo con una persona de confianza. Cuando se use, quedara invalidado."
+        f"{link}\n\n"
+        "Pasale este link a tu amigo.\n"
+        f"Recuerda que tiene expiracion hasta *{expiration}*.\n"
+        "Cuando se use, quedara invalidado."
     )
 
 
@@ -2353,7 +2373,7 @@ def handle_twilio_webhook(
             conn.close()
             return respond_client(
                 telefono,
-                append_invitation_action(build_invitation_completed_message(candidate_name)),
+                build_invitation_completed_message(candidate_name),
             )
 
         if usuario_inicial and invitation_row and invitation_row["paso"] in {"invite_codigo", "invite_nombre"}:

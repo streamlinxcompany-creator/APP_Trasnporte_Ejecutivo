@@ -1,5 +1,10 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+try:
+    from zoneinfo import ZoneInfo
+except Exception:
+    ZoneInfo = None
 
 
 ADMIN_ROOT_PHONE = "zipp:admin-root"
@@ -7,10 +12,18 @@ ADMIN_ROOT_NAME = "Nodo P Zipp"
 CODE_PREFIX = "ZIPP"
 CLIENT_INVITE_HOURS = 2
 LEADER_INVITE_HOURS = 1
+try:
+    BOGOTA_TZ = ZoneInfo("America/Bogota") if ZoneInfo else timezone(timedelta(hours=-5))
+except Exception:
+    BOGOTA_TZ = timezone(timedelta(hours=-5))
+
+
+def now_local():
+    return datetime.now(BOGOTA_TZ).replace(tzinfo=None)
 
 
 def now_text():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return now_local().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def parse_datetime(value):
@@ -143,7 +156,7 @@ def code_seconds_left(row):
     expira_en = parse_datetime(row["expira_en"])
     if not expira_en:
         return 0
-    return max(0, int((expira_en - datetime.now()).total_seconds()))
+    return max(0, int((expira_en - now_local()).total_seconds()))
 
 
 def make_invite_code(cur):
@@ -188,7 +201,7 @@ def get_or_create_node_for_usuario(cur, usuario, parent_id=None):
 def create_code(cur, tipo, creador_node_id, hours):
     expire_unused_codes(cur)
     stamp = now_text()
-    expira_en = (datetime.now() + timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+    expira_en = (now_local() + timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
     code = make_invite_code(cur)
     cur.execute(
         """

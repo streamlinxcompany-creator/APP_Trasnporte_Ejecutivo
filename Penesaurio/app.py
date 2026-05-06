@@ -77,6 +77,7 @@ DEFAULT_COVERAGE_CENTER_LAT = 6.030589
 DEFAULT_COVERAGE_CENTER_LNG = -75.431704
 DEFAULT_COVERAGE_RADIUS_METERS = 6000
 DRIVER_LOCATION_FRESH_SECONDS = 5 * 60
+TAKEN_SERVICE_STALE_HOURS = 12
 GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
 VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:soporte@zipp.app")
 SERVICE_MATCH_STAGES = [
@@ -2294,6 +2295,65 @@ def verificar_expiracion_servicios():
     return len(expired_phones)
 
 
+def cleanup_stale_taken_services():
+    cutoff = datetime.now() - timedelta(hours=TAKEN_SERVICE_STALE_HOURS)
+    cutoff_text = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        conn = get_conn()
+        rows = conn.execute(
+            """
+            SELECT id, cliente_telefono, conductor_nombre, conductor_placa, timestamp
+            FROM pedidos
+            WHERE estado = 'Tomado'
+              AND timestamp IS NOT NULL
+              AND timestamp != ''
+              AND timestamp < ?
+            """,
+            (cutoff_text,),
+        ).fetchall()
+        if not rows:
+            conn.close()
+            return 0
+
+        pedido_ids = [row["id"] for row in rows]
+        placeholders = ",".join("?" for _ in pedido_ids)
+        conn.execute(
+            f"""
+            UPDATE pedidos
+            SET estado = 'Completado',
+                assignment_notified = 1
+            WHERE id IN ({placeholders})
+            """,
+            pedido_ids,
+        )
+        conn.execute(
+            f"""
+            UPDATE conductores
+            SET active_pedido_id = NULL
+            WHERE active_pedido_id IN ({placeholders})
+            """,
+            pedido_ids,
+        )
+        conn.commit()
+        conn.close()
+        log_system_event(
+            "info",
+            "services",
+            "Servicios tomados antiguos cerrados automaticamente",
+            f"count={len(pedido_ids)} cutoff={cutoff_text} ids={pedido_ids}",
+        )
+        return len(pedido_ids)
+    except Exception as exc:
+        print(f"Error limpiando servicios tomados antiguos: {exc}")
+        log_system_event(
+            "error",
+            "services",
+            "Fallo limpieza de servicios tomados antiguos",
+            str(exc),
+        )
+        return 0
+
+
 def start_expiration_worker():
     def loop():
         print("Worker de recordatorios iniciado.")
@@ -2304,8 +2364,8 @@ def start_expiration_worker():
             threading.current_thread().name,
         )
         while True:
+            cleanup_stale_taken_services()
             verificar_expiracion_servicios()
-            retry_assignment_notifications()
             verify_idle_conversations()
             notify_rescue_services_after_rings()
             time.sleep(EXPIRATION_CHECK_SECONDS)
@@ -2339,6 +2399,10 @@ def ensure_runtime_workers(reason="runtime"):
 
 
 def retry_assignment_notifications():
+    # Las asignaciones se notifican solo al tomar el servicio o al reenviar manualmente.
+    # Reintentar desde el worker puede duplicar mensajes si queda un pedido viejo en Tomado.
+    return 0
+
     try:
         conn = get_conn()
         rows = conn.execute(
@@ -2407,6 +2471,45 @@ def send_assignment_message(phone, conductor_nombre, conductor_placa):
     return send_whatsapp_message(phone, body)
 
 
+def claim_assignment_notification(pedido_id):
+    conn = get_conn()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        cur = conn.execute(
+            """
+            UPDATE pedidos
+            SET assignment_notified = 2
+            WHERE id = ?
+              AND COALESCE(assignment_notified, 0) = 0
+            """,
+            (pedido_id,),
+        )
+        conn.commit()
+        return cur.rowcount == 1
+    except Exception as exc:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print(f"No se pudo reservar notificacion de asignacion {pedido_id}: {exc}")
+        return False
+    finally:
+        conn.close()
+
+
+def mark_assignment_notification(pedido_id, status):
+    try:
+        conn = get_conn()
+        conn.execute(
+            "UPDATE pedidos SET assignment_notified = ? WHERE id = ?",
+            (status, pedido_id),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        print(f"No se pudo marcar notificacion de asignacion {pedido_id}: {exc}")
+
+
 def send_chat_messages(phone, conductor_placa, conductor_message, include_system):
     ok_msg, err_msg = send_whatsapp_message(phone, conductor_message)
     if ok_msg:
@@ -2419,31 +2522,30 @@ def queue_assignment_notification(pedido_id, phone, conductor_nombre, conductor_
         return
 
     def run():
+        if not claim_assignment_notification(pedido_id):
+            log_system_event(
+                "info",
+                "assignment",
+                "Asignacion omitida porque ya estaba en proceso o enviada",
+                f"pedido={pedido_id} telefono={phone}",
+            )
+            return
+
         enviado, razon = send_assignment_message(
             phone,
             conductor_nombre,
             conductor_placa,
         )
         if enviado:
-            try:
-                conn = get_conn()
-                conn.execute(
-                    "UPDATE pedidos SET assignment_notified = 1 WHERE id = ?",
-                    (pedido_id,),
-                )
-                conn.commit()
-                conn.close()
-                log_system_event(
-                    "info",
-                    "assignment",
-                    "Asignacion enviada al tomar servicio",
-                    f"pedido={pedido_id} telefono={phone} placa={conductor_placa}",
-                )
-            except Exception as exc:
-                print(
-                    f"No se pudo marcar asignacion enviada para pedido {pedido_id}: {exc}"
-                )
+            mark_assignment_notification(pedido_id, 1)
+            log_system_event(
+                "info",
+                "assignment",
+                "Asignacion enviada al tomar servicio",
+                f"pedido={pedido_id} telefono={phone} placa={conductor_placa}",
+            )
         else:
+            mark_assignment_notification(pedido_id, 3)
             detalle = razon or "Revisa Twilio y que el numero este habilitado."
             log_system_event(
                 "error",
@@ -4130,30 +4232,30 @@ def tomar():
         )
 
     if cliente_telefono:
-        enviado, razon = send_assignment_message(
-            cliente_telefono,
-            session["conductor_nombre"],
-            session["conductor_placa"],
-        )
-        if enviado:
-            try:
-                conn = get_conn()
-                conn.execute(
-                    "UPDATE pedidos SET assignment_notified = 1 WHERE id = ?",
-                    (pedido_id,),
-                )
-                conn.commit()
-                conn.close()
+        if claim_assignment_notification(pedido_id):
+            enviado, razon = send_assignment_message(
+                cliente_telefono,
+                session["conductor_nombre"],
+                session["conductor_placa"],
+            )
+            if enviado:
+                mark_assignment_notification(pedido_id, 1)
                 log_system_event(
                     "info",
                     "assignment",
                     "Asignacion enviada al tomar servicio",
                     f"pedido={pedido_id} telefono={cliente_telefono} placa={session['conductor_placa']}",
                 )
-            except Exception as exc:
-                print(
-                    f"No se pudo marcar asignacion enviada para pedido {pedido_id}: {exc}"
-                )
+            else:
+                mark_assignment_notification(pedido_id, 3)
+        else:
+            enviado, razon = True, ""
+            log_system_event(
+                "info",
+                "assignment",
+                "Asignacion omitida porque ya estaba en proceso o enviada",
+                f"pedido={pedido_id} telefono={cliente_telefono}",
+            )
         if not enviado:
             detalle = razon or "Revisa Twilio y que el numero este habilitado."
             log_system_event(
