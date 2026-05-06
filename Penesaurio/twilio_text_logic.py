@@ -23,7 +23,7 @@ except Exception:
 SHORT_CANCEL_HINT = "Si deseas cancelar, escribe *CANCELAR*."
 MAICOL_SOURCE_PATH = r"C:\Users\Juan Pablo\Desktop\Maicol\MaicolSistem.py"
 DEFAULT_GROQ_TEXT_MODEL = "llama-3.3-70b-versatile"
-DEFAULT_ZIPP_WHATSAPP_NUMBER = "573106269788"
+DEFAULT_ZIPP_WHATSAPP_NUMBER = "12183003050"
 FIRST_CONTACT_WELCOME = "*Hola, bienvenid@ a Zipp.*"
 MAP_ONLY_REJECTION_MESSAGE = (
     "*Necesito tu ubicacion actual* desde WhatsApp para recogerte.\n"
@@ -993,7 +993,7 @@ def append_invitation_action(text):
 
 
 def get_zipp_whatsapp_number():
-    raw = os.environ.get("ZIPP_WHATSAPP_NUMBER") or os.environ.get("PAYMENT_WHATSAPP_NUMBER") or DEFAULT_ZIPP_WHATSAPP_NUMBER
+    raw = os.environ.get("ZIPP_WHATSAPP_NUMBER") or DEFAULT_ZIPP_WHATSAPP_NUMBER
     return re.sub(r"\D+", "", raw or DEFAULT_ZIPP_WHATSAPP_NUMBER)
 
 
@@ -1006,14 +1006,26 @@ def build_invitation_whatsapp_link(code):
     return f"https://wa.me/{get_zipp_whatsapp_number()}?text={encoded}"
 
 
-def build_generated_invitation_message(code_row):
-    link = build_invitation_whatsapp_link(code_row["codigo"])
+def build_short_invitation_link(code, invite_base_url=None):
+    base_url = (
+        os.environ.get("ZIPP_INVITE_BASE_URL")
+        or os.environ.get("ZIPP_PUBLIC_BASE_URL")
+        or invite_base_url
+        or ""
+    ).strip()
+    if not base_url:
+        return build_invitation_whatsapp_link(code)
+    return f"{base_url.rstrip('/')}/i/{urllib.parse.quote(code, safe='-')}"
+
+
+def build_generated_invitation_message(code_row, invite_base_url=None):
+    link = build_short_invitation_link(code_row["codigo"], invite_base_url=invite_base_url)
     expiration = format_expiration(code_row["expira_en"])
     return (
         "*Codigo de invitacion generado.*\n"
         f"*{code_row['codigo']}*\n\n"
         f"{link}\n\n"
-        "Pasale este link a tu amigo.\n"
+        "Pasale este link a tu amigo para que verifique su registro con el bot de Zipp.\n"
         f"Recuerda que tiene expiracion hasta *{expiration}*.\n"
         "Cuando se use, quedara invalidado."
     )
@@ -2258,6 +2270,7 @@ def handle_twilio_webhook(
     format_saved_address,
     is_reserved_direccion,
     parse_coords_from_text,
+    invite_base_url=None,
     reply_sender=None,
     debug_hook=None,
 ):
@@ -2304,7 +2317,10 @@ def handle_twilio_webhook(
                 )
             conn.commit()
             conn.close()
-            return respond_client(telefono, build_generated_invitation_message(code_row))
+            return respond_client(
+                telefono,
+                build_generated_invitation_message(code_row, invite_base_url=invite_base_url),
+            )
 
         if (
             not usuario_inicial
